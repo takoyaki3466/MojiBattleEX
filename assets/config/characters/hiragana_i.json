@@ -1,0 +1,1 @@
+{"id":"hiragana_i","type":"MAIN","displayGlyph":"い","nameKey":"character.hiragana_i.name","maxHp":920.0,"baseAttack":1.0,"moveSpeed":6.2,"collisionRadius":0.6,"skillId":"hiragana_i_iroha","ultimateId":"hiragana_i_gojuon","passiveId":"hiragana_i_vowel_resonance","glyphTexture":"glyphs/hiragana-i.png","criticalRate":0.0,"criticalDamageMultiplier":1.5,"criticalEnabled":false}

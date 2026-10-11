@@ -1,0 +1,9 @@
+{
+  "windowWidth": 1600,
+  "windowHeight": 900,
+  "fullscreen": false,
+  "cameraDistance": 8.0,
+  "cameraHeight": 4.5,
+  "cameraFollowSpeed": 7.0,
+  "fieldOfView": 67.0
+}

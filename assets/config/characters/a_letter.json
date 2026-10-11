@@ -1,0 +1,1 @@
+{"id":"a_letter","type":"MAIN","displayGlyph":"A","nameKey":"character.a_letter.name","maxHp":800.0,"baseAttack":1.0,"moveSpeed":7.0,"collisionRadius":0.65,"skillId":"a_family","ultimateId":"a_family_welcome","passiveId":"a_family_bond","glyphTexture":"glyphs/a.png","criticalRate":0.0,"criticalDamageMultiplier":1.5,"criticalEnabled":false}

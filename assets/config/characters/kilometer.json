@@ -1,0 +1,1 @@
+{"id":"kilometer","type":"MAIN","displayGlyph":"㌔","nameKey":"character.kilometer.name","maxHp":900.0,"baseAttack":1.0,"moveSpeed":7.2,"collisionRadius":0.58,"skillId":"kilometer_accel","ultimateId":"kilometer_megaton","passiveId":"kilometer_unit_up","glyphTexture":"glyphs/kilometer.png","criticalRate":0.0,"criticalDamageMultiplier":1.5,"criticalEnabled":false}

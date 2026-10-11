@@ -1,0 +1,219 @@
+{
+  "menu.title":"文字バトル EX",
+  "menu.subtitle":"文字がぶつかる、騒がしい3Dアリーナ",
+  "menu.start":"始める",
+  "menu.player_count_title":"対戦人数を選択",
+  "menu.player_count_help":"人数を決めると、キャラクター編成へ進みます。",
+  "menu.battle":"1対1対戦",
+  "menu.battle_two":"2人対戦（左右2分割）",
+  "menu.battle_three":"3人対戦（4分割中3画面）",
+  "menu.battle_four":"4人対戦（4分割）",
+  "menu.training":"テスト場",
+  "menu.character_guide":"キャラクター紹介",
+  "menu.settings":"設定",
+  "menu.back":"戻る",
+  "menu.ai_notice":"※すべての画像と演出の投下画像は製作者の絵のセンスがないため、すべてAIによって生成しました。ご了承ください",
+  "menu.more_modes":"トレーニング・図鑑・設定",
+  "menu.resume":"再開",
+  "menu.quit":"タイトルへ",
+  "select.title":"キャラクター選択",
+  "select.player_one":"1Pのキャラクターを選択",
+  "select.player_two":"2Pのキャラクターを選択",
+  "select.support_one":"1Pの補助キャラクターを選択",
+  "select.support_two":"2Pの補助キャラクターを選択",
+  "select.support_label":"補助",
+  "select.main_chosen":"メインキャラクター選択済み — 補助キャラクターを選んでください",
+  "select.main_prompt":"{0}Pのメインキャラクターを選択",
+  "select.support_prompt":"{0}Pの補助キャラクターを選択",
+  "select.selection_progress":"選択進行 {0} / {1}",
+  "select.appearance":"見た目: {0}",
+  "select.skill_brief":"クールタイム {0}秒 / 必殺獲得基準 {1}%",
+  "select.style":"戦闘スタイル: {0}",
+  "select.support_skill_detail.t":"14秒ごとに自動発動し、味方メインの攻撃力を40%上げて10秒間ラッシュ性能を高めます。",
+  "select.support_ultimate_detail.t":"生存中の全敵の被ダメージを75%増やし、各敵の左右で海が割れる演出を発生させます。効果時間10秒。",
+  "select.support_style.t":"会心と攻撃強化を重ね、一気に畳み掛けたい初心者向け攻撃支援型。",
+  "select.support_skill_detail.zero":"14秒ごとに自動発動し、生存中の全敵の攻撃力を45%下げます。効果時間9秒。",
+  "select.support_ultimate_detail.zero":"味方の最大HP45%を回復し、スタン・拘束・やけどなどをすべて解除します。",
+  "select.support_style.zero":"被害を抑えて立て直すことが得意な、安定重視の回復・防御型。",
+  "select.support_skill_detail.slash":"12秒ごとに自動発動し、8秒間、味方の攻撃ダメージを45%増加させます。",
+  "select.support_ultimate_detail.slash":"基礎威力420・射程30の巨大な横長斬撃を放ち、複数の敵と召喚物をまとめて切断します。",
+  "select.support_style.slash":"手数の多いメインと好相性で、短時間の集中攻撃に向く斬撃型。",
+  "select.support_skill_detail.right":"13秒ごとに自動発動し、生存中の全敵の移動速度を55%下げます。効果時間7秒。",
+  "select.support_ultimate_detail.right":"最寄りの敵の右側へ5単位転移し、7秒間攻撃力を60%上げます。",
+  "select.support_style.right":"位置を入れ替えて回避や奇襲を行う、操作に慣れた人向けの戦場制御型。",
+  "select.ability_summary":"スキル: {0} / パッシブ: {1}",
+  "select.confirm":"決定",
+  "select.cancel":"キャンセル",
+  "select.choose_card_hint":"一覧のカードをクリックすると、スキル・必殺技・パッシブと戦闘スタイルの詳細を確認できます。",
+  "guide.previous":"◀ 前のキャラ",
+  "guide.next":"次のキャラ ▶",
+  "guide.stats":"基本ステータス  HP {0} / 移動速度 {1}",
+  "guide.skill":"【スキル】{0}",
+  "guide.skill_stats":"CT {0}秒 / 1発 {1}ダメージ × {2}発 / 判定 {3} / 発動時必殺 +{4}% / {5}",
+  "guide.bind_follow_up":"CT {0}秒 / 麺 {1}ダメージ → 拘束 {2}秒 → 巨大スプーン {3}ダメージ / 命中時必殺 +{4}%",
+  "guide.stun":"スタン {0}秒",
+  "guide.no_stun":"スタンなし",
+  "guide.ultimate":"【必殺技】{0}",
+  "guide.area":"{0}ダメージ / 実効直径 {1}",
+  "guide.line":"{0}ダメージ / 長さ {1} / 幅 {2} / {3}方向同時攻撃",
+  "guide.meteor":"隧石 {0}個 / 1発 {1}ダメージ / 実効直径 {2}",
+  "guide.family_ultimate":"1回で家族 {0}人召喚 / 各1人 HP {1} / 自動攻撃 {2}ダメージ / 召喚上限なし",
+  "guide.car":"接触 {0}ダメージ / {1}秒間走行 / スタン {2}秒",
+  "guide.spinning_one":"1回 {0}ダメージ / 巨大な1の長さ {1} / 命中時HP {2}回復",
+  "guide.barrage":"スキルを{0}回連続発動 / 発動間隔 {1}秒 / CD・必殺ポイント獲得なし",
+  "guide.heal":"HP {0}回復",
+  "guide.cost":"必要ポイント {0}%",
+  "guide.support_role":"【補助キャラクター】メインへ自動追従・自動射撃し、スキルはCT完了時に自動発動します。補助必殺はメインと別の専用ゲージが時間で貯まります。",
+  "guide.support_stats":"移動 {0} / 追従距離 {1} / 通常攻撃間隔 {2}秒 / 通常攻撃 {3} / 射程 {4}",
+  "guide.support_skill":"【自動補助スキル】{0} / CT {1}秒 / 効果 {2}秒 / 基準効果量 {3}%",
+  "guide.support_ultimate":"【補助必殺技】{0} / 補助専用ポイント {1}%消費",
+  "guide.field_passives":"【フィールドパッシブ】{0} / {1}",
+  "guide.field_passives_title":"【フィールドパッシブ】",
+  "guide.health_cost":"発動時に最大HPの{0}%を消費",
+  "guide.passive":"【パッシブ】{0}",
+  "guide.passive_stats":"{0}秒ごとに火力 +{1}% / 最大倍率 ×{2}",
+  "guide.family_passive_stats":"生存中の家族1人ごとに火力 +{0}% / 最大倍率 ×{1}",
+  "guide.passive_effect.kabushiki":"複利投資：30秒ごとに全攻撃の火力が5%上昇し、最大1.5倍になる。",
+  "guide.passive_effect.hiragana_i":"母音共鳴：すべてのスキル弾の接触・爆発判定がさらに1.4倍になる。",
+  "guide.passive_effect.integral":"面積蓄積：戦闘中、命中に関係なく必殺ポイントが毎秒0.45ずつ増加する。",
+  "guide.passive_effect.one":"孤高の狂戦士：HPが減るほど火力が上昇し、瀕死時は最大2.8倍になる。",
+  "guide.passive_effect.d_letter":"加速するD：移動速度が常時1.28倍になる。",
+  "guide.passive_effect.kilometer":"単位上昇：スキル発動時に得る必殺ポイントが1.45倍になる。",
+  "guide.passive_effect.short":"短期決戦：スキルで与えるスタン時間が1.6倍になる。",
+  "guide.passive_effect.star_struck":"観客熱狂：スキルのクールタイムが32%短縮される。",
+  "guide.passive_effect.a_letter":"家族の絆：生存中の家族1人ごとに本体と家族の火力が6%上昇し、最大2倍になる。",
+  "guide.passive_effect.biang":"難しい漢字：1秒ごとに5%で敵を0.5秒スタンさせる。発動後は5秒間再発動しない。",
+  "guide.character.kabushiki":"必殺技に重きを置き、斜めから落ちる巨大ビルで一気に決着を狙う重火力型。",
+  "guide.character.hiragana_i":"低火力と引き換えに、スキルと必殺技が広範囲を覆う制圧型。",
+  "guide.character.integral":"難解な数式を弾として放ち、必殺技では5発の数式隕石を連続落下させる計算型。",
+  "guide.character.one":"HPを削って高威力スキルを放ち、瀕死になるほど火力が跳ね上がる危険なバーサーカー型。巨大な1の必殺技で小回復もできる。",
+  "guide.character.d_letter":"高速移動と素早い弾に加え、戦場を走り続け敵をスタンさせる車で主導権を握る加速型。",
+  "guide.character.kilometer":"高速で距離を詰め、必殺技で戦場の八方向を一斉に貫く全方位突進型。",
+  "guide.character.short":"狭い判定の長時間スタンから、巨大な「単位」を斜めに落とす「知の濃縮」へつなぐテクニカル型。",
+  "guide.character.star_struck":"短いクールタイムで手数を稼ぎ、大量の隧石で戦場全体を埋める乱戦型。",
+  "guide.character.biang":"6秒ごとに麺で敵を1.2秒拘束して巨大スプーンを投げ、低めの単発火力と拘束で攻める連携型。必殺のスープは5秒間やけどさせる。",
+  "battle.time_remaining":"残り {0}",
+  "battle.final_minute":"最終局面",
+  "battle.win":"{0} の勝利",
+  "battle.draw":"引き分け",
+  "battle.damage":"与ダメージ {0}",
+  "battle.ultimate_points":"必殺 {0}%",
+  "battle.skill_ready":"スキル READY",
+  "battle.skill_cooldown":"スキル {0}",
+  "training.hits":"ヒット {0}",
+  "training.dps":"DPS {0}",
+  "training.last_damage":"直近 {0}",
+  "training.controls":"F1: CDリセット / F2: 必殺最大 / F3: 統計リセット / F4: 30秒進める / F5: 覚醒出現",
+  "settings.resolution":"解像度: {0}",
+  "settings.fullscreen":"フルスクリーン: {0}",
+  "settings.volume":"音量: {0}%",
+  "settings.ui_scale":"UI倍率: {0}",
+  "settings.camera_follow":"カメラ追従: {0}",
+  "settings.language":"言語: {0}",
+  "settings.keys":"キー設定: config/controls.json",
+  "battle.hp":"HP {0}",
+  "battle.stunned":"スタン {0}秒",
+  "battle.player_one":"1P",
+  "battle.player_two":"2P",
+  "battle.family_count":"家族 {0}人",
+  "battle.support":"補助 {0}",
+  "battle.support_ready":"補助スキル READY",
+  "battle.support_cooldown":"補助スキル {0}",
+  "battle.support_ultimate":"補助必殺 {0}",
+  "battle.field_effects":"場: {0}",
+  "battle.effects":"効果 {0}",
+  "battle.awakened":"【覚醒】",
+  "battle.critical":"★ CRITICAL!! ★",
+  "battle.hp_fraction":"HP {0} / {1}",
+  "battle.skill_gauge":"メインスキル",
+  "battle.ultimate_gauge":"メイン必殺",
+  "battle.support_skill_gauge":"補助スキル",
+  "battle.support_ultimate_gauge":"補助必殺",
+  "battle.skill_available":"スキル発動可能！",
+  "battle.ultimate_available":"必殺技発動可能！",
+  "battle.support_skill_available":"補助スキル発動可能！",
+  "battle.support_ultimate_available":"補助必殺技発動可能！",
+  "battle.support_skill_auto":"AUTO",
+  "battle.cooldown_seconds":"残り {0}秒",
+  "battle.auto_cooldown":"AUTO / 残り {0}秒",
+  "battle.percent":"{0}%",
+  "battle.ultimate_announcement":"★★★ {0} 必殺技 ★★★\n《 {1} 》",
+  "select.player_one_chosen":"1P: {0} を選択済み",
+  "character.kabushiki.name":"株式会社",
+  "ability.kabushiki.skill.name":"株価上昇",
+  "ability.kabushiki.ultimate.name":"倒産",
+  "ability.kabushiki.passive.name":"長期的な投資"
+  ,"character.hiragana_i.name":"い — 広範囲・低火力型"
+  ,"ability.hiragana_i.skill.name":"いろは弾"
+  ,"ability.hiragana_i.ultimate.name":"五十音暴走"
+  ,"ability.hiragana_i.passive.name":"母音共鳴"
+  ,"character.integral.name":"積分 — 蓄積する重戦士"
+  ,"ability.integral.skill.name":"積分波"
+  ,"ability.integral.ultimate.name":"無限積分領域"
+  ,"ability.integral.passive.name":"面積蓄積"
+  ,"character.one.name":"1 — HP消費バーサーカー"
+  ,"ability.one.skill.name":"ブラッド・ワンショット"
+  ,"ability.one.ultimate.name":"唯一無二大回転"
+  ,"ability.one.passive.name":"孤高の狂戦士"
+  ,"character.d_letter.name":"D — 高速・標準性能型"
+  ,"ability.d_letter.skill.name":"ドライブスラッシュ"
+  ,"ability.d_letter.ultimate.name":"D・デッドヒート"
+  ,"ability.d_letter.passive.name":"加速するD"
+  ,"character.kilometer.name":"キロ — 超高速の単位戦士"
+  ,"ability.kilometer.skill.name":"キロ加速砲"
+  ,"ability.kilometer.ultimate.name":"メガトン換算"
+  ,"ability.kilometer.passive.name":"単位上昇"
+  ,"character.short.name":"短 — スタン連携の技巧型"
+  ,"ability.short.skill.name":"短距離連斬"
+  ,"ability.short.ultimate.name":"知の濃縮"
+  ,"ability.short.passive.name":"短期決戦"
+  ,"character.star_struck.name":"スター — 手数と隕石の乱戦型"
+  ,"ability.star_struck.skill.name":"スターラッシュ"
+  ,"ability.star_struck.ultimate.name":"スーパースター"
+  ,"ability.star_struck.passive.name":"観客熱狂"
+  ,"character.a_letter.name":"A — 家族増殖型"
+  ,"ability.a_letter.skill.name":"fAmily"
+  ,"ability.a_letter.ultimate.name":"家族総出でお出迎えします"
+  ,"ability.a_letter.passive.name":"家族の絆"
+  ,"character.biang.name":"ビャン — 麺と巨大スプーン"
+  ,"ability.biang.skill.name":"くそでかスプーン"
+  ,"ability.biang.ultimate.name":"𰻞𰻞麺"
+  ,"ability.biang.passive.name":"難しい漢字"
+  ,"support.t.name":"T — 会心支援"
+  ,"support.t.skill.name":"奏でる旋律"
+  ,"support.t.ultimate.name":"海を割る者"
+  ,"support.zero.name":"0 — 回復防御"
+  ,"support.zero.skill.name":"ゼロ除算"
+  ,"support.zero.ultimate.name":"原点回帰"
+  ,"support.slash.name":"/ — 分割斬撃"
+  ,"support.slash.skill.name":"分割統治"
+  ,"support.slash.ultimate.name":"世界を二分する"
+  ,"support.right.name":"右 — 位置制御"
+  ,"support.right.skill.name":"右往左往"
+  ,"support.right.ultimate.name":"右方転移"
+  ,"support.matsu.name":"松 — 松戸・風圧支援"
+  ,"support.matsu.skill.name":"風の舞"
+  ,"support.matsu.ultimate.name":"終わらない加速"
+  ,"field.collapse":"崩壊"
+  ,"field.resonance":"共鳴"
+  ,"field.absolute_zero":"絶対零度"
+  ,"field.creation_from_zero":"無からの生成"
+  ,"field.crack":"亀裂"
+  ,"field.split_time":"時間の分割"
+  ,"field.rising_right":"右肩上がり"
+  ,"field.deflection":"偏向"
+  ,"field.matsudo":"松戸"
+  ,"field.description.collapse":"全員が会心攻撃を出せるようになり、戦場全体が高火力化します。"
+  ,"field.description.resonance":"全員のスキルクールタイムを10%短縮します。"
+  ,"field.description.absolute_zero":"全員の移動速度が10%低下し、位置取りが重くなります。"
+  ,"field.description.creation_from_zero":"全メインキャラが10秒ごとに最大HPの1%を回復します。"
+  ,"field.description.crack":"全員が受けるダメージを10%増やし、乱戦を短期決戦化します。"
+  ,"field.description.split_time":"15秒ごとに3秒間、全員の移動速度が20%上昇します。"
+  ,"field.description.rising_right":"1分ごとに全員の攻撃力が2%ずつ上昇し、最大10%になります。"
+  ,"field.description.deflection":"すべての飛び道具が大きく曲がり、弾道予測を困難にします。"
+  ,"field.description.matsudo":"景色が松戸へ変わり、7秒ごとに一般車が複数レーンを高速通過します。接触するとダメージと短いスタンを受けます。"
+  ,"select.support_skill_detail.matsu":"長い24秒CTと引き換えに、強風で生存中の全敵を味方側へ最大8単位引き寄せ、0.8秒拘束します。"
+  ,"select.support_ultimate_detail.matsu":"発動した瞬間、敵味方を含む全キャラクターと全補助の残りスキルCTを半減します。"
+  ,"select.support_style.matsu":"全員の時間軸と位置関係を壊し、松戸の一般車まで呼び込む大規模フィールド操作型。"
+  ,"guide.character.a_letter":"全方位へ32発の fAmily を拡散し、必殺技のたびにHP100・攻撃力5の家族を追加召喚する増殖型。生存中の家族に上限はない。"
+}

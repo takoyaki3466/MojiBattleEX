@@ -1,0 +1,13 @@
+{
+  "id":"kabushiki_stock_rise",
+  "cooldownSeconds":8.0,
+  "baseDamage":40.0,
+  "projectileSpeed":10.0,
+  "projectileLifetimeSeconds":2.2,
+  "projectileRadius":0.45,
+  "ultimatePointsPerHit":15.0,
+  "effectIndex":1,
+  "glyphs":["株","式","会","社"],
+  "textures":["glyphs/stock.png","glyphs/formula.png","glyphs/company.png","glyphs/society.png"],
+  "offsets":[[-0.9,0.0],[0.9,0.0],[0.0,0.9],[0.0,-0.9]]
+}

@@ -1,0 +1,1 @@
+{"id":"short_sever","nameKey":"ability.short.ultimate.name","type":"area","dropStyle":"unit","objectTexture":"objects/falling-unit.png","pointCost":100.0,"baseDamage":750.0,"warningSeconds":1.25,"effectSeconds":1.1,"radius":1.7,"spawnHeight":18.0,"warningEffectIndex":8,"impactEffectIndex":9,"fallHorizontalOffset":6.0}

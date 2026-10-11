@@ -1,0 +1,7 @@
+{
+  "playerOne": {"forward":"W","backward":"S","left":"A","right":"D","skill":"Q","ultimate":"E","supportSkill":"R","supportUltimate":"F"},
+  "playerTwo": {"forward":"UP","backward":"DOWN","left":"LEFT","right":"RIGHT","skill":"COMMA","ultimate":"PERIOD","supportSkill":"SLASH","supportUltimate":"SHIFT_RIGHT"},
+  "playerThree": {"forward":"I","backward":"K","left":"J","right":"L","skill":"U","ultimate":"O","supportSkill":"Y","supportUltimate":"P"},
+  "playerFour": {"forward":"NUMPAD_8","backward":"NUMPAD_2","left":"NUMPAD_4","right":"NUMPAD_6","skill":"NUMPAD_7","ultimate":"NUMPAD_9","supportSkill":"NUMPAD_1","supportUltimate":"NUMPAD_3"},
+  "pause": "ESCAPE"
+}

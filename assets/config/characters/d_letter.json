@@ -1,0 +1,1 @@
+{"id":"d_letter","type":"MAIN","displayGlyph":"D","nameKey":"character.d_letter.name","maxHp":1000.0,"baseAttack":1.0,"moveSpeed":8.8,"collisionRadius":0.65,"skillId":"d_drive_slash","ultimateId":"d_dimension_break","passiveId":"d_acceleration","glyphTexture":"glyphs/d.png","criticalRate":0.0,"criticalDamageMultiplier":1.5,"criticalEnabled":false}

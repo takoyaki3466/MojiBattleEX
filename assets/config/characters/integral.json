@@ -1,0 +1,1 @@
+{"id":"integral","type":"MAIN","displayGlyph":"∫","nameKey":"character.integral.name","maxHp":1100.0,"baseAttack":1.0,"moveSpeed":4.6,"collisionRadius":0.7,"skillId":"integral_sum","ultimateId":"integral_infinite_domain","passiveId":"integral_accumulation","glyphTexture":"glyphs/integral.png","criticalRate":0.0,"criticalDamageMultiplier":1.5,"criticalEnabled":false}

@@ -1,0 +1,7 @@
+Noto Sans JP is distributed under the SIL Open Font License 1.1.
+
+Font project and complete license text:
+https://github.com/notofonts/noto-cjk
+https://openfontlicense.org/open-font-license-official-text/
+
+The bundled file was sourced from the locally installed Noto Sans JP distribution.

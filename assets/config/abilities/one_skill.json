@@ -1,0 +1,1 @@
+{"id":"one_shot","type":"projectile","cooldownSeconds":5.5,"baseDamage":165.0,"projectileSpeed":18.0,"projectileLifetimeSeconds":1.6,"projectileRadius":0.7,"ultimatePointsPerHit":30.0,"healthCostRatio":0.08,"effectIndex":1,"glyphs":["1"],"textures":["glyphs/one.png"],"offsets":[[0.0,0.0]]}

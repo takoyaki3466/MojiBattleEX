@@ -1,0 +1,1 @@
+{"id":"biang","type":"MAIN","displayGlyph":"𰻞","uiLabel":"ビャン","nameKey":"character.biang.name","maxHp":1050.0,"baseAttack":1.0,"moveSpeed":5.8,"collisionRadius":0.7,"skillId":"biang_spoon","ultimateId":"biang_noodles","passiveId":"biang_difficult","glyphTexture":"glyphs/biang.png","criticalRate":0.0,"criticalDamageMultiplier":1.5,"criticalEnabled":false}

@@ -1,0 +1,10 @@
+{
+  "durationSeconds": 180.0,
+  "fixedStepSeconds": 0.016666667,
+  "finalMinuteSeconds": 60.0,
+  "finalMinuteAttackMultiplier": 1.5,
+  "arenaHalfExtent": 12.0,
+  "gravity": -24.0,
+  "groundY": 0.0,
+  "playerCollisionRadius": 0.65
+}

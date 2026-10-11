@@ -1,0 +1,1 @@
+{"id":"short","type":"MAIN","displayGlyph":"短","nameKey":"character.short.name","maxHp":700.0,"baseAttack":5.0,"moveSpeed":7.4,"collisionRadius":0.55,"skillId":"short_rush","ultimateId":"short_sever","passiveId":"short_decisive","glyphTexture":"glyphs/short.png","criticalRate":0.0,"criticalDamageMultiplier":1.5,"criticalEnabled":false}

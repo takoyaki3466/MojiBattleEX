@@ -1,0 +1,1 @@
+{"id":"d_drive_slash","cooldownSeconds":6.0,"baseDamage":40.0,"projectileSpeed":22.0,"projectileLifetimeSeconds":1.1,"projectileRadius":0.46,"ultimatePointsPerHit":15.0,"stunSeconds":0.0,"effectIndex":6,"glyphs":["D","D","D"],"textures":["glyphs/d.png","glyphs/d.png","glyphs/d.png"],"offsets":[[-0.65,0.3],[0.0,0.0],[0.65,-0.3]]}

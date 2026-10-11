@@ -1,0 +1,1 @@
+{"id":"star_struck","type":"MAIN","displayGlyph":"🤩","nameKey":"character.star_struck.name","maxHp":1000.0,"baseAttack":1.0,"moveSpeed":5.8,"collisionRadius":0.66,"skillId":"star_rush","ultimateId":"super_star","passiveId":"crowd_hype","glyphTexture":"glyphs/star-struck.png","criticalRate":0.0,"criticalDamageMultiplier":1.5,"criticalEnabled":false}
