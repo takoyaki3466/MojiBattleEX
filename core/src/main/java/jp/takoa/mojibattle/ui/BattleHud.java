@@ -153,6 +153,8 @@ public final class BattleHud implements Disposable {
         private final ContinuousImageGauge ultimate = gauge("gauge-ultimate");
         private final ContinuousImageGauge supportSkill = gauge("gauge-support-skill");
         private final ContinuousImageGauge supportUltimate = gauge("gauge-support-ultimate");
+        private final ContinuousImageGauge supportSkillTwo = gauge("gauge-support-skill");
+        private final ContinuousImageGauge supportUltimateTwo = gauge("gauge-support-ultimate");
         private final Label title = label();
         private final Label hpText = label();
         private final Label skillReady = label();
@@ -160,6 +162,9 @@ public final class BattleHud implements Disposable {
         private final Label supportTitle = label();
         private final Label supportSkillState = label();
         private final Label supportUltimateReady = label();
+        private final Label supportTitleTwo = label();
+        private final Label supportSkillStateTwo = label();
+        private final Label supportUltimateReadyTwo = label();
         private final Label details = label();
 
         private PlayerHud(PlayerId id, float scale) {
@@ -174,6 +179,9 @@ public final class BattleHud implements Disposable {
                     supportTitle,
                     supportSkillState,
                     supportUltimateReady,
+                    supportTitleTwo,
+                    supportSkillStateTwo,
+                    supportUltimateReadyTwo,
                     details)) {
                 value.setFontScale(scale);
             }
@@ -209,6 +217,18 @@ public final class BattleHud implements Disposable {
                     supportSkill,
                     supportSkillState,
                     scale * .9f)).growX().padTop(3);
+            supportPanel.row();
+            supportPanel.add(supportTitleTwo).growX().left().padTop(5).row();
+            supportPanel.add(meter(
+                    "battle.support_ultimate_gauge",
+                    supportUltimateTwo,
+                    supportUltimateReadyTwo,
+                    scale * .9f)).growX().padTop(3).row();
+            supportPanel.add(meter(
+                    "battle.support_skill_gauge",
+                    supportSkillTwo,
+                    supportSkillStateTwo,
+                    scale * .9f)).growX().padTop(3);
 
             panel.add(mainPanel).growX().top().row();
             panel.add().expandY().row();
@@ -226,11 +246,20 @@ public final class BattleHud implements Disposable {
         }
 
         private void update(BattleController battle, CharacterRuntime player) {
-            SupportCharacterRuntime support = battle.support(id);
-            updateGaugeValues(player, support);
-            updateNames(player, support);
+            List<SupportCharacterRuntime> supports = battle.supports(id);
+            SupportCharacterRuntime support = supports.isEmpty() ? null : supports.get(0);
+            SupportCharacterRuntime supportTwo = supports.size() < 2 ? null : supports.get(1);
+            updateGaugeValues(player, support, supportTwo);
+            updateNames(player, support, supportTwo);
             updateMainAbilityStates(player);
-            updateSupportAbilityStates(support);
+            updateSupportAbilityState(
+                    support,
+                    supportSkillState,
+                    supportUltimateReady);
+            updateSupportAbilityState(
+                    supportTwo,
+                    supportSkillStateTwo,
+                    supportUltimateReadyTwo);
             String fields = String.join(
                     " / ",
                     battle.fieldEffectIds().stream()
@@ -242,7 +271,10 @@ public final class BattleHud implements Disposable {
                             + context.i18n.text("battle.field_effects", fields));
         }
 
-        private void updateGaugeValues(CharacterRuntime player, SupportCharacterRuntime support) {
+        private void updateGaugeValues(
+                CharacterRuntime player,
+                SupportCharacterRuntime support,
+                SupportCharacterRuntime supportTwo) {
             hp.setValue(player.hpRatio());
             hpText.setText(context.i18n.text(
                     "battle.hp_value",
@@ -252,9 +284,14 @@ public final class BattleHud implements Disposable {
             ultimate.setValue(player.ultimatePoints() / 100f);
             supportSkill.setValue(support == null ? 0 : support.skillChargeRatio());
             supportUltimate.setValue(support == null ? 0 : support.ultimateChargeRatio());
+            supportSkillTwo.setValue(supportTwo == null ? 0 : supportTwo.skillChargeRatio());
+            supportUltimateTwo.setValue(supportTwo == null ? 0 : supportTwo.ultimateChargeRatio());
         }
 
-        private void updateNames(CharacterRuntime player, SupportCharacterRuntime support) {
+        private void updateNames(
+                CharacterRuntime player,
+                SupportCharacterRuntime support,
+                SupportCharacterRuntime supportTwo) {
             String playerName = player.definition.displayName != null
                     ? player.definition.displayName
                     : context.i18n.text(player.definition.nameKey);
@@ -264,12 +301,21 @@ public final class BattleHud implements Disposable {
             title.setText(id.label() + "  " + playerName + awakened);
             if (support == null) {
                 supportTitle.setText(context.i18n.text("battle.no_support"));
+                supportTitleTwo.setText("");
                 return;
             }
             String supportName = support.definition.displayName != null
                     ? support.definition.displayName
                     : context.i18n.text(support.definition.nameKey);
             supportTitle.setText(context.i18n.text("battle.support", supportName));
+            if (supportTwo == null) {
+                supportTitleTwo.setText("");
+                return;
+            }
+            String supportTwoName = supportTwo.definition.displayName != null
+                    ? supportTwo.definition.displayName
+                    : context.i18n.text(supportTwo.definition.nameKey);
+            supportTitleTwo.setText(context.i18n.text("battle.support", supportTwoName));
         }
 
         private void updateMainAbilityStates(CharacterRuntime player) {
@@ -292,20 +338,23 @@ public final class BattleHud implements Disposable {
                     "battle.ultimate_available");
         }
 
-        private void updateSupportAbilityStates(SupportCharacterRuntime support) {
+        private void updateSupportAbilityState(
+                SupportCharacterRuntime support,
+                Label skillState,
+                Label ultimateState) {
             if (support == null) {
-                supportSkillState.setText("-");
-                supportUltimateReady.setText("-");
+                skillState.setText("");
+                ultimateState.setText("");
                 return;
             }
             setCooldownState(
-                    supportSkillState,
+                    skillState,
                     false,
                     support.skillCooldown(),
                     "battle.support_skill_available",
                     true);
             setUltimateState(
-                    supportUltimateReady,
+                    ultimateState,
                     support.ultimatePoints(),
                     "battle.support_ultimate_available");
         }

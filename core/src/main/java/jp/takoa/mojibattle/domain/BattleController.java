@@ -3,6 +3,7 @@ package jp.takoa.mojibattle.domain;
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.math.Vector3;
+import jp.takoa.mojibattle.audio.BattleSoundCue;
 import jp.takoa.mojibattle.config.BattleConfig;
 import jp.takoa.mojibattle.config.FieldEffectDefinition;
 import jp.takoa.mojibattle.config.CriticalConfig;
@@ -11,6 +12,7 @@ import jp.takoa.mojibattle.domain.ability.AbilityRegistry;
 import jp.takoa.mojibattle.domain.ability.IPassive;
 import jp.takoa.mojibattle.domain.combat.AwakeningItem;
 import jp.takoa.mojibattle.domain.combat.CarHazard;
+import jp.takoa.mojibattle.domain.combat.CashBundle;
 import jp.takoa.mojibattle.domain.combat.CombatObject;
 import jp.takoa.mojibattle.domain.combat.FamilySummon;
 import jp.takoa.mojibattle.domain.combat.LineStrike;
@@ -65,6 +67,7 @@ public final class BattleController {
     private final Set<Long> pointAwardedAttacks = new HashSet<>();
     private final List<CombatObject> objects = new ArrayList<>();
     private final List<CombatObject> pendingObjects = new ArrayList<>();
+    private final List<BattleSoundCue> soundEvents = new ArrayList<>();
     private final BattleTimer timer;
     private final DamageService damageService = new DamageService();
     private final BattleResultResolver resultResolver = new BattleResultResolver();
@@ -82,7 +85,7 @@ public final class BattleController {
     private int trafficWave;
     private final Set<PlayerId> matsudoOwners = new HashSet<>();
 
-    public BattleController(BattleConfig config, CriticalConfig criticalConfig, AwakeningConfig awakeningConfig, AbilityRegistry abilities, BattleMode mode, List<CharacterDefinition> characterDefinitions, List<SupportCharacterDefinition> supportDefinitions, List<FieldEffectDefinition> availableFieldEffects) {
+    public BattleController(BattleConfig config, CriticalConfig criticalConfig, AwakeningConfig awakeningConfig, AbilityRegistry abilities, BattleMode mode, List<CharacterDefinition> characterDefinitions, List<List<SupportCharacterDefinition>> supportDefinitions, List<FieldEffectDefinition> availableFieldEffects) {
         this.config = config;
         this.criticalConfig = criticalConfig;
         this.awakeningConfig = awakeningConfig;
@@ -95,18 +98,35 @@ public final class BattleController {
         for (int index = 0; index < characterDefinitions.size(); index++) {
             PlayerId id = PlayerId.values()[index];
             CharacterDefinition definition = characterDefinitions.get(index);
-            SupportCharacterDefinition support = supportDefinitions.get(index);
+            List<SupportCharacterDefinition> playerSupports = supportDefinitions.get(index);
             CharacterRuntime runtime = new CharacterRuntime(id, definition, spawns[index]);
             players.put(id, runtime);
-            SupportCharacterRuntime supportRuntime = support == null ? null : new SupportCharacterRuntime(id, support, new Vector3(spawns[index]).add(index % 2 == 0 ? -2 : 2, 0, 0));
-            teams.put(id, new PlayerTeam(runtime, supportRuntime));
+            List<SupportCharacterRuntime> supportRuntimes = new ArrayList<>();
+            for (int supportIndex = 0; supportIndex < playerSupports.size(); supportIndex++) {
+                SupportCharacterDefinition support = playerSupports.get(supportIndex);
+                if (support == null) {
+                    continue;
+                }
+                float side = supportIndex == 0 ? -2f : 2f;
+                supportRuntimes.add(new SupportCharacterRuntime(
+                        id,
+                        support,
+                        new Vector3(spawns[index]).add(side, 0, 0)));
+                if (support.zeroDefenseMain) {
+                    runtime.setZeroDefense(true);
+                }
+                for (FieldEffectDefinition effect : availableFieldEffects) {
+                    if (contains(support.fieldPassiveIds, effect.id)) {
+                        fieldEffects.activate(effect);
+                        if ("matsudo".equals(effect.id)) {
+                            matsudoOwners.add(id);
+                        }
+                    }
+                }
+            }
+            teams.put(id, new PlayerTeam(runtime, supportRuntimes));
             if (!definition.trainingDummy)
                 abilities.skill(definition.skillId).initialize(runtime, config.skillCooldownMultiplier);
-            if (support != null) for (FieldEffectDefinition effect : availableFieldEffects)
-                if (contains(support.fieldPassiveIds, effect.id)) {
-                    fieldEffects.activate(effect);
-                    if ("matsudo".equals(effect.id)) matsudoOwners.add(id);
-                }
         }
         fieldHealTimer = fieldEffects.interval("periodic_heal", 10f);
         trafficTimer = fieldEffects.interval("traffic", 7f);
@@ -145,10 +165,20 @@ public final class BattleController {
             if (current.isAlive() && (mode == BattleMode.VERSUS || current.playerId == PlayerId.ONE))
                 activate(current, commands.getOrDefault(current.playerId, PlayerCommand.idle()));
         for (CharacterRuntime current : players.values()) {
-            if (current.isAlive() && team(current.playerId).support() != null) {
+            if (current.isAlive() && !team(current.playerId).supports().isEmpty()) {
                 CharacterRuntime target = targetOf(current.playerId);
-                if (target != null)
-                    supportController.update(this, team(current.playerId).support(), current, target, delta);
+                if (target != null) {
+                    List<SupportCharacterRuntime> supports = team(current.playerId).supports();
+                    for (int supportIndex = 0; supportIndex < supports.size(); supportIndex++) {
+                        supportController.update(
+                                this,
+                                supports.get(supportIndex),
+                                current,
+                                target,
+                                supportIndex,
+                                delta);
+                    }
+                }
             }
             updateStatusDamage(current, delta);
         }
@@ -203,7 +233,11 @@ public final class BattleController {
         if (command.useSkill()) abilities.skill(user.definition.skillId).tryActivate(this, user);
         if (command.useUltimate()) abilities.ultimate(user.definition.ultimateId).tryActivate(this, user);
         PlayerTeam team = team(user.playerId);
-        if (command.useSupportUltimate() && team.support() != null) supportController.useUltimate(this, team);
+        if (command.useSupportUltimate()) {
+            for (SupportCharacterRuntime support : team.supports()) {
+                supportController.useUltimate(this, team, support);
+            }
+        }
     }
 
     private void updateObjects(float delta) {
@@ -253,6 +287,7 @@ public final class BattleController {
                 }
             }
         if (!contact) return;
+        emitSound(BattleSoundCue.IMPACT);
 
         float explosionRadius = Math.max(3.2f, projectile.radius * 5f) * hitboxMultiplier;
         float explosionRadius2 = explosionRadius * explosionRadius;
@@ -314,13 +349,16 @@ public final class BattleController {
     }
 
     private void resolveLineStrike(LineStrike strike) {
+        boolean hit = false;
         for (CombatObject object : objects)
             if (object instanceof FamilySummon family && family.owner != strike.owner && !family.expired()) {
                 float relativeX = family.position().x - strike.position().x, relativeZ = family.position().z - strike.position().z;
                 float along = relativeX * strike.direction.x + relativeZ * strike.direction.z;
                 float side = Math.abs(relativeX * strike.direction.z - relativeZ * strike.direction.x);
-                if (along >= -family.collisionRadius() && along <= strike.length * 1.3f && side <= strike.width * 2.6f + family.collisionRadius())
+                if (along >= -family.collisionRadius() && along <= strike.length * 1.3f && side <= strike.width * 2.6f + family.collisionRadius()) {
                     damageFamily(strike.owner, family, strike.baseDamage * GLOBAL_ULTIMATE_DAMAGE_SCALE, strike.impactEffectIndex);
+                    hit = true;
+                }
             }
         for (CharacterRuntime target : players.values())
             if (target.playerId != strike.owner && target.isAlive()) {
@@ -332,15 +370,20 @@ public final class BattleController {
                     float critical = criticalMultiplier(owner, System.identityHashCode(strike));
                     float dealt = damageService.apply(owner, target, strike.baseDamage * GLOBAL_ULTIMATE_DAMAGE_SCALE, attackMultiplier(owner) * (strike.isMainUltimate() ? ultimateDamageMultiplier(owner) : 1f) * critical, incomingDamageMultiplier(target));
                     if (dealt > 0) {
+                        hit = true;
                         visualPulse = 1f;
                         emitEffect(target.position, strike.impactEffectIndex, strike.width * 3.5f, 1f);
                     }
                     if (mode == BattleMode.TRAINING) trainingStatistics.record(dealt);
                 }
             }
+        if (hit) {
+            emitSound(BattleSoundCue.IMPACT);
+        }
     }
 
     private void resolveStrike(UltimateStrike strike) {
+        emitSound(BattleSoundCue.EXPLOSION);
         float hitRadius = strike.radius * 2.5f;
         float sourceScale = strike.isMainUltimate() ? GLOBAL_ULTIMATE_DAMAGE_SCALE : 1f;
         for (CombatObject object : objects)
@@ -405,6 +448,7 @@ public final class BattleController {
                 }
             }
         if (hit) {
+            emitSound(BattleSoundCue.IMPACT);
             car.resetDamagePulse();
             visualPulse = 1f;
             emitEffect(car.position(), car.effectIndex, car.radius * 4f, .65f);
@@ -433,7 +477,7 @@ public final class BattleController {
                     float dealt = damageService.apply(
                             owner,
                             target,
-                            normalDamage + one.consumeMissingHealthBonus(target.playerId),
+                            normalDamage + one.missingHealthBonusPerPulse(),
                             1f,
                             incomingDamageMultiplier(target));
                     if (dealt > 0) {
@@ -443,6 +487,7 @@ public final class BattleController {
                 }
             }
         if (hit) {
+            emitSound(BattleSoundCue.IMPACT);
             player(one.owner).heal(one.healOnHit);
             one.resetDamagePulse();
             visualPulse = 1f;
@@ -471,8 +516,9 @@ public final class BattleController {
 
     private float incomingDamageMultiplier(CharacterRuntime target) {
         float vulnerability = target.statuses.multiplier(StatusType.DAMAGE_TAKEN_UP)
+                * target.statuses.multiplier(StatusType.DAMAGE_TAKEN_DOWN)
                 * fieldEffects.multiplier("damage_taken", timer.elapsed());
-        if (target.definition.zeroDefense) {
+        if (target.zeroDefense()) {
             return vulnerability;
         }
         float defense = passiveProduct(target, value -> value.incomingDamageMultiplier(target));
@@ -497,6 +543,7 @@ public final class BattleController {
         Vector3 velocity = new Vector3(target.position).add(0, 1f, 0).sub(start).nor().scl(family.projectileSpeed * 1.3f);
         pendingObjects.add(new Projectile(nextAttackId(), family.owner, "A", family.texturePath, family.effectIndex, start, velocity, .58f, family.attackDamage, 0, 2.4f).attackTraits(true, false));
         pendingObjects.add(new VisualEffect(start, family.effectIndex, 2.2f, .28f));
+        emitSound(BattleSoundCue.PROJECTILE);
         family.resetAttack();
     }
 
@@ -541,6 +588,7 @@ public final class BattleController {
                         if (effect.ultimatePointsPerTick > 0)
                             addSkillUltimatePoints(source, effect.ultimatePointsPerTick);
                         if (mode == BattleMode.TRAINING) trainingStatistics.record(dealt);
+                        emitSound(BattleSoundCue.IMPACT);
                         emitEffect(target.position, 4, 4, .6f);
                     }
                 }
@@ -685,6 +733,10 @@ public final class BattleController {
         return team(id).support();
     }
 
+    public List<SupportCharacterRuntime> supports(PlayerId id) {
+        return team(id).supports();
+    }
+
     public List<CombatObject> objects() {
         return List.copyOf(objects);
     }
@@ -722,7 +774,26 @@ public final class BattleController {
             if (object instanceof Projectile projectile && fieldEffects.hasType("projectile_curve"))
                 projectile.curve(8f * fieldProjectileCurve());
             pendingObjects.add(object);
+            if (object instanceof Projectile) emitSound(BattleSoundCue.PROJECTILE);
+            else if (object instanceof LineStrike || object instanceof SpinningOne)
+                emitSound(BattleSoundCue.SLASH);
+            else if (object instanceof CarHazard) emitSound(BattleSoundCue.VEHICLE);
+            else if (object instanceof FamilySummon) emitSound(BattleSoundCue.SUPPORT);
         }
+    }
+
+    /** 戦闘効果音を画面層の再生キューへ追加する。 */
+    public void emitSound(BattleSoundCue cue) {
+        if (acceptsActions()) {
+            soundEvents.add(cue);
+        }
+    }
+
+    /** 蓄積した効果音通知を返し、このフレームのキューを空にする。 */
+    public List<BattleSoundCue> drainSoundEvents() {
+        List<BattleSoundCue> drained = List.copyOf(soundEvents);
+        soundEvents.clear();
+        return drained;
     }
 
     public void emitEffect(Vector3 position, int effectIndex, float scale, float duration) {
@@ -735,12 +806,74 @@ public final class BattleController {
             pendingObjects.add(new VisualEffect(position, Math.floorMod(effectIndex, 16), scale * 2f, duration, texturePath));
     }
 
+    /** 敵の被ダメージを増加させ、所有する札束をすべて範囲爆発へ変換する。 */
+    public void detonateCashBundles(
+            CharacterRuntime owner,
+            float baseDamage,
+            float radius,
+            float warningSeconds,
+            float effectSeconds,
+            float defenseDownMultiplier,
+            float defenseDownDuration,
+            String texturePath,
+            int warningEffectIndex,
+            int impactEffectIndex) {
+        for (CharacterRuntime target : players.values()) {
+            if (target.playerId != owner.playerId && target.isAlive()) {
+                target.statuses.apply(new StatusEffect(
+                        "heisei_bubble_collapse",
+                        owner.playerId,
+                        StatusType.DAMAGE_TAKEN_UP,
+                        defenseDownMultiplier,
+                        defenseDownDuration));
+            }
+        }
+        int detonations = 0;
+        for (CombatObject object : objects) {
+            if (object instanceof CashBundle cash && cash.owner == owner.playerId && !cash.expired()) {
+                spawn(new UltimateStrike(
+                        owner.playerId,
+                        cash.position(),
+                        radius,
+                        baseDamage,
+                        warningSeconds,
+                        effectSeconds,
+                        2f,
+                        warningEffectIndex,
+                        impactEffectIndex,
+                        "cash",
+                        texturePath,
+                        0));
+                cash.detonate();
+                detonations++;
+            }
+        }
+        if (detonations == 0) {
+            CharacterRuntime target = targetOf(owner.playerId);
+            Vector3 position = target == null ? owner.position : target.position;
+            spawn(new UltimateStrike(
+                    owner.playerId,
+                    position,
+                    radius,
+                    baseDamage,
+                    warningSeconds,
+                    effectSeconds,
+                    2f,
+                    warningEffectIndex,
+                    impactEffectIndex,
+                    "cash",
+                    texturePath,
+                    0));
+        }
+    }
+
     public long nextAttackId() {
         return ++attackSequence;
     }
 
     public void announceUltimate(PlayerId player, String key) {
         announcement = new Announcement(player, key, 2.4f);
+        emitSound(BattleSoundCue.ULTIMATE);
     }
 
     public Announcement announcement() {
@@ -823,7 +956,7 @@ public final class BattleController {
                 value.movementLocked(),
                 value.awakened(),
                 value.isAlive(),
-                value.definition.zeroDefense,
+                value.zeroDefense(),
                 value.position.x,
                 value.position.y,
                 value.position.z,
@@ -845,7 +978,13 @@ public final class BattleController {
     }
 
     public float fieldMoveMultiplier() {
-        return fieldEffects.multiplier("move_multiplier", timer.elapsed()) * fieldEffects.timedMultiplier("speed_pulse", timer.elapsed());
+        return fieldEffects.multiplier("move_multiplier", timer.elapsed())
+                * fieldEffects.timedMultiplier("speed_pulse", timer.elapsed())
+                * fieldEffects.multiplier("express_maki", timer.elapsed());
+    }
+
+    public float supportUltimateChargeMultiplier() {
+        return fieldEffects.multiplier("express_maki", timer.elapsed());
     }
 
     public float supportSkillCooldown(float baseSeconds) {
@@ -854,7 +993,11 @@ public final class BattleController {
 
     public void halveAllSkillCooldowns() {
         for (CharacterRuntime value : players.values()) value.scaleSkillCooldown(.5f);
-        for (PlayerTeam team : teams.values()) if (team.support() != null) team.support().scaleSkillCooldown(.5f);
+        for (PlayerTeam team : teams.values()) {
+            for (SupportCharacterRuntime support : team.supports()) {
+                support.scaleSkillCooldown(.5f);
+            }
+        }
         visualPulse = 1f;
     }
 
@@ -900,7 +1043,9 @@ public final class BattleController {
     public void trainingMaxUltimate() {
         if (mode == BattleMode.TRAINING) {
             player(PlayerId.ONE).maximizeUltimate();
-            if (support(PlayerId.ONE) != null) support(PlayerId.ONE).maximizeUltimate();
+            for (SupportCharacterRuntime support : supports(PlayerId.ONE)) {
+                support.maximizeUltimate();
+            }
         }
     }
 

@@ -101,10 +101,15 @@ public final class CharacterGuideScreen extends StageScreen {
                 decimal(ultimate.lineLength), Math.round(ultimate.healAmount));
             case "skill_barrage" -> context.i18n.text("guide.barrage",ultimate.barrageCount,decimal(ultimate.barrageInterval));
             case "sushi_barrage" -> context.i18n.text("guide.sushi_barrage",ultimate.barrageCount,Math.round(ultimate.baseDamage),decimal(ultimate.barrageInterval),decimal(ultimate.projectileSpeed));
+            case "cash_crash" -> context.i18n.text("guide.cash_crash", Math.round(ultimate.baseDamage * ULTIMATE_DAMAGE_SCALE),
+                    decimal(ultimate.radius * 5f), Math.round((ultimate.defenseDownMultiplier - 1f) * 100),
+                    decimal(ultimate.defenseDownDuration));
             default -> context.i18n.text("guide.area", Math.round(ultimate.baseDamage * ULTIMATE_DAMAGE_SCALE), decimal(ultimate.radius * 5f));
         };
         String passiveStats = context.i18n.text("guide.passive_effect." + character.id);
-        String skillPower="self_attack_buff".equals(skill.type)
+        String skillPower="random_economy".equals(skill.type)
+            ?context.i18n.text("guide.random_economy",decimal(cooldown(skill.cooldownSeconds)),Math.round(points))
+            :"self_attack_buff".equals(skill.type)
             ?context.i18n.text("guide.attack_buff",decimal(cooldown(skill.cooldownSeconds)),Math.round((skill.buffAttackMultiplier-1)*100),decimal(skill.buffDurationSeconds))
             :"bind_follow_up".equals(skill.type)
             ?context.i18n.text("guide.bind_follow_up",decimal(cooldown(skill.cooldownSeconds)),Math.round(skill.damages[0]*SKILL_DAMAGE_SCALE),decimal(skill.bindDurations[0]),Math.round(skill.followUpDamage*SKILL_DAMAGE_SCALE),Math.round(points))
@@ -189,13 +194,16 @@ public final class CharacterGuideScreen extends StageScreen {
     }
 
     private String fieldDetails(SupportCharacterDefinition support) {
-        return String.join(
-                HEADING_GAP,
+        List<String> descriptions = new ArrayList<>(
                 java.util.Arrays.stream(support.fieldPassiveIds)
                         .map(id -> context.i18n.text("field." + id)
                                 + ": "
                                 + context.i18n.text("field.description." + id))
                         .toList());
+        if (support.zeroDefenseMain) {
+            descriptions.add(context.i18n.text("support.passive.zero_defense_main"));
+        }
+        return String.join(HEADING_GAP, descriptions);
     }
 
     private int totalEntries() {

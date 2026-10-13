@@ -1,6 +1,7 @@
 package jp.takoa.mojibattle;
 
 import com.badlogic.gdx.scenes.scene2d.ui.Skin;
+import jp.takoa.mojibattle.audio.BattleAudio;
 import jp.takoa.mojibattle.config.ConfigManager;
 import jp.takoa.mojibattle.custom.CustomCharacterStore;
 import jp.takoa.mojibattle.domain.CharacterRegistry;
@@ -29,11 +30,13 @@ public final class GameContext implements AutoCloseable {
     public final AbilityRegistry abilities;
     public final CustomCharacterStore customCharacters;
     public final Skin skin;
+    public final BattleAudio audio;
 
     /** 共有サービスを設定データから構築し、相互参照可能な状態へ初期化する。 */
     public GameContext() {
         config = new ConfigManager();
         GameLog.info("Config", "Configuration loaded and validated");
+        audio = new BattleAudio(config.game.masterVolume);
         i18n = new LocalizationManager(config.game.language);
         characters = new CharacterRegistry();
         supports = new SupportRegistry();
@@ -124,6 +127,7 @@ public final class GameContext implements AutoCloseable {
     /** このコンテキストが所有するUIリソースを解放する。 */
     @Override
     public void close() {
+        audio.dispose();
         skin.dispose();
     }
 }

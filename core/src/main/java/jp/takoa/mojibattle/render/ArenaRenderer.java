@@ -23,6 +23,7 @@ import jp.takoa.mojibattle.config.BattleConfig;
 import jp.takoa.mojibattle.domain.combat.AwakeningItem;
 import jp.takoa.mojibattle.domain.BattleController;
 import jp.takoa.mojibattle.domain.combat.CarHazard;
+import jp.takoa.mojibattle.domain.combat.CashBundle;
 import jp.takoa.mojibattle.domain.CharacterDefinition;
 import jp.takoa.mojibattle.domain.CharacterRuntime;
 import jp.takoa.mojibattle.domain.combat.CombatObject;
@@ -66,7 +67,8 @@ public final class ArenaRenderer implements Disposable {
     private final Vector3 tempOutline = new Vector3();
 
     private final ModelInstance ground;
-    private final EnumMap<PlayerId, ModelInstance> playerModels = new EnumMap<>(PlayerId.class), supportModels = new EnumMap<>(PlayerId.class);
+    private final EnumMap<PlayerId, ModelInstance> playerModels = new EnumMap<>(PlayerId.class);
+    private final EnumMap<PlayerId, List<ModelInstance>> supportModels = new EnumMap<>(PlayerId.class);
 
     private final ModelInstance familyHealthBack, familyHealthFill;
     private final ModelInstance[] walls = new ModelInstance[4];
@@ -74,7 +76,7 @@ public final class ArenaRenderer implements Disposable {
 
     private float animationTime;
 
-    public ArenaRenderer(BattleConfig config, List<CharacterDefinition> characterDefinitions, List<SupportCharacterDefinition> supportDefinitions, List<AbilityConfigs.ProjectileSkill> skills, List<AbilityConfigs.AreaUltimate> ultimates, String awakeningTexturePath) {
+    public ArenaRenderer(BattleConfig config, List<CharacterDefinition> characterDefinitions, List<List<SupportCharacterDefinition>> supportDefinitions, List<AbilityConfigs.ProjectileSkill> skills, List<AbilityConfigs.AreaUltimate> ultimates, String awakeningTexturePath) {
         environment.set(new ColorAttribute(ColorAttribute.AmbientLight, 0.95f, 0.97f, 1f, 1));
 
         ModelBuilder modelBuilder = new ModelBuilder();
@@ -128,11 +130,18 @@ public final class ArenaRenderer implements Disposable {
         for (int index = 0; index < characterDefinitions.size(); index++) {
             PlayerId id = PlayerId.values()[index];
             playerModels.put(id, texturedRect(modelBuilder, texture(characterDefinitions.get(index).glyphTexture), 1.8f, 2.8f, playerColors[index]));
-            SupportCharacterDefinition support = supportDefinitions.get(index);
-
-            if (support != null) {
-                supportModels.put(id, texturedRect(modelBuilder, texture(support.glyphTexture), 1.2f, 1.8f, playerColors[index]));
+            List<ModelInstance> modelsForPlayer = new ArrayList<>();
+            for (SupportCharacterDefinition support : supportDefinitions.get(index)) {
+                if (support != null) {
+                    modelsForPlayer.add(texturedRect(
+                            modelBuilder,
+                            texture(support.glyphTexture),
+                            1.2f,
+                            1.8f,
+                            playerColors[index]));
+                }
             }
+            supportModels.put(id, modelsForPlayer);
         }
         familyHealthBack = instance(modelBuilder.createBox(1.65f, .14f, .07f, material(new Color(.28f, .04f, .04f, 1)), ATTRIBUTES));
         familyHealthFill = instance(modelBuilder.createBox(1.58f, .09f, .08f, material(new Color(.18f, 1f, .30f, 1)), ATTRIBUTES));
@@ -149,17 +158,19 @@ public final class ArenaRenderer implements Disposable {
                     objectModels.putIfAbsent(texturePath, new ModelInstance(projectileGlyphs.get(texturePath).model));
                 }
             }
-        for (SupportCharacterDefinition supportDefinition : supportDefinitions) {
-            if (supportDefinition == null) {
-                continue;
-            }
-            String texturePath = supportDefinition.projectileTexture;
+        for (List<SupportCharacterDefinition> playerSupportDefinitions : supportDefinitions) {
+            for (SupportCharacterDefinition supportDefinition : playerSupportDefinitions) {
+                if (supportDefinition == null) {
+                    continue;
+                }
+                String texturePath = supportDefinition.projectileTexture;
 
-            if (!projectileGlyphs.containsKey(texturePath)) {
-                Texture glyphTexture = texture(texturePath);
-                projectileGlyphs.put(texturePath, texturedRect(modelBuilder, glyphTexture, .8f, .8f, Color.WHITE));
-                projectileOutlines.put(texturePath, texturedRect(modelBuilder, glyphTexture, .8f, .8f, Color.BLACK));
-                objectModels.putIfAbsent(texturePath, new ModelInstance(projectileGlyphs.get(texturePath).model));
+                if (!projectileGlyphs.containsKey(texturePath)) {
+                    Texture glyphTexture = texture(texturePath);
+                    projectileGlyphs.put(texturePath, texturedRect(modelBuilder, glyphTexture, .8f, .8f, Color.WHITE));
+                    projectileOutlines.put(texturePath, texturedRect(modelBuilder, glyphTexture, .8f, .8f, Color.BLACK));
+                    objectModels.putIfAbsent(texturePath, new ModelInstance(projectileGlyphs.get(texturePath).model));
+                }
             }
         }
         for (int i = 0; i < 16; i++) {
@@ -173,6 +184,7 @@ public final class ArenaRenderer implements Disposable {
             addObjectModel(modelBuilder, skill.activationTexture);
             addObjectModel(modelBuilder, skill.fallingObjectTexture);
         }
+        addObjectModel(modelBuilder, "objects/commuter-train.png");
 
         Texture awakening = texture(awakeningTexturePath);
         objectModels.put(awakeningTexturePath, texturedRect(modelBuilder, awakening, (float) awakening.getWidth() / awakening.getHeight(), 1, Color.WHITE));
@@ -252,8 +264,10 @@ public final class ArenaRenderer implements Disposable {
         for (PlayerId id : battle.playerIds())
             if (battle.player(id).isAlive()) {
                 renderCharacter(playerModels.get(id), battle.player(id), camera);
-                if (battle.support(id) != null) {
-                    renderSupport(supportModels.get(id), battle.support(id), camera);
+                List<SupportCharacterRuntime> supports = battle.supports(id);
+                List<ModelInstance> models = supportModels.get(id);
+                for (int supportIndex = 0; supportIndex < supports.size(); supportIndex++) {
+                    renderSupport(models.get(supportIndex), supports.get(supportIndex), camera);
                 }
             }
         for (CombatObject object : battle.objects()) {
@@ -285,6 +299,14 @@ public final class ArenaRenderer implements Disposable {
                     billboard(glyph, tempPosition, camera, 2.76f + MathUtils.sin(phase) * .28f);
                     glyph.transform.rotate(Vector3.Z, p.texturePath.contains("spoon") ? animationTime * 720f : MathUtils.sin(phase * .45f) * 18f);
                     batch.render(glyph, environment);
+                }
+            } else if (object instanceof CashBundle cash) {
+                ModelInstance image = objectModels.get(cash.texturePath);
+                if (image != null) {
+                    tempPosition.set(cash.position()).add(0, .55f + MathUtils.sin(animationTime * 5f) * .08f, 0);
+                    billboard(image, tempPosition, camera, 2.4f);
+                    image.transform.rotate(Vector3.Z, MathUtils.sin(animationTime * 4f) * 7f);
+                    batch.render(image, environment);
                 }
             } else if (object instanceof UltimateStrike strike) {
                 if (strike.phase() == UltimateStrike.Phase.PENDING) {

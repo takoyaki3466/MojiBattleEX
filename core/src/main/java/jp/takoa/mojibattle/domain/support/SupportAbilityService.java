@@ -1,10 +1,12 @@
 package jp.takoa.mojibattle.domain.support;
 
 import com.badlogic.gdx.math.Vector3;
+import jp.takoa.mojibattle.audio.BattleSoundCue;
 import jp.takoa.mojibattle.domain.BattleController;
 import jp.takoa.mojibattle.domain.CharacterRuntime;
 import jp.takoa.mojibattle.domain.PlayerTeam;
 import jp.takoa.mojibattle.domain.combat.LineStrike;
+import jp.takoa.mojibattle.domain.combat.CarHazard;
 import jp.takoa.mojibattle.domain.status.StatusEffect;
 import jp.takoa.mojibattle.domain.status.StatusType;
 
@@ -18,6 +20,7 @@ public final class SupportAbilityService {
     private record Context(
             BattleController battle,
             PlayerTeam team,
+            SupportCharacterRuntime support,
             SupportAbilityDefinition ability) {
     }
 
@@ -34,6 +37,8 @@ public final class SupportAbilityService {
         handlers.put("right_teleport", (context, ultimate) -> applyRightTeleport(context));
         handlers.put("wind_pull", (context, ultimate) -> applyWindPull(context));
         handlers.put("global_cooldown_halve", (context, ultimate) -> applyGlobalCooldownHalve(context));
+        handlers.put("train_charge", (context, ultimate) -> applyTrainCharge(context));
+        handlers.put("gather_all", (context, ultimate) -> applyGatherAll(context));
     }
 
     private static void applyAllyAttackUp(Context context) {
@@ -115,8 +120,8 @@ public final class SupportAbilityService {
     private static void applyWideSlash(Context context) {
         context.battle.spawn(new LineStrike(
                 context.team.main().playerId,
-                context.team.support().position,
-                new Vector3(enemy(context).position).sub(context.team.support().position),
+                context.support.position,
+                new Vector3(enemy(context).position).sub(context.support.position),
                 context.ability.range,
                 3.5f,
                 context.ability.baseDamage,
@@ -151,7 +156,7 @@ public final class SupportAbilityService {
                     1 + context.ability.magnitude,
                     context.ability.durationSeconds));
         } else {
-            context.team.support().addUltimatePoints(context.ability.pointCost);
+            context.support.addUltimatePoints(context.ability.pointCost);
         }
     }
 
@@ -187,40 +192,77 @@ public final class SupportAbilityService {
         }
     }
 
+    private static void applyTrainCharge(Context context) {
+        float extent = context.battle.arenaHalfExtent();
+        boolean leftToRight = context.team.main().playerId.ordinal() % 2 == 0;
+        Vector3 start = new Vector3(
+                leftToRight ? -extent + .5f : extent - .5f,
+                0,
+                context.team.main().position.z);
+        context.battle.spawn(new CarHazard(
+                context.team.main().playerId,
+                start,
+                new Vector3(leftToRight ? 1 : -1, 0, 0),
+                context.ability.range,
+                2.1f,
+                context.ability.baseDamage,
+                context.ability.magnitude,
+                context.ability.durationSeconds,
+                extent,
+                "objects/commuter-train.png",
+                11));
+        context.battle.emitImageEffect(start, "objects/commuter-train.png", 11, 12f, .8f);
+    }
+
+    private static void applyGatherAll(Context context) {
+        for (CharacterRuntime target : context.battle.players()) {
+            target.position.scl(.12f);
+            target.position.y = 0;
+            context.battle.emitImageEffect(target.position, "glyphs/maki.png", 15, 10f, 1.2f);
+        }
+    }
+
     /** 発動可能な場合に補助スキルの再使用時間を開始し、対応する効果を実行する。 */
-    public void useSkill(BattleController battle, PlayerTeam team) {
-        SupportCharacterRuntime support = team.support();
+    public void useSkill(
+            BattleController battle,
+            PlayerTeam team,
+            SupportCharacterRuntime support) {
         SupportAbilityDefinition ability = support.definition.skill;
         if (!support.skillReady() || team.main().isStunned()) {
             return;
         }
         support.startSkillCooldown(battle.supportSkillCooldown(ability.cooldownSeconds));
-        execute(battle, team, ability, false);
+        execute(battle, team, support, ability, false);
     }
 
     /** 必殺ポイントを消費できる場合に補助必殺を実行し、発動表示を要求する。 */
-    public void useUltimate(BattleController battle, PlayerTeam team) {
-        SupportAbilityDefinition ability = team.support().definition.ultimate;
-        if (team.main().isStunned() || !team.support().spendUltimate(ability.pointCost)) {
+    public void useUltimate(
+            BattleController battle,
+            PlayerTeam team,
+            SupportCharacterRuntime support) {
+        SupportAbilityDefinition ability = support.definition.ultimate;
+        if (team.main().isStunned() || !support.spendUltimate(ability.pointCost)) {
             return;
         }
-        execute(battle, team, ability, true);
+        execute(battle, team, support, ability, true);
         battle.announceUltimate(team.main().playerId, ability.nameKey);
     }
 
     private void execute(
             BattleController battle,
             PlayerTeam team,
+            SupportCharacterRuntime support,
             SupportAbilityDefinition ability,
             boolean ultimate) {
         BiConsumer<Context, Boolean> handler = handlers.get(ability.type);
         if (handler == null) {
             throw new IllegalArgumentException("Unknown support ability: " + ability.type);
         }
-        handler.accept(new Context(battle, team, ability), ultimate);
+        battle.emitSound(BattleSoundCue.SUPPORT);
+        handler.accept(new Context(battle, team, support, ability), ultimate);
         for (int ring = 0; ring < (ultimate ? 4 : 2); ring++) {
             battle.emitEffect(
-                    team.support().position,
+                    support.position,
                     (ultimate ? 14 : 6) + ring,
                     ultimate ? 12 - ring * 1.6f : 7 - ring,
                     ultimate ? 1.4f : .8f);

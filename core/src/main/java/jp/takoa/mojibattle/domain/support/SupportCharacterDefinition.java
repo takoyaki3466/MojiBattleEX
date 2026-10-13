@@ -21,6 +21,8 @@ public final class SupportCharacterDefinition {
     public float criticalDamageMultiplier;
     public boolean criticalEnabled;
     public boolean curvedProjectile;
+    /** 編成したメインキャラクターを防御力0にする永続デバフ。 */
+    public boolean zeroDefenseMain;
     public SupportAbilityDefinition skill;
     public SupportAbilityDefinition ultimate;
     public String[] fieldPassiveIds;

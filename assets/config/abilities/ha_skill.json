@@ -8,7 +8,7 @@
   "projectileSpeed":18.0,
   "projectileLifetimeSeconds":2.0,
   "projectileRadius":0.7,
-  "ultimatePointsPerHit":0.0,
+  "ultimatePointsPerHit":20.0,
   "pointsOnHit":false,
   "effectIndex":14,
   "glyphs":["寿司"],

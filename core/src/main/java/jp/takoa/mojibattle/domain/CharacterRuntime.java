@@ -26,6 +26,7 @@ public final class CharacterRuntime {
     private float stockRechargeSeconds;
     private float stockRechargeRemaining;
     private boolean awakened;
+    private boolean zeroDefense;
     public final StatusEffectSystem statuses;
 
     public CharacterRuntime(PlayerId playerId, CharacterDefinition definition, Vector3 spawn) {
@@ -34,6 +35,7 @@ public final class CharacterRuntime {
         statuses = new StatusEffectSystem(playerId);
         position.set(spawn);
         hp = definition.maxHp;
+        zeroDefense = definition.zeroDefense;
     }
 
     public void update(float delta) {
@@ -228,6 +230,15 @@ public final class CharacterRuntime {
 
     public boolean awakened() {
         return awakened;
+    }
+
+    /** 編成パッシブを含め、このキャラクターを防御力0として固定する。 */
+    public void setZeroDefense(boolean value) {
+        zeroDefense = value;
+    }
+
+    public boolean zeroDefense() {
+        return zeroDefense;
     }
 
     /** 行動不能タイマーと負の状態効果を同時に解除する。 */

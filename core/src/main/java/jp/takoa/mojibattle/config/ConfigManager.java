@@ -138,6 +138,10 @@ public final class ConfigManager {
                 require(skill.buffAttackMultiplier >= 1 && skill.buffDurationSeconds > 0, "Self buff config is invalid: " + character.id);
             }
 
+            if ("random_economy".equals(skill.type)) {
+                require(skill.buffAttackMultiplier > 1 && skill.buffDefenseMultiplier > 0 && skill.buffDefenseMultiplier < 1 && skill.debuffAttackMultiplier > 0 && skill.debuffAttackMultiplier < 1 && skill.debuffDefenseMultiplier > 1 && skill.buffDurationSeconds > 0, "Random economy config is invalid: " + character.id);
+            }
+
             if (skill.activationTexture != null) {
                 require(skill.activationEffectScale > 0 && Gdx.files.internal(skill.activationTexture).exists(), "Skill activation effect is invalid: " + character.id);
             }
@@ -152,7 +156,7 @@ public final class ConfigManager {
                 require(texture != null && Gdx.files.internal(texture).exists(), "Skill texture is missing: " + character.id);
             }
 
-            require(ultimate.pointCost > 0 && ultimate.warningSeconds >= 0 && ultimate.nameKey != null && Set.of("area", "self_heal", "line", "meteor_shower", "summon_family", "moving_car", "spinning_one", "skill_barrage", "sushi_barrage").contains(ultimate.type), "Ultimate config is invalid: " + character.id);
+            require(ultimate.pointCost > 0 && ultimate.warningSeconds >= 0 && ultimate.nameKey != null && Set.of("area", "self_heal", "line", "meteor_shower", "summon_family", "moving_car", "spinning_one", "skill_barrage", "sushi_barrage", "cash_crash").contains(ultimate.type), "Ultimate config is invalid: " + character.id);
             require(ultimate.objectTexture != null && Gdx.files.internal(ultimate.objectTexture).exists(), "Ultimate object texture is missing: " + character.id);
 
             if (ultimate.type.equals("area")) {
@@ -195,7 +199,11 @@ public final class ConfigManager {
                 require(ultimate.barrageCount > 0 && ultimate.barrageInterval > 0 && ultimate.projectileSpeed > 0 && ultimate.projectileLifetimeSeconds > 0 && ultimate.projectileRadius > 0, "Sushi barrage config is invalid: " + character.id);
             }
 
-            require(passive.intervalSeconds > 0 && passive.maximumMultiplier >= 1 && passive.type != null && Set.of("compound_interest", "hitbox_boost", "ultimate_regen", "damage_guard", "speed_boost", "ultimate_gain", "stun_boost", "skill_haste", "family_bond", "difficult_kanji", "berserker", "ultimate_boost").contains(passive.type), "Passive config is invalid: " + character.id);
+            if (ultimate.type.equals("cash_crash")) {
+                require(ultimate.baseDamage > 0 && ultimate.radius > 0 && ultimate.defenseDownMultiplier > 1 && ultimate.defenseDownDuration > 0, "Cash crash config is invalid: " + character.id);
+            }
+
+            require(passive.intervalSeconds > 0 && passive.maximumMultiplier >= 1 && passive.type != null && Set.of("compound_interest", "hitbox_boost", "ultimate_regen", "damage_guard", "speed_boost", "ultimate_gain", "stun_boost", "skill_haste", "family_bond", "difficult_kanji", "berserker", "ultimate_boost", "cash_scatter").contains(passive.type), "Passive config is invalid: " + character.id);
             require(passive.moveSpeedMultiplier > 0 && passive.skillCooldownMultiplier > 0 && passive.ultimateGainMultiplier > 0 && passive.incomingDamageMultiplier > 0 && passive.hitboxMultiplier > 0 && passive.stunMultiplier > 0 && passive.ultimatePointsPerSecond >= 0, "Passive multipliers are invalid: " + character.id);
 
             if ("difficult_kanji".equals(passive.type)) {
@@ -209,6 +217,10 @@ public final class ConfigManager {
             if ("ultimate_boost".equals(passive.type)) {
                 require(passive.ultimateDamageMultiplier >= 1, "Ultimate boost passive is invalid: " + character.id);
             }
+
+            if ("cash_scatter".equals(passive.type)) {
+                require(passive.spawnObjectTexture != null && Gdx.files.internal(passive.spawnObjectTexture).exists() && passive.maximumSpawnedObjects > 0, "Cash scatter passive is invalid: " + character.id);
+            }
         }
 
         for (SupportCharacterDefinition support : supports.values()) {
@@ -217,8 +229,8 @@ public final class ConfigManager {
 
             require(Gdx.files.internal(support.glyphTexture).exists() && Gdx.files.internal(support.projectileTexture).exists(), "Support texture missing: " + support.id);
 
-            require(Set.of("ally_attack_up", "enemy_attack_down", "enemy_slow", "bonus_damage", "wind_pull").contains(support.skill.type), "Unknown support skill type: " + support.id);
-            require(Set.of("enemy_defense_down", "heal_cleanse", "wide_slash", "right_teleport", "global_cooldown_halve").contains(support.ultimate.type), "Unknown support ultimate type: " + support.id);
+            require(Set.of("ally_attack_up", "enemy_attack_down", "enemy_slow", "bonus_damage", "wind_pull", "train_charge").contains(support.skill.type), "Unknown support skill type: " + support.id);
+            require(Set.of("enemy_defense_down", "heal_cleanse", "wide_slash", "right_teleport", "global_cooldown_halve", "gather_all").contains(support.ultimate.type), "Unknown support ultimate type: " + support.id);
 
             require(support.skill.cooldownSeconds > 0 && support.skill.durationSeconds >= 0 && support.ultimate.pointCost == 100, "Support ability values invalid: " + support.id);
 
@@ -228,7 +240,7 @@ public final class ConfigManager {
         }
         for (FieldEffectDefinition effect : fieldEffects.values()) {
             require(effect.id != null && effect.type != null && effect.target != null, "Field effect fields are required");
-            require(Set.of("critical_enable", "cooldown", "move_multiplier", "periodic_heal", "damage_taken", "speed_pulse", "attack_growth", "projectile_curve", "traffic").contains(effect.type), "Unknown field-effect type: " + effect.id);
+            require(Set.of("critical_enable", "cooldown", "move_multiplier", "periodic_heal", "damage_taken", "speed_pulse", "attack_growth", "projectile_curve", "traffic", "express_maki").contains(effect.type), "Unknown field-effect type: " + effect.id);
             require(effect.magnitude >= 0 && effect.intervalSeconds >= 0 && effect.durationSeconds >= 0 && effect.maximum >= 0, "Field-effect values invalid: " + effect.id);
         }
 

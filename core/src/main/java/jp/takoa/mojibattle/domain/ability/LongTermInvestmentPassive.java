@@ -1,8 +1,11 @@
 package jp.takoa.mojibattle.domain.ability;
 
+import com.badlogic.gdx.math.MathUtils;
+import com.badlogic.gdx.math.Vector3;
 import jp.takoa.mojibattle.domain.CharacterRuntime;
 import jp.takoa.mojibattle.domain.BattleController;
 import jp.takoa.mojibattle.domain.PlayerId;
+import jp.takoa.mojibattle.domain.combat.CashBundle;
 
 import java.util.EnumMap;
 
@@ -75,6 +78,10 @@ public final class LongTermInvestmentPassive implements IPassive {
                     owner,
                     config.ultimatePointsPerSecond * Math.max(0, delta));
         }
+        if ("cash_scatter".equals(config.type)) {
+            updateCashScatter(battle, owner, delta);
+            return;
+        }
         if (!"difficult_kanji".equals(config.type)) {
             return;
         }
@@ -95,6 +102,33 @@ public final class LongTermInvestmentPassive implements IPassive {
             }
             cooldowns.put(owner.playerId, config.procInternalCooldown);
         }
+    }
+
+    private void updateCashScatter(BattleController battle, CharacterRuntime owner, float delta) {
+        float timer = rollTimers.getOrDefault(owner.playerId, config.intervalSeconds) - delta;
+        if (timer > 0) {
+            rollTimers.put(owner.playerId, timer);
+            return;
+        }
+        rollTimers.put(owner.playerId, timer + config.intervalSeconds);
+        long currentCount = battle.objects().stream()
+                .filter(object -> object instanceof CashBundle cash && cash.owner == owner.playerId)
+                .count();
+        if (currentCount >= Math.max(1, config.maximumSpawnedObjects)) {
+            return;
+        }
+        long interval = (long) Math.floor(battle.timer().elapsed() / config.intervalSeconds);
+        float angle = Math.floorMod(interval * 137L + owner.playerId.ordinal() * 71L, 360L);
+        float radius = 3f + Math.floorMod(interval, 4L) * 1.3f;
+        Vector3 position = new Vector3(owner.position).add(
+                MathUtils.cosDeg(angle) * radius,
+                0,
+                MathUtils.sinDeg(angle) * radius);
+        float edge = battle.arenaHalfExtent() - .8f;
+        position.x = MathUtils.clamp(position.x, -edge, edge);
+        position.z = MathUtils.clamp(position.z, -edge, edge);
+        battle.spawn(new CashBundle(owner.playerId, position, config.spawnObjectTexture));
+        battle.emitImageEffect(position, config.spawnObjectTexture, 13, 4.5f, .6f);
     }
 
     private static float positiveOrOne(float value) {

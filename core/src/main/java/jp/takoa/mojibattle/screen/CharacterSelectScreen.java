@@ -42,6 +42,7 @@ public final class CharacterSelectScreen extends StageScreen {
     private final Image preview = new Image();
     private final Table cardGrid = new Table();
     private final Table playerPreviews = new Table();
+    private final Table supportCountControls = new Table();
     private final TextButton existingTab;
     private final TextButton customTab;
     private final TextButton confirm;
@@ -52,6 +53,7 @@ public final class CharacterSelectScreen extends StageScreen {
     private Table selectedCard;
     private String pendingId;
     private int phase;
+    private int supportCount = 1;
     private boolean showingCustom;
 
     public CharacterSelectScreen(
@@ -81,13 +83,32 @@ public final class CharacterSelectScreen extends StageScreen {
         chosen.setFontScale(.62f);
         roster.add(chosen).left().padBottom(8).row();
 
+        Label supportCountLabel = new Label(context.i18n.text("select.support_count"), context.skin);
+        TextButton oneSupport = new TextButton(context.i18n.text("select.support_count_one"), context.skin);
+        TextButton twoSupports = new TextButton(context.i18n.text("select.support_count_two"), context.skin);
+        supportCountControls.add(supportCountLabel).padRight(8);
+        supportCountControls.add(oneSupport).width(150).height(42).padRight(4);
+        supportCountControls.add(twoSupports).width(150).height(42).padLeft(4);
+        supportCountControls.setVisible(false);
+        roster.add(supportCountControls).left().height(46).row();
+        oneSupport.addListener(new ChangeListener() {
+            public void changed(ChangeEvent event, Actor actor) {
+                setSupportCount(1);
+            }
+        });
+        twoSupports.addListener(new ChangeListener() {
+            public void changed(ChangeEvent event, Actor actor) {
+                setSupportCount(2);
+            }
+        });
+
         Table tabs = new Table();
         existingTab = new TextButton(context.i18n.text("select.existing"), context.skin);
         customTab = new TextButton(context.i18n.text("select.custom"), context.skin);
         tabs.add(existingTab).width(260).height(52).padRight(5);
         tabs.add(customTab).width(260).height(52).padLeft(5);
         roster.add(tabs).left().padBottom(5).row();
-        roster.add(cardGrid).width(705).height(348).top().left();
+        roster.add(cardGrid).width(705).height(302).top().left();
 
         Table information = new Table(context.skin);
         information.setBackground("panel");
@@ -300,13 +321,16 @@ public final class CharacterSelectScreen extends StageScreen {
     }
 
     private String fieldDetails(SupportCharacterDefinition support) {
-        return String.join(
-                "\n  ",
+        List<String> descriptions = new ArrayList<>(
                 Arrays.stream(support.fieldPassiveIds)
                         .map(id -> context.i18n.text("field." + id)
                                 + ": "
                                 + context.i18n.text("field.description." + id))
                         .toList());
+        if (support.zeroDefenseMain) {
+            descriptions.add(context.i18n.text("support.passive.zero_defense_main"));
+        }
+        return String.join("\n  ", descriptions);
     }
 
     private String skillDetail(AbilityConfigs.ProjectileSkill skill) {
@@ -315,6 +339,12 @@ public final class CharacterSelectScreen extends StageScreen {
         String health = skill.healthCostRatio > 0
                 ? " / " + context.i18n.text("guide.health_cost", Math.round(skill.healthCostRatio * 100))
                 : "";
+        if ("random_economy".equals(skill.type)) {
+            return context.i18n.text(
+                    "guide.random_economy",
+                    decimal(cooldown(skill.cooldownSeconds)),
+                    Math.round(points));
+        }
         if ("self_attack_buff".equals(skill.type)) {
             return context.i18n.text(
                     "guide.attack_buff",
@@ -391,6 +421,12 @@ public final class CharacterSelectScreen extends StageScreen {
                     Math.round(ultimate.baseDamage),
                     decimal(ultimate.barrageInterval),
                     decimal(ultimate.projectileSpeed));
+            case "cash_crash" -> context.i18n.text(
+                    "guide.cash_crash",
+                    Math.round(ultimate.baseDamage * ULTIMATE_DAMAGE_SCALE),
+                    decimal(ultimate.radius * 5f),
+                    Math.round((ultimate.defenseDownMultiplier - 1f) * 100),
+                    decimal(ultimate.defenseDownDuration));
             default -> context.i18n.text(
                     "guide.area",
                     Math.round(ultimate.baseDamage * ULTIMATE_DAMAGE_SCALE),
@@ -408,7 +444,7 @@ public final class CharacterSelectScreen extends StageScreen {
             supportIds.add(pendingId);
         }
         phase++;
-        if (phase == playerCount * 2) {
+        if (phase == playerCount + playerCount * supportCount) {
             startBattle();
             return;
         }
@@ -432,14 +468,35 @@ public final class CharacterSelectScreen extends StageScreen {
         return phase < playerCount;
     }
 
+    private void setSupportCount(int value) {
+        if (selectingMain()) {
+            return;
+        }
+        supportCount = Math.max(1, Math.min(2, value));
+        supportIds.clear();
+        phase = playerCount;
+        updatePrompt();
+        refreshCards();
+        refreshPlayerPreviews();
+    }
+
     private void updatePrompt() {
-        int player = selectingMain() ? phase + 1 : phase - playerCount + 1;
-        String promptKey = selectingMain() ? "select.main_prompt" : "select.support_prompt";
-        prompt.setText(context.i18n.text(promptKey, player));
+        int supportSelection = Math.max(0, phase - playerCount);
+        int player = selectingMain() ? phase + 1 : supportSelection / supportCount + 1;
+        supportCountControls.setVisible(!selectingMain());
+        if (selectingMain()) {
+            prompt.setText(context.i18n.text("select.main_prompt", player));
+        } else {
+            prompt.setText(context.i18n.text(
+                    "select.support_prompt_slot",
+                    player,
+                    supportSelection % supportCount + 1,
+                    supportCount));
+        }
         chosen.setText(context.i18n.text(
                 "select.selection_progress",
-                Math.min(phase, playerCount * 2),
-                playerCount * 2));
+                Math.min(phase, playerCount + playerCount * supportCount),
+                playerCount + playerCount * supportCount));
     }
 
     private void startBattle() {
@@ -448,13 +505,15 @@ public final class CharacterSelectScreen extends StageScreen {
                 screens,
                 mode,
                 List.copyOf(mainIds),
-                List.copyOf(supportIds)));
+                List.copyOf(supportIds),
+                supportCount));
     }
     private void refreshPlayerPreviews() {
         playerPreviews.clearChildren();
-        float mainSize = playerCount > 2 ? 48 : 74;
-        float supportSize = playerCount > 2 ? 32 : 46;
-        float nameWidth = playerCount > 2 ? 72 : 125;
+        boolean compact = playerCount > 2 && supportCount > 1;
+        float mainSize = compact ? 42 : playerCount > 2 ? 48 : 74;
+        float supportSize = compact ? 28 : playerCount > 2 ? 32 : 46;
+        float nameWidth = compact ? 48 : playerCount > 2 ? 72 : 125;
         for (int player = 0; player < playerCount; player++) {
             Table card = new Table(context.skin);
             card.setBackground("panel");
@@ -465,7 +524,9 @@ public final class CharacterSelectScreen extends StageScreen {
 
             Table portraits = new Table();
             addMainPreview(portraits, player, mainSize, nameWidth);
-            addSupportPreview(portraits, player, supportSize, nameWidth);
+            for (int slot = 0; slot < supportCount; slot++) {
+                addSupportPreview(portraits, player, slot, supportSize, nameWidth);
+            }
             card.add(portraits);
             playerPreviews.add(card).expandX().fillX().height(120).pad(3);
         }
@@ -484,25 +545,31 @@ public final class CharacterSelectScreen extends StageScreen {
         portraits.add(new Image(drawable(main.glyphTexture))).size(imageSize, imageSize);
         Label label = new Label(name(main), context.skin);
         label.setWrap(true);
-        label.setFontScale(playerCount > 2 ? .52f : .7f);
+        label.setFontScale(playerCount > 2 && supportCount > 1 ? .44f : playerCount > 2 ? .52f : .7f);
         portraits.add(label).width(nameWidth).left();
     }
 
-    private void addSupportPreview(Table portraits, int player, float imageSize, float nameWidth) {
-        int supportPlayer = phase - playerCount;
-        String supportId = player < supportIds.size()
-                ? supportIds.get(player)
-                : !selectingMain() && player == supportPlayer ? pendingId : null;
+    private void addSupportPreview(
+            Table portraits,
+            int player,
+            int slot,
+            float imageSize,
+            float nameWidth) {
+        int supportSelection = phase - playerCount;
+        int index = player * supportCount + slot;
+        String supportId = index < supportIds.size()
+                ? supportIds.get(index)
+                : !selectingMain() && index == supportSelection ? pendingId : null;
         if (supportId == null) {
             return;
         }
         SupportCharacterDefinition support = context.supports.require(supportId);
         portraits.add(new Image(drawable(support.glyphTexture)))
                 .size(imageSize, imageSize)
-                .padLeft(6);
+                .padLeft(playerCount > 2 && supportCount > 1 ? 2 : 6);
         Label label = new Label(name(support), context.skin);
         label.setWrap(true);
-        label.setFontScale(playerCount > 2 ? .48f : .65f);
+        label.setFontScale(playerCount > 2 && supportCount > 1 ? .4f : playerCount > 2 ? .48f : .65f);
         portraits.add(label).width(nameWidth).left();
     }
 

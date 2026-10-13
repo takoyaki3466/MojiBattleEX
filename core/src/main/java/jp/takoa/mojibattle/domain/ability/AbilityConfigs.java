@@ -23,6 +23,9 @@ public final class AbilityConfigs {
         public float stockRechargeSeconds;
         public float healthCostRatio;
         public float buffAttackMultiplier;
+        public float buffDefenseMultiplier;
+        public float debuffAttackMultiplier;
+        public float debuffDefenseMultiplier;
         public float buffDurationSeconds;
         public float activationEffectScale;
         public float fallingDamage;
@@ -75,6 +78,8 @@ public final class AbilityConfigs {
         public float projectileSpeed;
         public float projectileLifetimeSeconds;
         public float projectileRadius;
+        public float defenseDownMultiplier;
+        public float defenseDownDuration;
         public boolean ignoreDefense;
         public float summonHp;
         public float summonDefense;
@@ -110,5 +115,7 @@ public final class AbilityConfigs {
         public float procInternalCooldown;
         public float missingHealthAttackBonus;
         public float ultimateDamageMultiplier;
+        public String spawnObjectTexture;
+        public int maximumSpawnedObjects;
     }
 }

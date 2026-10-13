@@ -5,6 +5,7 @@ public enum StatusType {
     ATTACK_UP,
     ATTACK_DOWN,
     DAMAGE_TAKEN_UP,
+    DAMAGE_TAKEN_DOWN,
     MOVE_UP,
     MOVE_DOWN,
     CRITICAL_RATE_UP,

@@ -1,0 +1,1 @@
+{"id":"heisei","type":"MAIN","displayGlyph":"㍻","nameKey":"character.heisei.name","maxHp":1050.0,"baseAttack":1.0,"moveSpeed":6.2,"collisionRadius":0.64,"skillId":"heisei_innovation","ultimateId":"heisei_bubble_collapse","passiveId":"heisei_cash_power","glyphTexture":"glyphs/heisei.png","criticalRate":0.0,"criticalDamageMultiplier":1.5,"criticalEnabled":false}

@@ -2,7 +2,7 @@
   "language": "ja_jp",
   "uiScale": 1.0,
   "masterVolume": 0.8,
-  "characterIds": ["kabushiki", "hiragana_i", "integral", "one", "d_letter", "kilometer", "short", "star_struck", "a_letter", "biang", "ha"],
-  "supportIds": ["t", "zero", "slash", "right", "matsu"],
-  "fieldEffectIds": ["collapse", "resonance", "absolute_zero", "creation_from_zero", "crack", "split_time", "rising_right", "deflection", "matsudo"]
+  "characterIds": ["kabushiki", "hiragana_i", "integral", "one", "d_letter", "kilometer", "short", "star_struck", "a_letter", "biang", "ha", "heisei"],
+  "supportIds": ["t", "zero", "slash", "right", "matsu", "maki"],
+  "fieldEffectIds": ["collapse", "resonance", "absolute_zero", "creation_from_zero", "crack", "split_time", "rising_right", "deflection", "matsudo", "express_maki"]
 }

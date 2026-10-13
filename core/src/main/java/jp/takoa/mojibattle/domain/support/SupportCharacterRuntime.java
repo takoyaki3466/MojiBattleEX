@@ -20,12 +20,15 @@ public final class SupportCharacterRuntime {
         attackCooldown = definition.attackInterval;
     }
 
-    public void update(float delta) {
+    public void update(float delta, float ultimateChargeMultiplier) {
         attackCooldown = Math.max(0, attackCooldown - delta);
         skillCooldown = Math.max(0, skillCooldown - delta);
         ultimatePoints = Math.min(
                 100,
-                ultimatePoints + Math.max(0, delta) * definition.ultimateChargePerSecond);
+                ultimatePoints
+                        + Math.max(0, delta)
+                        * definition.ultimateChargePerSecond
+                        * Math.max(0, ultimateChargeMultiplier));
     }
 
     public boolean attackReady() {

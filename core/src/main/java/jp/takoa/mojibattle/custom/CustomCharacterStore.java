@@ -224,6 +224,7 @@ public final class CustomCharacterStore {
         value.criticalDamageMultiplier = appearance.criticalDamageMultiplier;
         value.criticalEnabled = appearance.criticalEnabled;
         value.curvedProjectile = appearance.curvedProjectile;
+        value.zeroDefenseMain = appearance.zeroDefenseMain;
         value.skill = findSupportSkill(data.supportSkillId);
         value.ultimate = findSupportUltimate(data.supportUltimateId);
         value.fieldPassiveIds = data.fieldPassiveIds.clone();

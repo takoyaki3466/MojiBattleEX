@@ -17,15 +17,17 @@ public final class SupportController {
             SupportCharacterRuntime support,
             CharacterRuntime ally,
             CharacterRuntime enemy,
+            int supportIndex,
             float delta) {
-        support.update(delta);
+        support.update(delta, battle.supportUltimateChargeMultiplier());
         if (support.skillReady()) {
-            abilities.useSkill(battle, battle.team(support.owner));
+            abilities.useSkill(battle, battle.team(support.owner), support);
         }
 
         float side = support.owner.ordinal() % 2 == 0
                 ? -support.definition.followDistance
                 : support.definition.followDistance;
+        side *= supportIndex == 0 ? 1f : -1f;
         Vector3 desired = new Vector3(ally.position)
                 .mulAdd(new Vector3(-ally.facing.z, 0, ally.facing.x), side);
         Vector3 movement = desired.sub(support.position);
@@ -70,11 +72,17 @@ public final class SupportController {
         }
     }
 
-    public void useSkill(BattleController battle, PlayerTeam team) {
-        abilities.useSkill(battle, team);
+    public void useSkill(
+            BattleController battle,
+            PlayerTeam team,
+            SupportCharacterRuntime support) {
+        abilities.useSkill(battle, team, support);
     }
 
-    public void useUltimate(BattleController battle, PlayerTeam team) {
-        abilities.useUltimate(battle, team);
+    public void useUltimate(
+            BattleController battle,
+            PlayerTeam team,
+            SupportCharacterRuntime support) {
+        abilities.useUltimate(battle, team, support);
     }
 }

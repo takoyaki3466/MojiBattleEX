@@ -26,6 +26,10 @@
   "select.main_chosen":"メインキャラクター選択済み — 補助キャラクターを選んでください",
   "select.main_prompt":"{0}Pのメインキャラクターを選択",
   "select.support_prompt":"{0}Pの補助キャラクターを選択",
+  "select.support_prompt_slot":"{0}Pの補助キャラクター {1}/{2} を選択",
+  "select.support_count":"補助キャラクター人数",
+  "select.support_count_one":"1人",
+  "select.support_count_two":"2人",
   "select.selection_progress":"選択進行 {0} / {1}",
   "select.appearance":"見た目: {0}",
   "select.skill_brief":"クールタイム {0}秒 / 必殺獲得基準 {1}%",
@@ -34,8 +38,9 @@
   "select.support_ultimate_detail.t":"生存中の全敵の被ダメージを75%増やし、各敵の左右で海が割れる演出を発生させます。効果時間10秒。",
   "select.support_style.t":"会心と攻撃強化を重ね、一気に畳み掛けたい初心者向け攻撃支援型。",
   "select.support_skill_detail.zero":"7秒ごとに自動発動し、生存中の全敵の攻撃力を45%下げます。効果時間9秒。",
-  "select.support_ultimate_detail.zero":"味方の最大HP45%を回復し、スタン・拘束・やけどなどをすべて解除します。",
-  "select.support_style.zero":"被害を抑えて立て直すことが得意な、安定重視の回復・防御型。",
+  "select.support_ultimate_detail.zero":"味方の最大HP15%を回復し、スタン・拘束・やけどなどをすべて解除します。",
+  "select.support_style.zero":"敵の攻撃力低下と回復を持つ代わりに、編成したメインの防御力が0になるハイリスクな立て直し型。",
+  "support.passive.zero_defense_main":"ゼロの代償: 自身のメインキャラクターの防御力を常時0にする。",
   "select.support_skill_detail.slash":"6秒ごとに自動発動し、8秒間、味方の攻撃ダメージを45%増加させます。",
   "select.support_ultimate_detail.slash":"基礎威力420・射程30の巨大な横長斬撃を放ち、複数の敵と召喚物をまとめて切断します。",
   "select.support_style.slash":"手数の多いメインと好相性で、短時間の集中攻撃に向く斬撃型。",
@@ -57,6 +62,8 @@
   "guide.skill":"【スキル】{0}",
   "guide.skill_stats":"CT {0}秒 / 1発 {1}ダメージ × {2}発 / 判定 {3} / 発動時必殺 +{4}% / {5}",
   "guide.falling_skill":"追加効果: 会社落下 {0}ダメージ / 実効直径 {1}",
+  "guide.random_economy":"CT {0}秒 / 自分と全敵へ個別に抽選 / 好況50%: 攻撃+35%・被ダメ-28% / 不況50%: 攻撃-28%・被ダメ+40% / 必殺+{1}%",
+  "guide.cash_crash":"札束1個ごとに威力{0}・直径{1}の大爆発 / 全敵の被ダメージ+{2}%を{3}秒付与",
   "guide.bind_follow_up":"CT {0}秒 / 麺 {1}ダメージ → 拘束 {2}秒 → 巨大スプーン {3}ダメージ / 命中時必殺 +{4}%",
   "guide.attack_buff":"CT {0}秒 / 攻撃力 +{1}% / 効果 {2}秒 / 敵方向へ香り寿司5貫を射出 / 必殺ポイント獲得なし",
   "guide.stun":"スタン {0}秒",
@@ -95,7 +102,7 @@
   "guide.character.kabushiki":"スキルでも会社を落とし、必殺技では斜め上空から超巨大会社を2社落として決着を狙う重火力型。",
   "guide.character.hiragana_i":"低火力と引き換えに、スキルと必殺技が広範囲を覆う制圧型。",
   "guide.character.integral":"一般的な数式を展開して攻撃し、必殺技では5発の数式隕石を一定間隔で1発ずつ落とす計算型。",
-  "guide.character.one":"HPを削って高威力スキルを放ち、瀕死になるほど火力が跳ね上がる危険なバーサーカー型。必殺技は戦場全体を覆う巨大な1を水平回転させ、小回復もできる。",
+  "guide.character.one":"HPを削って高威力スキルを放ち、瀕死になるほど火力が跳ね上がる危険なバーサーカー型。必殺技は減少HPボーナスを多段へ分散し、巨大な1を水平回転させて小回復する。",
   "guide.character.d_letter":"高速移動と素早い弾に加え、戦場を走り続け敵をスタンさせる車で主導権を握る加速型。",
   "guide.character.kilometer":"高速で距離を詰め、必殺技で戦場の八方向を一斉に貫く全方位突進型。",
   "guide.character.short":"狭い判定の長時間スタンから、巨大な「単位」を斜めに落とす「知の濃縮」へつなぐテクニカル型。",
@@ -234,6 +241,20 @@
   ,"guide.character.a_letter":"全方位へ32発の fAmily を拡散し、必殺技のたびにHP100・防御力0・攻撃力2.5の家族を6人追加召喚する増殖型。生存中の家族に上限はない。"
   ,"guide.character.ha":"敵へ飛ぶ香り寿司とともに8秒間攻撃力を高め、相手の現在位置を狙う高速20連射の防御無視・寿司爆撃へつなぐ必殺重視型。"
   ,"guide.passive_effect.ha":"寿司打：自身が装備するメイン必殺技だけを1.2倍に強化する。通常スキルと補助必殺には適用されない。"
+  ,"character.heisei.name":"平成 — バブル相場師"
+  ,"ability.heisei.skill.name":"技術革新"
+  ,"ability.heisei.ultimate.name":"バブル崩壊"
+  ,"ability.heisei.passive.name":"札束の暴力"
+  ,"guide.character.heisei":"好況と不況を敵味方へ無差別に発生させ、地面へ蓄積した札束を一斉起爆する相場操作型。"
+  ,"guide.passive_effect.heisei":"札束の暴力：4秒ごとに札束を配置し、最大12個まで蓄積する。札束は「バブル崩壊」で範囲爆発する。"
+  ,"support.maki.name":"薪 — 特急圧縮支援"
+  ,"support.maki.skill.name":"通勤快速薪突撃"
+  ,"support.maki.ultimate.name":"薪.zip"
+  ,"select.support_skill_detail.maki":"10秒CTで超高速の通勤快速を横断させ、接触した敵へダメージと短いスタンを与えます。"
+  ,"select.support_ultimate_detail.maki":"戦場にいるすべてのメインキャラクターを中央へ一斉圧縮します。"
+  ,"select.support_style.maki":"全員の移動速度と補助必殺の充填速度を上げ、列車と中央圧縮で戦場を強制的にかき回す高速展開型。"
+  ,"field.express_maki":"特急薪乗車"
+  ,"field.description.express_maki":"全キャラクターの移動速度と、全補助キャラクターの必殺ゲージ充填速度を25%上昇させます。"
   ,"character.training_dummy.name":"ダミー君"
   ,"editor.title":"キャラクターエディタ"
   ,"editor.choose_type":"作成するキャラクターの分類を選択してください。"

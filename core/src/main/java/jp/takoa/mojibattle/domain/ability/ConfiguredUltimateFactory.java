@@ -20,6 +20,7 @@ public final class ConfiguredUltimateFactory {
             case "spinning_one" -> new SpinningOneUltimate(config);
             case "skill_barrage" -> new SkillBarrageUltimate(config);
             case "sushi_barrage" -> new SushiBombingUltimate(config);
+            case "cash_crash" -> new CashCrashUltimate(config);
             case "area" -> new BankruptcyUltimate(config);
             default -> throw new IllegalArgumentException("Unknown ultimate type: " + config.type);
         };

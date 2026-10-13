@@ -47,16 +47,26 @@ public final class BattleScreen extends ScreenAdapter {
             ScreenManager screens,
             BattleMode mode,
             List<String> mainIds,
-            List<String> supportIds) {
+            List<String> supportIds,
+            int supportCount) {
         this.context = context;
         this.screens = screens;
         List<CharacterDefinition> characters = new ArrayList<>(
                 mainIds.stream().map(context.characters::require).toList());
-        List<SupportCharacterDefinition> supports = new ArrayList<>(
-                supportIds.stream().map(context.supports::require).toList());
+        List<List<SupportCharacterDefinition>> supports = new ArrayList<>();
+        for (int player = 0; player < mainIds.size(); player++) {
+            List<SupportCharacterDefinition> playerSupports = new ArrayList<>();
+            for (int slot = 0; slot < supportCount; slot++) {
+                int index = player * supportCount + slot;
+                if (index < supportIds.size()) {
+                    playerSupports.add(context.supports.require(supportIds.get(index)));
+                }
+            }
+            supports.add(playerSupports);
+        }
         if (mode == BattleMode.TRAINING) {
             characters.add(TrainingDummy.definition());
-            supports.add(null);
+            supports.add(List.of());
         }
         battle = new BattleController(
                 context.config.battle,
@@ -124,6 +134,7 @@ public final class BattleScreen extends ScreenAdapter {
                 }
             }
         }
+        context.audio.play(battle.drainSoundEvents());
         Gdx.gl.glEnable(GL20.GL_DEPTH_TEST);
         renderer.render(battle, frameDelta, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
         Gdx.gl.glDisable(GL20.GL_DEPTH_TEST);
