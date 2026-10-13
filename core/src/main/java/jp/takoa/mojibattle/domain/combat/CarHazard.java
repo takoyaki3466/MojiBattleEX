@@ -1,18 +1,17 @@
-package jp.takoa.mojibattle.domain;
+package jp.takoa.mojibattle.domain.combat;
 
 import com.badlogic.gdx.math.Vector3;
+import jp.takoa.mojibattle.domain.PlayerId;
 
-/**
- * A long-lived, bouncing car which periodically damages and stuns everything it overlaps.
- */
-public final class CarHazard implements CombatObject {
+/** 戦場内を反射移動し、接触した対象へ一定間隔でダメージとスタンを与える車。 */
+public final class CarHazard extends PositionedCombatObject {
     public final PlayerId owner;
     public final Vector3 velocity = new Vector3();
     public final float radius, baseDamage, stunSeconds;
     public final String texturePath;
     public final int effectIndex;
     public final boolean friendlyFire;
-    private final Vector3 position = new Vector3();
+    private boolean mainUltimate;
     private final float arenaHalfExtent;
     private float remainingLife;
     private float hitCooldown;
@@ -58,14 +57,12 @@ public final class CarHazard implements CombatObject {
     public void resetDamagePulse() {
         hitCooldown = .48f;
     }
+    public CarHazard mainUltimate(){mainUltimate=true;return this;}
+    public boolean isMainUltimate(){return mainUltimate;}
 
     @Override
     public boolean expired() {
         return remainingLife <= 0;
     }
 
-    @Override
-    public Vector3 position() {
-        return position;
-    }
 }

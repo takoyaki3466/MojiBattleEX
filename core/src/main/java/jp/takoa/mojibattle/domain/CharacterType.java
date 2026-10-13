@@ -1,3 +1,7 @@
 package jp.takoa.mojibattle.domain;
 
-public enum CharacterType { MAIN, SUPPORT }
+/** キャラクターがプレイヤー本体か補助枠かを区別する種別。 */
+public enum CharacterType {
+    MAIN,
+    SUPPORT
+}

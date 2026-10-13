@@ -6,5 +6,7 @@
   "arenaHalfExtent": 12.0,
   "gravity": -24.0,
   "groundY": 0.0,
-  "playerCollisionRadius": 0.65
+  "playerCollisionRadius": 0.65,
+  "skillCooldownMultiplier": 0.5,
+  "healthMultiplier": 3.0
 }

@@ -1,1 +1,1 @@
-{"id":"short_rush","cooldownSeconds":6.0,"baseDamage":60.0,"projectileSpeed":14.0,"projectileLifetimeSeconds":0.75,"projectileRadius":0.34,"ultimatePointsPerHit":25.0,"stunSeconds":2.5,"effectIndex":8,"glyphs":["短"],"textures":["glyphs/short.png"],"offsets":[[0.0,0.0]]}
+{"id":"short_rush","cooldownSeconds":5.0,"baseDamage":60.0,"projectileSpeed":14.0,"projectileLifetimeSeconds":0.75,"projectileRadius":0.34,"ultimatePointsPerHit":18.0,"stunSeconds":2.5,"effectIndex":8,"glyphs":["短"],"textures":["glyphs/short.png"],"offsets":[[0.0,0.0]]}

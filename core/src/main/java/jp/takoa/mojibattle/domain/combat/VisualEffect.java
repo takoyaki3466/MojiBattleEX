@@ -1,13 +1,12 @@
-package jp.takoa.mojibattle.domain;
+package jp.takoa.mojibattle.domain.combat;
 
 import com.badlogic.gdx.math.Vector3;
 
-/** Render-only transient state emitted by deterministic combat events. */
-public final class VisualEffect implements CombatObject {
+/** 戦闘イベントから生成され、描画だけに使用される一時的な演出状態。 */
+public final class VisualEffect extends PositionedCombatObject {
     public final int effectIndex;
     public final float maximumScale;
     public final String texturePath;
-    private final Vector3 position = new Vector3();
     private final float duration;
     private float elapsed;
 
@@ -19,7 +18,6 @@ public final class VisualEffect implements CombatObject {
     }
     @Override public void update(float delta) { elapsed += Math.max(0, delta); }
     @Override public boolean expired() { return elapsed >= duration; }
-    @Override public Vector3 position() { return position; }
     public float progress() { return duration <= 0 ? 1 : Math.min(1, elapsed / duration); }
     public float scale() { return maximumScale * (0.35f + progress() * 0.65f); }
 }

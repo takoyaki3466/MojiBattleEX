@@ -1,0 +1,17 @@
+{
+  "id":"ha",
+  "type":"MAIN",
+  "displayGlyph":"は",
+  "nameKey":"character.ha.name",
+  "maxHp":960.0,
+  "baseAttack":1.0,
+  "moveSpeed":6.4,
+  "collisionRadius":0.62,
+  "skillId":"ha_sushi_aroma",
+  "ultimateId":"ha_sushi_bombing",
+  "passiveId":"ha_sushida",
+  "glyphTexture":"glyphs/ha.png",
+  "criticalRate":0.0,
+  "criticalDamageMultiplier":1.5,
+  "criticalEnabled":false
+}

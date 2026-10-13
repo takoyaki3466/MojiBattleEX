@@ -1,7 +1,11 @@
 package jp.takoa.mojibattle.lwjgl3;
 
-/** Placeholder for platform-specific JVM restart policy. Windows requires no restart. */
+/** プラットフォーム固有のJVM再起動方針を隔離する。Windows版では再起動を必要としない。 */
 final class StartupHelper {
-    private StartupHelper() {}
-    static boolean startNewJvmIfRequired() { return false; }
+    private StartupHelper() {
+    }
+
+    static boolean startNewJvmIfRequired() {
+        return false;
+    }
 }

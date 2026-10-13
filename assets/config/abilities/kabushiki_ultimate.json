@@ -8,10 +8,10 @@
   "baseDamage":150.0,
   "warningSeconds":1.3,
   "effectSeconds":1.0,
-  "radius":4.5,
+  "radius":8.5,
   "meteorCount":2,
-  "spawnHeight":14.0,
+  "spawnHeight":24.0,
   "warningEffectIndex":5,
   "impactEffectIndex":4,
-  "fallHorizontalOffset":10.0
+  "fallHorizontalOffset":14.0
 }

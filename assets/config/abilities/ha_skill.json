@@ -1,0 +1,17 @@
+{
+  "id":"ha_sushi_aroma",
+  "type":"self_attack_buff",
+  "cooldownSeconds":15.0,
+  "buffAttackMultiplier":1.25,
+  "buffDurationSeconds":8.0,
+  "baseDamage":0.0,
+  "projectileSpeed":18.0,
+  "projectileLifetimeSeconds":2.0,
+  "projectileRadius":0.7,
+  "ultimatePointsPerHit":0.0,
+  "pointsOnHit":false,
+  "effectIndex":14,
+  "glyphs":["寿司"],
+  "textures":["objects/sushi-projectile.png"],
+  "offsets":[[0.0,0.0]]
+}
