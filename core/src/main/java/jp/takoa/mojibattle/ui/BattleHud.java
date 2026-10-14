@@ -28,7 +28,9 @@ import jp.takoa.mojibattle.domain.support.SupportCharacterRuntime;
 import java.util.EnumMap;
 import java.util.List;
 
-/** 各プレイヤーのHP、スキル、必殺、補助能力および試合情報を重ねて表示するHUD。 */
+/**
+ * 各プレイヤーのHP、スキル、必殺、補助能力および試合情報を重ねて表示するHUD。
+ */
 public final class BattleHud implements Disposable {
     private static final float ANNOUNCEMENT_TOTAL_SECONDS = 2.4f;
 
@@ -42,28 +44,38 @@ public final class BattleHud implements Disposable {
     private final boolean trainingMode;
     private float rainbowPhase;
 
-    /** 戦闘参加者ごとのHUD領域と、画面全体に重ねる通知領域を構築する。 */
+    /**
+     * 戦闘参加者ごとのHUD領域と、画面全体に重ねる通知領域を構築する。
+     */
     public BattleHud(GameContext context, BattleController battle) {
         this.context = context;
         trainingMode = battle.mode() == BattleMode.TRAINING;
+
         flash = new Image(context.skin.newDrawable("bar-hp"));
         flash.setTouchable(Touchable.disabled);
+
         stage.addActor(flash);
 
         if (trainingMode) {
             trainingDebugHud = new TrainingDebugHud();
             stage.addActor(trainingDebugHud.root);
+
         } else {
             trainingDebugHud = null;
             Table grid = new Table();
             grid.setFillParent(true);
             grid.pad(8);
+
             List<PlayerId> ids = battle.playerIds();
+
             float scale = ids.size() > 2 ? .58f : .72f;
+
             for (int index = 0; index < ids.size(); index++) {
                 PlayerHud hud = new PlayerHud(ids.get(index), scale);
                 playerHuds.put(ids.get(index), hud);
+
                 grid.add(hud.panel).expand().fill().pad(5);
+
                 if (index % 2 == 1) {
                     grid.row();
                 }
@@ -76,38 +88,48 @@ public final class BattleHud implements Disposable {
 
         timer = new Label("", context.skin);
         timer.setFontScale(.9f);
+
         Table clock = new Table();
         clock.setFillParent(true);
         clock.top();
+
         if (trainingMode) {
             clock.right();
         }
+
         clock.add(timer).pad(7);
         stage.addActor(clock);
 
         center = new Label("", context.skin, "effect-text");
+
         Table centerTable = new Table();
         centerTable.setFillParent(true);
+
         if (trainingMode) {
             centerTable.add().expand().fill();
             centerTable.add(center).expand().center();
+
         } else {
             centerTable.add(center);
         }
         stage.addActor(centerTable);
     }
 
-    /** 戦闘状態を全プレイヤー枠と中央通知へ反映する。 */
+    /**
+     * 戦闘状態を全プレイヤー枠と中央通知へ反映する。
+     */
     public void update(BattleController battle) {
         rainbowPhase = (rainbowPhase + 1.8f) % 360f;
         flash.setColor(.35f, .75f, 1, battle.visualPulse() * .14f);
+
         for (var entry : playerHuds.entrySet()) {
             entry.getValue().update(battle, battle.player(entry.getKey()));
         }
-        timer.setText(context.i18n.text(
-                "battle.time_remaining",
-                formatTime(battle.timer().remaining())));
+
+        timer.setText(context.i18n.text("battle.time_remaining", formatTime(battle.timer().remaining())));
+
         updateCenterAnnouncement(battle);
+
         if (trainingDebugHud != null) {
             trainingDebugHud.update(battle);
         }
@@ -118,36 +140,35 @@ public final class BattleHud implements Disposable {
             float remaining = battle.announcement().duration();
             float elapsed = ANNOUNCEMENT_TOTAL_SECONDS - remaining;
             float pulse = Math.abs(MathUtils.sin(elapsed * 10));
-            center.setText(context.i18n.text(
-                    "battle.ultimate_announcement",
-                    battle.announcement().player().label(),
-                    context.i18n.text(battle.announcement().i18nKey())));
+
+            center.setText(context.i18n.text("battle.ultimate_announcement", battle.announcement().player().label(), context.i18n.text(battle.announcement().i18nKey())));
             center.setFontScale(1.1f + pulse * .55f);
-            center.setColor(
-                    1,
-                    .32f + pulse * .68f,
-                    .12f + (1 - pulse) * .88f,
-                    Math.min(1, Math.min(elapsed * 5, remaining * 3)));
+            center.setColor(1, .32f + pulse * .68f, .12f + (1 - pulse) * .88f, Math.min(1, Math.min(elapsed * 5, remaining * 3)));
+
             flash.setColor(1, .08f + .7f * pulse, .12f, .12f + pulse * .16f);
+
             return;
         }
 
         center.setFontScale(1);
         center.setColor(Color.WHITE);
-        center.setText(battle.criticalPulse() > 0
-                ? context.i18n.text("battle.critical")
-                : battle.finalMinuteStarted() ? context.i18n.text("battle.final_minute") : "");
+        center.setText(battle.criticalPulse() > 0 ? context.i18n.text("battle.critical") : battle.finalMinuteStarted() ? context.i18n.text("battle.final_minute") : "");
+
         if (battle.criticalPulse() > 0) {
             center.setFontScale(1.45f);
             center.setColor(Color.GOLD);
         }
     }
 
+    /**
+     * 1プレイヤー分のメイン・補助ゲージを所有し、毎フレーム表示値を同期するHUD領域。
+     */
     private final class PlayerHud {
         private final PlayerId id;
         private final Table panel = new Table();
         private final Table mainPanel = new Table();
         private final Table supportPanel = new Table();
+
         private final ContinuousImageGauge hp = gauge("gauge-hp");
         private final ContinuousImageGauge skill = gauge("gauge-skill");
         private final ContinuousImageGauge ultimate = gauge("gauge-ultimate");
@@ -155,6 +176,7 @@ public final class BattleHud implements Disposable {
         private final ContinuousImageGauge supportUltimate = gauge("gauge-support-ultimate");
         private final ContinuousImageGauge supportSkillTwo = gauge("gauge-support-skill");
         private final ContinuousImageGauge supportUltimateTwo = gauge("gauge-support-ultimate");
+
         private final Label title = label();
         private final Label hpText = label();
         private final Label skillReady = label();
@@ -171,64 +193,30 @@ public final class BattleHud implements Disposable {
             this.id = id;
             mainPanel.setBackground(context.skin.getDrawable("panel"));
             mainPanel.pad(9);
-            for (Label value : List.of(
-                    title,
-                    hpText,
-                    skillReady,
-                    ultimateReady,
-                    supportTitle,
-                    supportSkillState,
-                    supportUltimateReady,
-                    supportTitleTwo,
-                    supportSkillStateTwo,
-                    supportUltimateReadyTwo,
-                    details)) {
+
+            for (Label value : List.of(title, hpText, skillReady, ultimateReady, supportTitle, supportSkillState, supportUltimateReady, supportTitleTwo, supportSkillStateTwo, supportUltimateReadyTwo, details)) {
                 value.setFontScale(scale);
             }
+
             title.setColor(Color.WHITE);
             mainPanel.add(title).growX().left().row();
 
             hpText.setFontScale(scale * .95f);
-            mainPanel.add(meter("battle.hp_gauge", hp, hpText, scale))
-                    .growX()
-                    .padTop(5)
-                    .row();
-            mainPanel.add(meter("battle.ultimate_gauge", ultimate, ultimateReady, scale))
-                    .growX()
-                    .padTop(4)
-                    .row();
-            mainPanel.add(meter("battle.skill_gauge", skill, skillReady, scale))
-                    .growX()
-                    .padTop(4)
-                    .row();
+            mainPanel.add(meter("battle.hp_gauge", hp, hpText, scale)).growX().padTop(5).row();
+            mainPanel.add(meter("battle.ultimate_gauge", ultimate, ultimateReady, scale)).growX().padTop(4).row();
+            mainPanel.add(meter("battle.skill_gauge", skill, skillReady, scale)).growX().padTop(4).row();
             details.setWrap(true);
             mainPanel.add(details).growX().left().padTop(3).row();
 
             supportPanel.setBackground(context.skin.getDrawable("button-down"));
             supportPanel.pad(6);
             supportPanel.add(supportTitle).growX().left().row();
-            supportPanel.add(meter(
-                    "battle.support_ultimate_gauge",
-                    supportUltimate,
-                    supportUltimateReady,
-                    scale * .9f)).growX().padTop(3).row();
-            supportPanel.add(meter(
-                    "battle.support_skill_gauge",
-                    supportSkill,
-                    supportSkillState,
-                    scale * .9f)).growX().padTop(3);
+            supportPanel.add(meter("battle.support_ultimate_gauge", supportUltimate, supportUltimateReady, scale * .9f)).growX().padTop(3).row();
+            supportPanel.add(meter("battle.support_skill_gauge", supportSkill, supportSkillState, scale * .9f)).growX().padTop(3);
             supportPanel.row();
             supportPanel.add(supportTitleTwo).growX().left().padTop(5).row();
-            supportPanel.add(meter(
-                    "battle.support_ultimate_gauge",
-                    supportUltimateTwo,
-                    supportUltimateReadyTwo,
-                    scale * .9f)).growX().padTop(3).row();
-            supportPanel.add(meter(
-                    "battle.support_skill_gauge",
-                    supportSkillTwo,
-                    supportSkillStateTwo,
-                    scale * .9f)).growX().padTop(3);
+            supportPanel.add(meter("battle.support_ultimate_gauge", supportUltimateTwo, supportUltimateReadyTwo, scale * .9f)).growX().padTop(3).row();
+            supportPanel.add(meter("battle.support_skill_gauge", supportSkillTwo, supportSkillStateTwo, scale * .9f)).growX().padTop(3);
 
             panel.add(mainPanel).growX().top().row();
             panel.add().expandY().row();
@@ -237,88 +225,73 @@ public final class BattleHud implements Disposable {
 
         private Table meter(String captionKey, ContinuousImageGauge gauge, Label state, float scale) {
             Table meter = new Table();
+
             Label caption = new Label(context.i18n.text(captionKey), context.skin);
             caption.setFontScale(scale * .9f);
+
             meter.add(caption).width(86).left();
             meter.add(gauge).growX().height(28).padLeft(5).padRight(7);
             meter.add(state).width(150).right();
+
             return meter;
         }
 
         private void update(BattleController battle, CharacterRuntime player) {
             List<SupportCharacterRuntime> supports = battle.supports(id);
+
             SupportCharacterRuntime support = supports.isEmpty() ? null : supports.get(0);
             SupportCharacterRuntime supportTwo = supports.size() < 2 ? null : supports.get(1);
+
             updateGaugeValues(player, support, supportTwo);
             updateNames(player, support, supportTwo);
             updateMainAbilityStates(player);
-            updateSupportAbilityState(
-                    support,
-                    supportSkillState,
-                    supportUltimateReady);
-            updateSupportAbilityState(
-                    supportTwo,
-                    supportSkillStateTwo,
-                    supportUltimateReadyTwo);
-            String fields = String.join(
-                    " / ",
-                    battle.fieldEffectIds().stream()
-                            .map(key -> context.i18n.text("field." + key))
-                            .toList());
-            details.setText(
-                    statusBadges(player)
-                            + "  "
-                            + context.i18n.text("battle.field_effects", fields));
+            updateSupportAbilityState(support, supportSkillState, supportUltimateReady);
+            updateSupportAbilityState(supportTwo, supportSkillStateTwo, supportUltimateReadyTwo);
+
+            String fields = String.join(" / ", battle.fieldEffectIds().stream().map(key -> context.i18n.text("field." + key)).toList());
+            details.setText(statusBadges(player) + "  " + context.i18n.text("battle.field_effects", fields));
         }
 
-        private void updateGaugeValues(
-                CharacterRuntime player,
-                SupportCharacterRuntime support,
-                SupportCharacterRuntime supportTwo) {
+        private void updateGaugeValues(CharacterRuntime player, SupportCharacterRuntime support, SupportCharacterRuntime supportTwo) {
             hp.setValue(player.hpRatio());
-            hpText.setText(context.i18n.text(
-                    "battle.hp_value",
-                    Math.round(player.hp()),
-                    Math.round(player.definition.maxHp)));
+
+            hpText.setText(context.i18n.text("battle.hp_value", Math.round(player.hp()), Math.round(player.definition.maxHp)));
+
             skill.setValue(player.skillChargeRatio());
             ultimate.setValue(player.ultimatePoints() / 100f);
+
             supportSkill.setValue(support == null ? 0 : support.skillChargeRatio());
             supportUltimate.setValue(support == null ? 0 : support.ultimateChargeRatio());
             supportSkillTwo.setValue(supportTwo == null ? 0 : supportTwo.skillChargeRatio());
             supportUltimateTwo.setValue(supportTwo == null ? 0 : supportTwo.ultimateChargeRatio());
         }
 
-        private void updateNames(
-                CharacterRuntime player,
-                SupportCharacterRuntime support,
-                SupportCharacterRuntime supportTwo) {
-            String playerName = player.definition.displayName != null
-                    ? player.definition.displayName
-                    : context.i18n.text(player.definition.nameKey);
-            String awakened = player.awakened()
-                    ? "  " + context.i18n.text("battle.awakened")
-                    : "";
+        private void updateNames(CharacterRuntime player, SupportCharacterRuntime support, SupportCharacterRuntime supportTwo) {
+            String playerName = player.definition.displayName != null ? player.definition.displayName : context.i18n.text(player.definition.nameKey);
+            String awakened = player.awakened() ? "  " + context.i18n.text("battle.awakened") : "";
+
             title.setText(id.label() + "  " + playerName + awakened);
+
             if (support == null) {
                 supportTitle.setText(context.i18n.text("battle.no_support"));
                 supportTitleTwo.setText("");
                 return;
             }
-            String supportName = support.definition.displayName != null
-                    ? support.definition.displayName
-                    : context.i18n.text(support.definition.nameKey);
+
+            String supportName = support.definition.displayName != null ? support.definition.displayName : context.i18n.text(support.definition.nameKey);
             supportTitle.setText(context.i18n.text("battle.support", supportName));
+
             if (supportTwo == null) {
                 supportTitleTwo.setText("");
                 return;
             }
-            String supportTwoName = supportTwo.definition.displayName != null
-                    ? supportTwo.definition.displayName
-                    : context.i18n.text(supportTwo.definition.nameKey);
+
+            String supportTwoName = supportTwo.definition.displayName != null ? supportTwo.definition.displayName : context.i18n.text(supportTwo.definition.nameKey);
             supportTitleTwo.setText(context.i18n.text("battle.support", supportTwoName));
         }
 
         private void updateMainAbilityStates(CharacterRuntime player) {
+
             if (player.definition.trainingDummy) {
                 skill.setValue(0);
                 ultimate.setValue(0);
@@ -326,59 +299,35 @@ public final class BattleHud implements Disposable {
                 ultimateReady.setText("-");
                 return;
             }
-            setCooldownState(
-                    skillReady,
-                    player.skillReady(),
-                    player.skillCooldown(),
-                    "battle.skill_available",
-                    false);
-            setUltimateState(
-                    ultimateReady,
-                    player.ultimatePoints(),
-                    "battle.ultimate_available");
+
+            setCooldownState(skillReady, player.skillReady(), player.skillCooldown(), "battle.skill_available", false);
+            setUltimateState(ultimateReady, player.ultimatePoints(), "battle.ultimate_available");
         }
 
-        private void updateSupportAbilityState(
-                SupportCharacterRuntime support,
-                Label skillState,
-                Label ultimateState) {
+        private void updateSupportAbilityState(SupportCharacterRuntime support, Label skillState, Label ultimateState) {
             if (support == null) {
                 skillState.setText("");
                 ultimateState.setText("");
                 return;
             }
-            setCooldownState(
-                    skillState,
-                    false,
-                    support.skillCooldown(),
-                    "battle.support_skill_available",
-                    true);
-            setUltimateState(
-                    ultimateState,
-                    support.ultimatePoints(),
-                    "battle.support_ultimate_available");
+
+            setCooldownState(skillState, false, support.skillCooldown(), "battle.support_skill_available", true);
+            setUltimateState(ultimateState, support.ultimatePoints(), "battle.support_ultimate_available");
         }
 
         private void setReady(Label label, boolean ready, String key) {
             label.setText(ready ? context.i18n.text(key) : "");
             if (ready) {
-                label.setColor(new Color().fromHsv(
-                        rainbowPhase + id.ordinal() * 70,
-                        1,
-                        1));
+                label.setColor(new Color().fromHsv(rainbowPhase + id.ordinal() * 70, 1, 1));
             }
         }
 
-        private void setCooldownState(
-                Label label,
-                boolean ready,
-                float remaining,
-                String readyKey,
-                boolean automatic) {
+        private void setCooldownState(Label label, boolean ready, float remaining, String readyKey, boolean automatic) {
             if (ready) {
                 setReady(label, true, readyKey);
                 return;
             }
+
             label.setColor(Color.WHITE);
             String messageKey = automatic ? "battle.auto_cooldown" : "battle.cooldown_seconds";
             label.setText(context.i18n.text(messageKey, String.format("%.1f", remaining)));
@@ -389,12 +338,15 @@ public final class BattleHud implements Disposable {
                 setReady(label, true, readyKey);
                 return;
             }
+
             label.setColor(Color.WHITE);
             label.setText(context.i18n.text("battle.percent", Math.round(points)));
         }
     }
 
-    /** 訓練中の計測値と戦闘計算上の実効値を、左半面へ常時表示するパネル。 */
+    /**
+     * 訓練中の計測値と戦闘計算上の実効値を、左半面へ常時表示するパネル。
+     */
     private final class TrainingDebugHud {
         private final Table root = new Table();
         private final Label content = new Label("", context.skin);
@@ -418,41 +370,40 @@ public final class BattleHud implements Disposable {
             panel.pad(12);
             panel.add(heading).growX().left().padBottom(8).row();
             panel.add(scroll).grow();
-            root.add(panel)
-                    .width(Value.percentWidth(.5f, root))
-                    .growY();
+
+            root.add(panel).width(Value.percentWidth(.5f, root)).growY();
             root.add().expandX().fillX();
         }
 
         private void update(BattleController battle) {
             StringBuilder text = new StringBuilder();
+
             appendDamage(text, battle.trainingStatistics());
             appendFields(text, battle);
             appendPassives(text, battle);
             appendCharacter(text, battle, PlayerId.ONE, "training.debug.self_title");
             appendCharacter(text, battle, PlayerId.TWO, "training.debug.dummy_title");
             text.append('\n').append(context.i18n.text("training.controls"));
+
             content.setText(text);
         }
 
         private void appendDamage(StringBuilder text, TrainingStatistics statistics) {
-            text.append(context.i18n.text(
-                    "training.debug.damage",
-                    format1(statistics.lastDamage()),
-                    format1(statistics.damage()),
-                    statistics.hits(),
-                    format1(statistics.dps()))).append("\n\n");
+            text.append(context.i18n.text("training.debug.damage", format1(statistics.lastDamage()), format1(statistics.damage()), statistics.hits(), format1(statistics.dps()))).append("\n\n");
         }
 
         private void appendFields(StringBuilder text, BattleController battle) {
             text.append(context.i18n.text("training.debug.field_title")).append('\n');
+
             if (battle.fieldEffectIds().isEmpty()) {
                 text.append(context.i18n.text("training.debug.none"));
+
             } else {
                 for (String id : battle.fieldEffectIds()) {
-                    text.append("• ")
-                            .append(context.i18n.text("field." + id));
+
+                    text.append("• ").append(context.i18n.text("field." + id));
                     String detailKey = "field.description." + id;
+
                     if (context.i18n.contains(detailKey)) {
                         text.append(" — ").append(context.i18n.text(detailKey));
                     }
@@ -466,37 +417,33 @@ public final class BattleHud implements Disposable {
             CharacterRuntime player = battle.player(PlayerId.ONE);
             text.append(context.i18n.text("training.debug.passive_title")).append('\n');
             String[] passiveIds = player.definition.equippedPassiveIds();
+
             if (passiveIds.length == 0) {
                 text.append(context.i18n.text("training.debug.none")).append('\n');
             }
+
             for (String passiveId : passiveIds) {
                 CharacterDefinition source = passiveSource(passiveId);
+
                 String nameKey = source == null ? null : "ability." + source.id + ".passive.name";
                 String detailKey = source == null ? null : "guide.passive_effect." + source.id;
-                String name = nameKey != null && context.i18n.contains(nameKey)
-                        ? context.i18n.text(nameKey)
-                        : passiveId;
+                String name = nameKey != null && context.i18n.contains(nameKey) ? context.i18n.text(nameKey) : passiveId;
+
                 text.append("• ").append(name);
                 if (detailKey != null && context.i18n.contains(detailKey)) {
                     text.append(" — ").append(context.i18n.text(detailKey));
                 }
+
                 text.append('\n');
             }
             CharacterDebugSnapshot snapshot = battle.debugSnapshot(PlayerId.ONE);
-            text.append(context.i18n.text(
-                    "training.debug.passive_multipliers",
-                    format2(snapshot.effectiveAttackMultiplier()),
-                    format2(snapshot.incomingDamageMultiplier()),
-                    format2(snapshot.effectiveHitboxMultiplier()),
-                    format2(snapshot.skillCooldownMultiplier()),
-                    format2(snapshot.ultimateGainMultiplier()),
-                    format2(snapshot.stunMultiplier()),
-                    format2(snapshot.ultimateDamageMultiplier()))).append("\n\n");
+            text.append(context.i18n.text("training.debug.passive_multipliers", format2(snapshot.effectiveAttackMultiplier()), format2(snapshot.incomingDamageMultiplier()), format2(snapshot.effectiveHitboxMultiplier()), format2(snapshot.skillCooldownMultiplier()), format2(snapshot.ultimateGainMultiplier()), format2(snapshot.stunMultiplier()), format2(snapshot.ultimateDamageMultiplier()))).append("\n\n");
         }
 
         private CharacterDefinition passiveSource(String passiveId) {
             for (CharacterDefinition definition : context.characters.all()) {
                 for (String equippedId : definition.equippedPassiveIds()) {
+
                     if (passiveId.equals(equippedId)) {
                         return definition;
                     }
@@ -505,45 +452,12 @@ public final class BattleHud implements Disposable {
             return null;
         }
 
-        private void appendCharacter(
-                StringBuilder text,
-                BattleController battle,
-                PlayerId playerId,
-                String headingKey) {
+        private void appendCharacter(StringBuilder text, BattleController battle, PlayerId playerId, String headingKey) {
             CharacterDebugSnapshot value = battle.debugSnapshot(playerId);
+
             text.append(context.i18n.text(headingKey)).append('\n');
-            text.append(context.i18n.text(
-                    "training.debug.character_stats",
-                    value.characterId(),
-                    format1(value.hp()),
-                    format1(value.maximumHp()),
-                    format1(value.missingHp()),
-                    flag(value.alive()),
-                    flag(value.awakened()),
-                    flag(value.zeroDefense()),
-                    format2(value.baseAttack()),
-                    format2(value.effectiveAttackMultiplier()),
-                    format2(value.baseMoveSpeed()),
-                    format2(value.effectiveMoveSpeed()),
-                    format2(value.incomingDamageMultiplier()),
-                    format2(value.collisionRadius()),
-                    format2(value.effectiveHitboxMultiplier()),
-                    format1(value.skillCooldown()),
-                    Math.round(value.skillChargeRatio() * 100),
-                    value.skillStocks(),
-                    value.maximumSkillStocks(),
-                    Math.round(value.ultimatePoints()),
-                    format1(value.totalDamage()),
-                    format1(value.stunRemaining()),
-                    flag(value.movementLocked()),
-                    format1(value.positionX()),
-                    format1(value.positionY()),
-                    format1(value.positionZ()),
-                    format2(value.facingX()),
-                    format2(value.facingZ()),
-                    flag(value.criticalEnabled()),
-                    format1(value.criticalRate() * 100),
-                    format2(value.criticalDamageMultiplier()))).append('\n');
+            text.append(context.i18n.text("training.debug.character_stats", value.characterId(), format1(value.hp()), format1(value.maximumHp()), format1(value.missingHp()), flag(value.alive()), flag(value.awakened()), flag(value.zeroDefense()), format2(value.baseAttack()), format2(value.effectiveAttackMultiplier()), format2(value.baseMoveSpeed()), format2(value.effectiveMoveSpeed()), format2(value.incomingDamageMultiplier()), format2(value.collisionRadius()), format2(value.effectiveHitboxMultiplier()), format1(value.skillCooldown()), Math.round(value.skillChargeRatio() * 100), value.skillStocks(), value.maximumSkillStocks(), Math.round(value.ultimatePoints()), format1(value.totalDamage()), format1(value.stunRemaining()), flag(value.movementLocked()), format1(value.positionX()), format1(value.positionY()), format1(value.positionZ()), format2(value.facingX()), format2(value.facingZ()), flag(value.criticalEnabled()), format1(value.criticalRate() * 100), format2(value.criticalDamageMultiplier()))).append('\n');
+
             appendStatuses(text, battle.player(playerId));
             text.append('\n');
         }
@@ -551,19 +465,14 @@ public final class BattleHud implements Disposable {
         private void appendStatuses(StringBuilder text, CharacterRuntime player) {
             text.append(context.i18n.text("training.debug.status_title")).append(':').append('\n');
             List<StatusEffect> effects = player.statuses.active();
+
             if (effects.isEmpty()) {
                 text.append("• ").append(context.i18n.text("training.debug.none")).append('\n');
                 return;
             }
+
             for (StatusEffect effect : effects) {
-                text.append("• ").append(context.i18n.text(
-                        "training.debug.status_entry",
-                        effect.id,
-                        effect.type.name(),
-                        format2(effect.magnitude),
-                        effect.stacks,
-                        format1(effect.remaining),
-                        effect.source.label())).append('\n');
+                text.append("• ").append(context.i18n.text("training.debug.status_entry", effect.id, effect.type.name(), format2(effect.magnitude), effect.stacks, format1(effect.remaining), effect.source.label())).append('\n');
             }
         }
 
@@ -573,12 +482,12 @@ public final class BattleHud implements Disposable {
     }
 
     private ContinuousImageGauge gauge(String fillDrawableName) {
-        return new ContinuousImageGauge(
-                context.skin.newDrawable("gauge-empty"),
-                context.skin.newDrawable(fillDrawableName));
+        return new ContinuousImageGauge(context.skin.newDrawable("gauge-empty"), context.skin.newDrawable(fillDrawableName));
     }
 
-    /** 背景画像へ塗り画像を重ね、割合に応じて塗り画像の横幅だけを変える連続矩形ゲージ。 */
+    /**
+     * 背景画像へ塗り画像を重ね、割合に応じて塗り画像の横幅だけを変える連続矩形ゲージ。
+     */
     private static final class ContinuousImageGauge extends Widget {
         private final Drawable background;
         private final Drawable fill;
@@ -599,10 +508,13 @@ public final class BattleHud implements Disposable {
             validate();
             Color color = getColor();
             batch.setColor(color.r, color.g, color.b, color.a * parentAlpha);
+
             background.draw(batch, getX(), getY(), getWidth(), getHeight());
+
             if (value > 0f) {
                 fill.draw(batch, getX(), getY(), getWidth() * value, getHeight());
             }
+
             batch.setColor(Color.WHITE);
         }
     }
@@ -613,16 +525,20 @@ public final class BattleHud implements Disposable {
 
     private String statusBadges(CharacterRuntime player) {
         List<StatusEffect> activeEffects = player.statuses.active();
+
         if (activeEffects.isEmpty()) {
             return "";
         }
+
         StringBuilder value = new StringBuilder("[");
+
         for (StatusEffect effect : activeEffects) {
             if (value.length() > 1) {
                 value.append(' ');
             }
             value.append(effect.type.name());
         }
+
         return value.append(']').toString();
     }
 

@@ -3,7 +3,9 @@ package jp.takoa.mojibattle.domain.combat;
 import com.badlogic.gdx.math.Vector3;
 import jp.takoa.mojibattle.domain.PlayerId;
 
-/** 寿司弾幕の発射回数と発射間隔、および各弾へ渡す攻撃設定を保持する。 */
+/**
+ * 寿司弾幕の発射回数と発射間隔、および各弾へ渡す攻撃設定を保持する。
+ */
 public final class SushiBarrage implements CombatObject {
     public final PlayerId owner;
     public final int count;
@@ -13,22 +15,12 @@ public final class SushiBarrage implements CombatObject {
     public final float lifetime;
     public final float radius;
     public final String texture;
-    public final int effectIndex;
+    public final String effectId;
     public final boolean ignoreDefense;
     private int fired;
     private float timer;
 
-    public SushiBarrage(
-            PlayerId owner,
-            int count,
-            float interval,
-            float damage,
-            float speed,
-            float lifetime,
-            float radius,
-            String texture,
-            int effectIndex,
-            boolean ignoreDefense) {
+    public SushiBarrage(PlayerId owner, int count, float interval, float damage, float speed, float lifetime, float radius, String texture, String effectId, boolean ignoreDefense) {
         this.owner = owner;
         this.count = count;
         this.interval = interval;
@@ -37,7 +29,7 @@ public final class SushiBarrage implements CombatObject {
         this.lifetime = lifetime;
         this.radius = radius;
         this.texture = texture;
-        this.effectIndex = effectIndex;
+        this.effectId = effectId;
         this.ignoreDefense = ignoreDefense;
     }
 
@@ -46,13 +38,17 @@ public final class SushiBarrage implements CombatObject {
         timer -= delta;
     }
 
-    /** @return 次の弾を発射すべき場合は {@code true} */
+    /**
+     * @return 次の弾を発射すべき場合は {@code true}
+     */
     public boolean takeShot() {
         if (fired >= count || timer > 0) {
             return false;
         }
+
         fired++;
         timer += interval;
+
         return true;
     }
 

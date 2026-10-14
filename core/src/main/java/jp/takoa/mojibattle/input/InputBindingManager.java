@@ -18,6 +18,9 @@ import java.util.Set;
  */
 public final class InputBindingManager extends InputAdapter {
 
+    /**
+     * 1つの物理キーに割り当てられたプレイヤーと論理操作。
+     */
     private record Binding(PlayerId player, PlayerAction action) {
     }
 
@@ -25,8 +28,8 @@ public final class InputBindingManager extends InputAdapter {
     private final Set<Integer> held = new HashSet<>();
     private final Set<Integer> pressed = new HashSet<>();
     private final EnumMap<PlayerId, EnumMap<PlayerAction, Integer>> reverse = new EnumMap<>(PlayerId.class);
-    private final int pauseKey;
 
+    private final int pauseKey;
     private boolean pausePressed;
 
     public InputBindingManager(ControlConfig config) {

@@ -12,6 +12,7 @@ import jp.takoa.mojibattle.domain.CharacterRuntime;
 import jp.takoa.mojibattle.domain.PlayerId;
 import jp.takoa.mojibattle.domain.support.SupportCharacterDefinition;
 import jp.takoa.mojibattle.domain.ability.AbilityConfigs;
+import jp.takoa.mojibattle.registry.CombatEffectDefinition;
 
 import java.util.List;
 import java.util.EnumMap;
@@ -23,8 +24,8 @@ public final class SplitScreenRenderer implements Disposable {
     private final ArenaRenderer arena;
     private final EnumMap<PlayerId, PlayerCameraController> cameras = new EnumMap<>(PlayerId.class);
 
-    public SplitScreenRenderer(BattleConfig battle, GraphicsConfig graphics, List<CharacterDefinition> characters, List<List<SupportCharacterDefinition>> supports, List<AbilityConfigs.ProjectileSkill> skills, List<AbilityConfigs.AreaUltimate> ultimates, String awakeningTexturePath) {
-        arena = new ArenaRenderer(battle, characters, supports, skills, ultimates, awakeningTexturePath);
+    public SplitScreenRenderer(BattleConfig battle, GraphicsConfig graphics, List<CharacterDefinition> characters, List<List<SupportCharacterDefinition>> supports, List<AbilityConfigs.ProjectileSkill> skills, List<AbilityConfigs.AreaUltimate> ultimates, String awakeningTexturePath, Iterable<CombatEffectDefinition> effects) {
+        arena = new ArenaRenderer(battle, characters, supports, skills, ultimates, awakeningTexturePath, effects);
 
         for (int index = 0; index < characters.size(); index++) {
             cameras.put(PlayerId.values()[index], new PlayerCameraController(graphics));
@@ -43,20 +44,16 @@ public final class SplitScreenRenderer implements Disposable {
 
         if (battle.mode() == BattleMode.TRAINING) {
             int rightX = width / 2;
-            renderPlayer(
-                    PlayerId.ONE,
-                    rightX,
-                    0,
-                    width - rightX,
-                    height,
-                    delta,
-                    battle);
+
+            renderPlayer(PlayerId.ONE, rightX, 0, width - rightX, height, delta, battle);
             Gdx.gl.glDisable(GL20.GL_SCISSOR_TEST);
+
             return;
         }
 
         if (ids.size() == 2) {
             int left = width / 2;
+
             renderPlayer(ids.get(0), 0, 0, left, height, delta, battle);
             renderPlayer(ids.get(1), left, 0, width - left, height, delta, battle);
 

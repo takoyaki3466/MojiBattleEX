@@ -3,7 +3,9 @@ package jp.takoa.mojibattle.domain.combat;
 import com.badlogic.gdx.math.Vector3;
 import jp.takoa.mojibattle.domain.PlayerId;
 
-/** 「㍻」が定期配置し、必殺技で起爆する札束オブジェクト。 */
+/**
+ * 「㍻」が定期配置し、必殺技で起爆する札束オブジェクト。
+ */
 public final class CashBundle extends PositionedCombatObject {
     public final PlayerId owner;
     public final String texturePath;

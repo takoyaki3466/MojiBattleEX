@@ -13,7 +13,7 @@ java {
 }
 
 dependencies {
-    implementation(project(":core"))
+    implementation(project(":item"))
     implementation("com.badlogicgames.gdx:gdx-backend-lwjgl3:${property("gdxVersion")}")
     runtimeOnly("com.badlogicgames.gdx:gdx-platform:${property("gdxVersion")}:natives-desktop")
     runtimeOnly("com.badlogicgames.gdx:gdx-freetype-platform:${property("gdxVersion")}:natives-desktop")

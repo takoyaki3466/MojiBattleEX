@@ -94,6 +94,10 @@ public final class CustomCharacterStore {
         }
     }
 
+    /**
+     * 外部保存領域から現行バージョンの文書だけを読み込む。
+     * 読込失敗は起動を中断せず、全枠を破棄して画面表示用のエラーメッセージへ保持する。
+     */
     private void load() {
         FileHandle file = Gdx.files.external(SAVE_PATH);
 
@@ -122,6 +126,10 @@ public final class CustomCharacterStore {
         }
     }
 
+    /**
+     * 保存枠、バージョン、種別、外観、および選択されたAbility IDの組合せを検証する。
+     * メインと補助では許可される構成要素と上限が異なる。
+     */
     private void validate(CustomCharacterData data) {
         if (data == null || data.slot < 1 || data.slot > config.customEditor.maximumSlots) {
             fail("Invalid slot");
@@ -164,7 +172,8 @@ public final class CustomCharacterStore {
     }
 
     /**
-     * 保存データと選択された外観を合成し、メインキャラクター定義を生成する。
+     * 保存データと選択された外観を合成し、メインキャラクター定義を新規生成する。
+     * 外観の描画情報は共有するが、返却する定義自体は組込み定義とは別インスタンスである。
      */
     public CharacterDefinition createMain(CustomCharacterData data) {
         CharacterDefinition appearance = requireMain(data.appearanceId);
@@ -198,6 +207,9 @@ public final class CustomCharacterStore {
 
     /**
      * 保存データと選択された外観を合成し、補助キャラクター定義を生成する。
+     */
+    /**
+     * 保存データの外観と補助Ability構成を合成した、新しい補助キャラクター定義を生成する。
      */
     public SupportCharacterDefinition createSupport(CustomCharacterData data) {
         SupportCharacterDefinition appearance = requireSupport(data.appearanceId);

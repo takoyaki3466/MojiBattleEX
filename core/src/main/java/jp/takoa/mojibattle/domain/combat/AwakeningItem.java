@@ -2,7 +2,9 @@ package jp.takoa.mojibattle.domain.combat;
 
 import com.badlogic.gdx.math.Vector3;
 
-/** 戦場に出現し、プレイヤーが取得するまで位置と描画情報を保持する覚醒アイテム。 */
+/**
+ * 戦場に出現し、プレイヤーが取得するまで位置と描画情報を保持する覚醒アイテム。
+ */
 public final class AwakeningItem extends PositionedCombatObject {
     private boolean consumed;
     public final String texturePath;
@@ -23,7 +25,9 @@ public final class AwakeningItem extends PositionedCombatObject {
         return consumed;
     }
 
-    /** 取得済みとして印を付け、次の戦場更新で除去可能にする。 */
+    /**
+     * 取得済みとして印を付け、次の戦場更新で除去可能にする。
+     */
     public void consume() {
         consumed = true;
     }

@@ -1,12 +1,14 @@
 package jp.takoa.mojibattle.domain;
 
 import java.util.Collection;
-import java.util.LinkedHashMap;
-import java.util.Map;
 
-/** メインキャラクター定義をID順序を維持して登録・検索するレジストリ。 */
+import jp.takoa.mojibattle.registry.Registry;
+
+/**
+ * メインキャラクター定義をID順序を維持して登録・検索するレジストリ。
+ */
 public final class CharacterRegistry {
-    private final Map<String, CharacterDefinition> definitions = new LinkedHashMap<>();
+    private final Registry<CharacterDefinition> definitions = new Registry<>("main character", value -> value.id);
 
     /**
      * 定義を登録する。
@@ -18,9 +20,7 @@ public final class CharacterRegistry {
         if (definition == null || definition.id == null || definition.id.isBlank()) {
             throw new IllegalArgumentException("Character ID is required");
         }
-        if (definitions.putIfAbsent(definition.id, definition) != null) {
-            throw new IllegalArgumentException("Duplicate character ID: " + definition.id);
-        }
+        definitions.register(definition);
     }
 
     /**
@@ -31,14 +31,12 @@ public final class CharacterRegistry {
      * @throws IllegalArgumentException IDが登録されていない場合
      */
     public CharacterDefinition require(String id) {
-        CharacterDefinition result = definitions.get(id);
-        if (result == null) {
-            throw new IllegalArgumentException("Unknown character: " + id);
-        }
-        return result;
+        return definitions.require(id);
     }
 
-    /** @return 登録順を維持した全定義のビュー */
+    /**
+     * @return 登録順を維持した全定義のビュー
+     */
     public Collection<CharacterDefinition> all() {
         return definitions.values();
     }
@@ -49,8 +47,8 @@ public final class CharacterRegistry {
      * @param definition 置換後のカスタム定義
      */
     public void replaceCustom(CharacterDefinition definition) {
-        definitions.values().removeIf(value -> value.custom && value.customSlot == definition.customSlot);
-        definitions.put(definition.id, definition);
+        definitions.removeIf(value -> value.custom && value.customSlot == definition.customSlot);
+        definitions.replace(definition.id, definition);
     }
 
     /**
@@ -59,6 +57,6 @@ public final class CharacterRegistry {
      * @param slot 保存枠番号
      */
     public void removeCustomSlot(int slot) {
-        definitions.values().removeIf(value -> value.custom && value.customSlot == slot);
+        definitions.removeIf(value -> value.custom && value.customSlot == slot);
     }
 }

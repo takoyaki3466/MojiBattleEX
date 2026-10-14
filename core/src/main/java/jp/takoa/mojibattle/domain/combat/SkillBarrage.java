@@ -3,7 +3,9 @@ package jp.takoa.mojibattle.domain.combat;
 import com.badlogic.gdx.math.Vector3;
 import jp.takoa.mojibattle.domain.PlayerId;
 
-/** 指定回数、一定間隔で同じスキルを発射する必殺技用のタイマーオブジェクト。 */
+/**
+ * 指定回数、一定間隔で同じスキルを発射する必殺技用のタイマーオブジェクト。
+ */
 public final class SkillBarrage extends PositionedCombatObject {
     public final PlayerId owner;
     public final String skillId;
@@ -34,7 +36,9 @@ public final class SkillBarrage extends PositionedCombatObject {
         }
     }
 
-    /** @return 未処理の発射タイミングがあった場合は {@code true} */
+    /**
+     * @return 未処理の発射タイミングがあった場合は {@code true}
+     */
     public boolean takePulse() {
         boolean value = pulse;
         pulse = false;

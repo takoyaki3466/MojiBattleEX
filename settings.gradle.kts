@@ -1,2 +1,2 @@
 rootProject.name = "MojiBattleEX"
-include("core", "lwjgl3")
+include("core", "item", "lwjgl3")

@@ -1,12 +1,14 @@
 package jp.takoa.mojibattle.domain.support;
 
 import java.util.Collection;
-import java.util.LinkedHashMap;
-import java.util.Map;
 
-/** 補助キャラクター定義をID順序を維持して登録・検索するレジストリ。 */
+import jp.takoa.mojibattle.registry.Registry;
+
+/**
+ * 補助キャラクター定義をID順序を維持して登録・検索するレジストリ。
+ */
 public final class SupportRegistry {
-    private final Map<String, SupportCharacterDefinition> values = new LinkedHashMap<>();
+    private final Registry<SupportCharacterDefinition> values = new Registry<>("support character", value -> value.id);
 
     /**
      * 定義を登録する。
@@ -15,9 +17,7 @@ public final class SupportRegistry {
      * @throws IllegalArgumentException 同じIDが既に登録済みの場合
      */
     public void register(SupportCharacterDefinition value) {
-        if (values.putIfAbsent(value.id, value) != null) {
-            throw new IllegalArgumentException("Duplicate support: " + value.id);
-        }
+        values.register(value);
     }
 
     /**
@@ -28,26 +28,28 @@ public final class SupportRegistry {
      * @throws IllegalArgumentException IDが登録されていない場合
      */
     public SupportCharacterDefinition require(String id) {
-        SupportCharacterDefinition value = values.get(id);
-        if (value == null) {
-            throw new IllegalArgumentException("Unknown support: " + id);
-        }
-        return value;
+        return values.require(id);
     }
 
-    /** @return 登録順を維持した全定義のビュー */
+    /**
+     * @return 登録順を維持した全定義のビュー
+     */
     public Collection<SupportCharacterDefinition> all() {
         return values.values();
     }
 
-    /** 同じ保存枠のカスタム定義を新しい定義へ置き換える。 */
+    /**
+     * 同じ保存枠のカスタム定義を新しい定義へ置き換える。
+     */
     public void replaceCustom(SupportCharacterDefinition definition) {
-        values.values().removeIf(value -> value.custom && value.customSlot == definition.customSlot);
-        values.put(definition.id, definition);
+        values.removeIf(value -> value.custom && value.customSlot == definition.customSlot);
+        values.replace(definition.id, definition);
     }
 
-    /** 指定した保存枠に由来するカスタム定義を削除する。 */
+    /**
+     * 指定した保存枠に由来するカスタム定義を削除する。
+     */
     public void removeCustomSlot(int slot) {
-        values.values().removeIf(value -> value.custom && value.customSlot == slot);
+        values.removeIf(value -> value.custom && value.customSlot == slot);
     }
 }

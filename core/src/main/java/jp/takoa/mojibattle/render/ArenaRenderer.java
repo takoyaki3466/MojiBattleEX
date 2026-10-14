@@ -37,6 +37,8 @@ import jp.takoa.mojibattle.domain.combat.VisualEffect;
 import jp.takoa.mojibattle.domain.support.SupportCharacterDefinition;
 import jp.takoa.mojibattle.domain.support.SupportCharacterRuntime;
 import jp.takoa.mojibattle.domain.ability.AbilityConfigs;
+import jp.takoa.mojibattle.registry.CombatEffectDefinition;
+import jp.takoa.mojibattle.registry.EffectIds;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -59,7 +61,7 @@ public final class ArenaRenderer implements Disposable {
 
     private final Map<String, ModelInstance> projectileGlyphs = new HashMap<>();
     private final Map<String, ModelInstance> projectileOutlines = new HashMap<>();
-    private final Map<Integer, ModelInstance> effectModels = new HashMap<>();
+    private final Map<String, ModelInstance> effectModels = new HashMap<>();
     private final Map<String, ModelInstance> objectModels = new HashMap<>();
 
     private final Vector3 tempPosition = new Vector3();
@@ -76,7 +78,7 @@ public final class ArenaRenderer implements Disposable {
 
     private float animationTime;
 
-    public ArenaRenderer(BattleConfig config, List<CharacterDefinition> characterDefinitions, List<List<SupportCharacterDefinition>> supportDefinitions, List<AbilityConfigs.ProjectileSkill> skills, List<AbilityConfigs.AreaUltimate> ultimates, String awakeningTexturePath) {
+    public ArenaRenderer(BattleConfig config, List<CharacterDefinition> characterDefinitions, List<List<SupportCharacterDefinition>> supportDefinitions, List<AbilityConfigs.ProjectileSkill> skills, List<AbilityConfigs.AreaUltimate> ultimates, String awakeningTexturePath, Iterable<CombatEffectDefinition> effects) {
         environment.set(new ColorAttribute(ColorAttribute.AmbientLight, 0.95f, 0.97f, 1f, 1));
 
         ModelBuilder modelBuilder = new ModelBuilder();
@@ -133,12 +135,7 @@ public final class ArenaRenderer implements Disposable {
             List<ModelInstance> modelsForPlayer = new ArrayList<>();
             for (SupportCharacterDefinition support : supportDefinitions.get(index)) {
                 if (support != null) {
-                    modelsForPlayer.add(texturedRect(
-                            modelBuilder,
-                            texture(support.glyphTexture),
-                            1.2f,
-                            1.8f,
-                            playerColors[index]));
+                    modelsForPlayer.add(texturedRect(modelBuilder, texture(support.glyphTexture), 1.2f, 1.8f, playerColors[index]));
                 }
             }
             supportModels.put(id, modelsForPlayer);
@@ -149,7 +146,7 @@ public final class ArenaRenderer implements Disposable {
         Color[] projectileColors = {new Color(1, 0.78f, 0.2f, 1), new Color(1, 0.55f, 0.15f, 1), new Color(1, 0.88f, 0.3f, 1), new Color(1, 0.65f, 0.1f, 1)};
         int colorIndex = 0;
 
-        for (AbilityConfigs.ProjectileSkill skill : skills)
+        for (AbilityConfigs.ProjectileSkill skill : skills) {
             for (String texturePath : skill.textures) {
                 if (!projectileGlyphs.containsKey(texturePath)) {
                     Texture glyphTexture = texture(texturePath);
@@ -158,6 +155,7 @@ public final class ArenaRenderer implements Disposable {
                     objectModels.putIfAbsent(texturePath, new ModelInstance(projectileGlyphs.get(texturePath).model));
                 }
             }
+        }
         for (List<SupportCharacterDefinition> playerSupportDefinitions : supportDefinitions) {
             for (SupportCharacterDefinition supportDefinition : playerSupportDefinitions) {
                 if (supportDefinition == null) {
@@ -173,8 +171,8 @@ public final class ArenaRenderer implements Disposable {
                 }
             }
         }
-        for (int i = 0; i < 16; i++) {
-            effectModels.put(i, effectRect(modelBuilder, texture("vfx/effect-%02d.png".formatted(i))));
+        for (CombatEffectDefinition effect : effects) {
+            effectModels.put(effect.id(), effectRect(modelBuilder, texture(effect.texturePath())));
         }
 
         for (AbilityConfigs.AreaUltimate ultimate : ultimates) {
@@ -200,14 +198,7 @@ public final class ArenaRenderer implements Disposable {
             return;
         }
         Texture objectTexture = texture(texturePath);
-        objectModels.put(
-                texturePath,
-                texturedRect(
-                        builder,
-                        objectTexture,
-                        Math.max(.5f, (float) objectTexture.getWidth() / objectTexture.getHeight()),
-                        1f,
-                        Color.WHITE));
+        objectModels.put(texturePath, texturedRect(builder, objectTexture, Math.max(.5f, (float) objectTexture.getWidth() / objectTexture.getHeight()), 1f, Color.WHITE));
     }
 
     private static Material material(Color color) {
@@ -261,7 +252,7 @@ public final class ArenaRenderer implements Disposable {
             batch.render(wall, environment);
         }
 
-        for (PlayerId id : battle.playerIds())
+        for (PlayerId id : battle.playerIds()) {
             if (battle.player(id).isAlive()) {
                 renderCharacter(playerModels.get(id), battle.player(id), camera);
                 List<SupportCharacterRuntime> supports = battle.supports(id);
@@ -270,12 +261,13 @@ public final class ArenaRenderer implements Disposable {
                     renderSupport(models.get(supportIndex), supports.get(supportIndex), camera);
                 }
             }
+        }
         for (CombatObject object : battle.objects()) {
             if (object instanceof Projectile p) {
                 float phase = animationTime * 13f + p.attackId * .73f;
                 float pulse = 1.15f + MathUtils.sin(phase) * .28f;
 
-                ModelInstance aura = effectModels.get(p.effectIndex);
+                ModelInstance aura = effectModels.get(p.effectId);
                 billboard(aura, p.position(), camera, pulse * 4.1f);
                 aura.transform.rotate(Vector3.Z, animationTime * 260f + p.attackId * 19f);
                 batch.render(aura, environment);
@@ -314,7 +306,7 @@ public final class ArenaRenderer implements Disposable {
                 }
                 float warningPulse = 1f + MathUtils.sin(animationTime * 9f) * .12f;
 
-                ModelInstance warning = effectModels.get(strike.warningEffectIndex);
+                ModelInstance warning = effectModels.get(strike.warningEffectId);
                 warning.transform.setToTranslation(strike.position().x, .04f, strike.position().z).rotate(Vector3.Y, animationTime * 95f).rotate(Vector3.X, -90).scale(strike.radius * 5f * warningPulse, strike.radius * 5f * warningPulse, 1);
                 batch.render(warning, environment);
 
@@ -336,7 +328,7 @@ public final class ArenaRenderer implements Disposable {
                 if (strike.phase() == UltimateStrike.Phase.IMPACT) {
                     float impactScale = strike.radius * (2.8f + MathUtils.sin(animationTime * 18f) * .45f);
 
-                    ModelInstance impact = effectModels.get(strike.impactEffectIndex);
+                    ModelInstance impact = effectModels.get(strike.impactEffectId);
                     billboard(impact, tempPosition.set(strike.position()).add(0, 2f, 0), camera, impactScale);
                     impact.transform.rotate(Vector3.Z, animationTime * 310f);
                     batch.render(impact, environment);
@@ -346,22 +338,22 @@ public final class ArenaRenderer implements Disposable {
                     batch.render(impact, environment);
                 }
             } else if (object instanceof VisualEffect effect) {
-                ModelInstance visual = effect.texturePath == null ? effectModels.get(effect.effectIndex) : objectModels.get(effect.texturePath);
+                ModelInstance visual = effect.texturePath == null ? effectModels.get(effect.effectId) : objectModels.get(effect.texturePath);
 
                 if (visual == null) {
-                    visual = effectModels.get(effect.effectIndex);
+                    visual = effectModels.get(effect.effectId);
                 }
 
                 if (visual == null) {
                     continue;
                 }
 
-                float pulse = 1f + MathUtils.sin(animationTime * 16f + effect.effectIndex) * .14f;
+                float pulse = 1f + MathUtils.sin(animationTime * 16f + effect.effectId.hashCode()) * .14f;
                 float scale = effect.scale() * pulse;
 
                 tempPosition.set(effect.position()).add(0, 1f + effect.progress() * .6f, 0);
                 billboard(visual, tempPosition, camera, scale);
-                visual.transform.rotate(Vector3.Z, animationTime * 280f + effect.effectIndex * 23f);
+                visual.transform.rotate(Vector3.Z, animationTime * 280f + effect.effectId.hashCode() % 360);
                 batch.render(visual, environment);
 
                 billboard(visual, tempPosition, camera, scale * .58f);
@@ -404,7 +396,7 @@ public final class ArenaRenderer implements Disposable {
         batch.render(model, environment);
 
         if (runtime.awakened()) {
-            ModelInstance aura = effectModels.get(15);
+            ModelInstance aura = effectModels.get(EffectIds.FAMILY);
             tempPosition.set(runtime.position).add(0, 1.45f, 0);
             billboard(aura, tempPosition, camera, 3.8f + MathUtils.sin(animationTime * 9f) * .35f);
 
@@ -412,7 +404,7 @@ public final class ArenaRenderer implements Disposable {
             batch.render(aura, environment);
         }
         if (runtime.isStunned()) {
-            ModelInstance stun = effectModels.get(11);
+            ModelInstance stun = effectModels.get(EffectIds.VEHICLE);
             tempPosition.set(runtime.position).add(0, 3.15f + MathUtils.sin(animationTime * 8f) * .18f, 0);
             billboard(stun, tempPosition, camera, 1.25f + MathUtils.sin(animationTime * 12f) * .15f);
 
@@ -433,7 +425,7 @@ public final class ArenaRenderer implements Disposable {
         float yaw = -(float) Math.toDegrees(Math.atan2(line.direction.z, line.direction.x));
         float warningPulse = 1f + MathUtils.sin(animationTime * 14f) * .16f;
 
-        ModelInstance warning = effectModels.get(line.warningEffectIndex);
+        ModelInstance warning = effectModels.get(line.warningEffectId);
         warning.transform.setToTranslation(tempPosition).rotate(Vector3.Y, yaw).rotate(Vector3.X, -90).scale(line.length * 1.3f, line.width * 5.2f * warningPulse, 1);
         batch.render(warning, environment);
 
@@ -458,7 +450,7 @@ public final class ArenaRenderer implements Disposable {
         image.transform.rotate(Vector3.Z, MathUtils.sin(animationTime * 18f) * 5f);
         batch.render(image, environment);
 
-        ModelInstance trail = effectModels.get(car.effectIndex);
+        ModelInstance trail = effectModels.get(car.effectId);
 
         tempPosition.mulAdd(car.velocity, -.09f);
         billboard(trail, tempPosition, camera, car.radius * 4.5f);
@@ -475,22 +467,11 @@ public final class ArenaRenderer implements Disposable {
         float pulse = 1f + MathUtils.sin(animationTime * 24f) * .08f;
 
         tempPosition.set(one.position()).add(0, .16f, 0);
-        image.transform
-                .setToTranslation(tempPosition)
-                .rotate(Vector3.Y, one.angle() - 90f)
-                .rotate(Vector3.X, -90f)
-                .scale(one.length * pulse, one.length * pulse, one.length * pulse);
+        image.transform.setToTranslation(tempPosition).rotate(Vector3.Y, one.angle() - 90f).rotate(Vector3.X, -90f).scale(one.length * pulse, one.length * pulse, one.length * pulse);
         batch.render(image, environment);
 
-        ModelInstance aura = effectModels.get(one.effectIndex);
-        aura.transform
-                .setToTranslation(one.position().x, .12f, one.position().z)
-                .rotate(Vector3.Y, -one.angle() * 1.7f)
-                .rotate(Vector3.X, -90f)
-                .scale(
-                        one.length * 1.18f * pulse,
-                        one.length * 1.18f * pulse,
-                        one.length * 1.18f * pulse);
+        ModelInstance aura = effectModels.get(one.effectId);
+        aura.transform.setToTranslation(one.position().x, .12f, one.position().z).rotate(Vector3.Y, -one.angle() * 1.7f).rotate(Vector3.X, -90f).scale(one.length * 1.18f * pulse, one.length * 1.18f * pulse, one.length * 1.18f * pulse);
         batch.render(aura, environment);
     }
 
@@ -536,7 +517,11 @@ public final class ArenaRenderer implements Disposable {
     @Override
     public void dispose() {
         batch.dispose();
-        for (Model model : models) model.dispose();
-        for (Texture texture : textures) texture.dispose();
+        for (Model model : models) {
+            model.dispose();
+        }
+        for (Texture texture : textures) {
+            texture.dispose();
+        }
     }
 }

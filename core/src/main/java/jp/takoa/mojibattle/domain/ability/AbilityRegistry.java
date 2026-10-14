@@ -1,49 +1,42 @@
 package jp.takoa.mojibattle.domain.ability;
 
-import java.util.HashMap;
-import java.util.Map;
+import jp.takoa.mojibattle.registry.Registry;
 
-/** スキル、必殺技、パッシブを種別ごとのIDで登録・検索するレジストリ。 */
+/**
+ * スキル、必殺技、パッシブを種別ごとのIDで登録・検索するレジストリ。
+ */
 public final class AbilityRegistry {
-    private final Map<String, ISkill> skills = new HashMap<>();
-    private final Map<String, IUltimate> ultimates = new HashMap<>();
-    private final Map<String, IPassive> passives = new HashMap<>();
+    private final Registry<ISkill> skills = new Registry<>("skill", ISkill::id);
+    private final Registry<IUltimate> ultimates = new Registry<>("ultimate", IUltimate::id);
+    private final Registry<IPassive> passives = new Registry<>("passive", IPassive::id);
 
     public void register(ISkill value) {
-        register(skills, value);
+        skills.register(value);
     }
 
     public void register(IUltimate value) {
-        register(ultimates, value);
+        ultimates.register(value);
     }
 
     public void register(IPassive value) {
-        register(passives, value);
-    }
-
-    private static <T extends IAbility> void register(Map<String, T> values, T value) {
-        if (values.putIfAbsent(value.id(), value) != null) {
-            throw new IllegalArgumentException("Duplicate ability ID: " + value.id());
-        }
+        passives.register(value);
     }
 
     public ISkill skill(String id) {
-        return require(skills, id, "skill");
+        return skills.require(id);
     }
 
     public IUltimate ultimate(String id) {
-        return require(ultimates, id, "ultimate");
+        return ultimates.require(id);
     }
 
     public IPassive passive(String id) {
-        return require(passives, id, "passive");
+        return passives.require(id);
     }
 
-    private static <T> T require(Map<String, T> values, String id, String kind) {
-        T value = values.get(id);
-        if (value == null) {
-            throw new IllegalArgumentException("Unknown " + kind + ": " + id);
-        }
-        return value;
+    public void freeze() {
+        skills.freeze();
+        ultimates.freeze();
+        passives.freeze();
     }
 }

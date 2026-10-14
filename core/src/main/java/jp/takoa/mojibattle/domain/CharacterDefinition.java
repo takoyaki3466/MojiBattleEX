@@ -19,7 +19,10 @@ public final class CharacterDefinition {
     public String skillId;
     public String ultimateId;
     public String passiveId;
-    /** カスタムキャラクターが装備する複数のパッシブID。組込みキャラクターは {@link #passiveId} を使用する。 */
+
+    /**
+     * カスタムキャラクターが装備する複数のパッシブID。組込みキャラクターは {@link #passiveId} を使用する。
+     */
     public String[] passiveIds;
     public String glyphTexture;
     public String displayName;
@@ -30,7 +33,10 @@ public final class CharacterDefinition {
     public float criticalRate;
     public float criticalDamageMultiplier;
     public boolean criticalEnabled;
-    /** 防御系倍率と覚醒防御を適用せず、基礎防御0として扱う場合は {@code true}。 */
+
+    /**
+     * 防御系倍率と覚醒防御を適用せず、基礎防御0として扱う場合は {@code true}。
+     */
     public boolean zeroDefense;
 
     /**
@@ -42,6 +48,7 @@ public final class CharacterDefinition {
         if (passiveIds != null && passiveIds.length > 0) {
             return passiveIds;
         }
+
         return passiveId == null ? new String[0] : new String[]{passiveId};
     }
 }

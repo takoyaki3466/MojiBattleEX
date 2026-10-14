@@ -8,7 +8,9 @@ import java.text.MessageFormat;
 import java.util.HashMap;
 import java.util.Map;
 
-/** 言語別JSONを読み込み、キー参照と引数展開を提供するローカライズ辞書。 */
+/**
+ * 言語別JSONを読み込み、キー参照と引数展開を提供するローカライズ辞書。
+ */
 public final class LocalizationManager {
     private final Map<String, String> values = new HashMap<>();
 
@@ -44,7 +46,9 @@ public final class LocalizationManager {
         return values.containsKey(key);
     }
 
-    /** @return フォント生成へ渡すため、全翻訳文を連結した文字列 */
+    /**
+     * @return フォント生成へ渡すため、全翻訳文を連結した文字列
+     */
     public String allCharacters() {
         return String.join("", values.values());
     }

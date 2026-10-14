@@ -1,6 +1,8 @@
 package jp.takoa.mojibattle.domain.debug;
 
-/** トレーニング画面へ公開する、1キャラクター分の読み取り専用戦闘状態。 */
+/**
+ * トレーニング画面へ公開する、1キャラクター分の読み取り専用戦闘状態。
+ */
 public record CharacterDebugSnapshot(
         String characterId,
         float hp,

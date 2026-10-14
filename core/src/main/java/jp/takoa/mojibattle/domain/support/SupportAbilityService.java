@@ -1,281 +1,63 @@
 package jp.takoa.mojibattle.domain.support;
 
-import com.badlogic.gdx.math.Vector3;
 import jp.takoa.mojibattle.audio.BattleSoundCue;
 import jp.takoa.mojibattle.domain.BattleController;
-import jp.takoa.mojibattle.domain.CharacterRuntime;
 import jp.takoa.mojibattle.domain.PlayerTeam;
-import jp.takoa.mojibattle.domain.combat.LineStrike;
-import jp.takoa.mojibattle.domain.combat.CarHazard;
-import jp.takoa.mojibattle.domain.status.StatusEffect;
-import jp.takoa.mojibattle.domain.status.StatusType;
+import jp.takoa.mojibattle.registry.EffectIds;
+import jp.takoa.mojibattle.registry.Registry;
+import jp.takoa.mojibattle.registry.SupportAbilityImplementation;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.function.BiConsumer;
-
-/** 能力種別を処理へ対応付け、キャラクターIDに依存せず補助能力を実行するサービス。 */
+/**
+ * 登録済み補助能力を解決し、発動条件・消費・共通演出だけを制御する。
+ */
 public final class SupportAbilityService {
-    private record Context(
-            BattleController battle,
-            PlayerTeam team,
-            SupportCharacterRuntime support,
-            SupportAbilityDefinition ability) {
+    private static final String[] SKILL_EFFECTS = {EffectIds.WIND, EffectIds.KANA};
+    private static final String[] ULTIMATE_EFFECTS = {EffectIds.STAR, EffectIds.FAMILY, EffectIds.NEUTRAL, EffectIds.STOCK};
+    private final Registry<SupportAbilityImplementation> implementations;
+
+    public SupportAbilityService(Registry<SupportAbilityImplementation> implementations) {
+        this.implementations = implementations;
     }
 
-    private final Map<String, BiConsumer<Context, Boolean>> handlers = new HashMap<>();
-
-    public SupportAbilityService() {
-        handlers.put("ally_attack_up", (context, ultimate) -> applyAllyAttackUp(context));
-        handlers.put("enemy_defense_down", (context, ultimate) -> applyEnemyDefenseDown(context));
-        handlers.put("enemy_attack_down", (context, ultimate) -> applyEnemyAttackDown(context));
-        handlers.put("heal_cleanse", (context, ultimate) -> applyHealCleanse(context));
-        handlers.put("bonus_damage", (context, ultimate) -> applyBonusDamage(context));
-        handlers.put("wide_slash", (context, ultimate) -> applyWideSlash(context));
-        handlers.put("enemy_slow", (context, ultimate) -> applyEnemySlow(context));
-        handlers.put("right_teleport", (context, ultimate) -> applyRightTeleport(context));
-        handlers.put("wind_pull", (context, ultimate) -> applyWindPull(context));
-        handlers.put("global_cooldown_halve", (context, ultimate) -> applyGlobalCooldownHalve(context));
-        handlers.put("train_charge", (context, ultimate) -> applyTrainCharge(context));
-        handlers.put("gather_all", (context, ultimate) -> applyGatherAll(context));
-    }
-
-    private static void applyAllyAttackUp(Context context) {
-        context.team.main().statuses.apply(new StatusEffect(
-                context.ability.id,
-                context.team.main().playerId,
-                StatusType.ATTACK_UP,
-                1 + context.ability.magnitude,
-                context.ability.durationSeconds));
-        context.battle.emitImageEffect(
-                context.team.main().position,
-                "glyphs/t.png",
-                14,
-                8,
-                1.1f);
-    }
-
-    private static void applyEnemyDefenseDown(Context context) {
-        for (CharacterRuntime target : enemies(context)) {
-            target.statuses.apply(new StatusEffect(
-                    context.ability.id,
-                    context.team.main().playerId,
-                    StatusType.DAMAGE_TAKEN_UP,
-                    1 + context.ability.magnitude,
-                    context.ability.durationSeconds));
-            Vector3 side = new Vector3(-target.facing.z, 0, target.facing.x);
-            context.battle.emitEffect(
-                    new Vector3(target.position).mulAdd(side, 3),
-                    14,
-                    9,
-                    1.5f);
-            context.battle.emitEffect(
-                    new Vector3(target.position).mulAdd(side, -3),
-                    14,
-                    9,
-                    1.5f);
-        }
-    }
-
-    private static void applyEnemyAttackDown(Context context) {
-        for (CharacterRuntime target : enemies(context)) {
-            target.statuses.apply(new StatusEffect(
-                    context.ability.id,
-                    context.team.main().playerId,
-                    StatusType.ATTACK_DOWN,
-                    1 - context.ability.magnitude,
-                    context.ability.durationSeconds));
-            context.battle.emitImageEffect(target.position, "glyphs/zero.png", 5, 7, 1.2f);
-        }
-    }
-
-    private static void applyHealCleanse(Context context) {
-        context.team.main().heal(
-                context.team.main().definition.maxHp * context.ability.magnitude);
-        context.team.main().clearNegativeStatuses();
-        context.battle.emitImageEffect(
-                context.team.main().position,
-                "glyphs/zero.png",
-                5,
-                11,
-                1.5f);
-    }
-
-    private static void applyBonusDamage(Context context) {
-        context.team.main().statuses.apply(new StatusEffect(
-                context.ability.id,
-                context.team.main().playerId,
-                StatusType.BONUS_DAMAGE,
-                1 + context.ability.magnitude,
-                context.ability.durationSeconds));
-        context.battle.emitImageEffect(
-                context.team.main().position,
-                "glyphs/slash.png",
-                12,
-                9,
-                1.1f);
-    }
-
-    private static void applyWideSlash(Context context) {
-        context.battle.spawn(new LineStrike(
-                context.team.main().playerId,
-                context.support.position,
-                new Vector3(enemy(context).position).sub(context.support.position),
-                context.ability.range,
-                3.5f,
-                context.ability.baseDamage,
-                .25f,
-                .8f,
-                3,
-                12,
-                "objects/energy-lance.png"));
-    }
-
-    private static void applyEnemySlow(Context context) {
-        for (CharacterRuntime target : enemies(context)) {
-            target.statuses.apply(new StatusEffect(
-                    context.ability.id,
-                    context.team.main().playerId,
-                    StatusType.MOVE_DOWN,
-                    1 - context.ability.magnitude,
-                    context.ability.durationSeconds));
-            context.battle.emitEffect(target.position, 3, 6, 1);
-        }
-    }
-
-    private static void applyRightTeleport(Context context) {
-        boolean teleported = context.battle.teleportRight(
-                context.team.main().playerId,
-                context.ability.range);
-        if (teleported) {
-            context.team.main().statuses.apply(new StatusEffect(
-                    context.ability.id,
-                    context.team.main().playerId,
-                    StatusType.ATTACK_UP,
-                    1 + context.ability.magnitude,
-                    context.ability.durationSeconds));
-        } else {
-            context.support.addUltimatePoints(context.ability.pointCost);
-        }
-    }
-
-    private static void applyWindPull(Context context) {
-        for (CharacterRuntime target : enemies(context)) {
-            Vector3 direction = new Vector3(context.team.main().position).sub(target.position);
-            direction.y = 0;
-            float distance = direction.len();
-            if (distance > 0) {
-                target.position.mulAdd(
-                        direction.scl(1f / distance),
-                        Math.min(context.ability.range, Math.max(0, distance - 2f)));
-            }
-            target.applyBind(context.ability.durationSeconds);
-            context.battle.emitImageEffect(
-                    target.position,
-                    "glyphs/matsu.png",
-                    11,
-                    9,
-                    1.25f);
-        }
-    }
-
-    private static void applyGlobalCooldownHalve(Context context) {
-        context.battle.halveAllSkillCooldowns();
-        for (CharacterRuntime target : context.battle.players()) {
-            context.battle.emitImageEffect(
-                    target.position,
-                    "glyphs/matsu.png",
-                    15,
-                    10,
-                    1.5f);
-        }
-    }
-
-    private static void applyTrainCharge(Context context) {
-        float extent = context.battle.arenaHalfExtent();
-        boolean leftToRight = context.team.main().playerId.ordinal() % 2 == 0;
-        Vector3 start = new Vector3(
-                leftToRight ? -extent + .5f : extent - .5f,
-                0,
-                context.team.main().position.z);
-        context.battle.spawn(new CarHazard(
-                context.team.main().playerId,
-                start,
-                new Vector3(leftToRight ? 1 : -1, 0, 0),
-                context.ability.range,
-                2.1f,
-                context.ability.baseDamage,
-                context.ability.magnitude,
-                context.ability.durationSeconds,
-                extent,
-                "objects/commuter-train.png",
-                11));
-        context.battle.emitImageEffect(start, "objects/commuter-train.png", 11, 12f, .8f);
-    }
-
-    private static void applyGatherAll(Context context) {
-        for (CharacterRuntime target : context.battle.players()) {
-            target.position.scl(.12f);
-            target.position.y = 0;
-            context.battle.emitImageEffect(target.position, "glyphs/maki.png", 15, 10f, 1.2f);
-        }
-    }
-
-    /** 発動可能な場合に補助スキルの再使用時間を開始し、対応する効果を実行する。 */
-    public void useSkill(
-            BattleController battle,
-            PlayerTeam team,
-            SupportCharacterRuntime support) {
+    /**
+     * 補助スキルが使用可能でメインが行動可能なら、クールタイムを先に確定して実装を呼び出す。
+     */
+    public void useSkill(BattleController battle, PlayerTeam team, SupportCharacterRuntime support) {
         SupportAbilityDefinition ability = support.definition.skill;
+
         if (!support.skillReady() || team.main().isStunned()) {
             return;
         }
+
         support.startSkillCooldown(battle.supportSkillCooldown(ability.cooldownSeconds));
         execute(battle, team, support, ability, false);
     }
 
-    /** 必殺ポイントを消費できる場合に補助必殺を実行し、発動表示を要求する。 */
-    public void useUltimate(
-            BattleController battle,
-            PlayerTeam team,
-            SupportCharacterRuntime support) {
+    /**
+     * メインが行動可能かつ補助専用ゲージを消費できる場合だけ必殺を実行し、共通告知を出す。
+     */
+    public void useUltimate(BattleController battle, PlayerTeam team, SupportCharacterRuntime support) {
         SupportAbilityDefinition ability = support.definition.ultimate;
+
         if (team.main().isStunned() || !support.spendUltimate(ability.pointCost)) {
             return;
         }
+
         execute(battle, team, support, ability, true);
         battle.announceUltimate(team.main().playerId, ability.nameKey);
     }
 
-    private void execute(
-            BattleController battle,
-            PlayerTeam team,
-            SupportCharacterRuntime support,
-            SupportAbilityDefinition ability,
-            boolean ultimate) {
-        BiConsumer<Context, Boolean> handler = handlers.get(ability.type);
-        if (handler == null) {
-            throw new IllegalArgumentException("Unknown support ability: " + ability.type);
-        }
+    /**
+     * 実装IDを解決して固有処理を呼び、補助能力共通の効果音と多重リング演出を重ねる。
+     */
+    private void execute(BattleController battle, PlayerTeam team, SupportCharacterRuntime support, SupportAbilityDefinition ability, boolean ultimate) {
+        SupportAbilityImplementation implementation = implementations.require(ability.type);
         battle.emitSound(BattleSoundCue.SUPPORT);
-        handler.accept(new Context(battle, team, support, ability), ultimate);
+
+        implementation.handler().accept(new SupportAbilityContext(battle, team, support, ability), ultimate);
+
         for (int ring = 0; ring < (ultimate ? 4 : 2); ring++) {
-            battle.emitEffect(
-                    support.position,
-                    (ultimate ? 14 : 6) + ring,
-                    ultimate ? 12 - ring * 1.6f : 7 - ring,
-                    ultimate ? 1.4f : .8f);
+            battle.emitEffect(support.position, ultimate ? ULTIMATE_EFFECTS[ring] : SKILL_EFFECTS[ring], ultimate ? 12 - ring * 1.6f : 7 - ring, ultimate ? 1.4f : .8f);
         }
-    }
-
-    private static CharacterRuntime enemy(Context context) {
-        return context.battle.targetOf(context.team.main().playerId);
-    }
-
-    private static List<CharacterRuntime> enemies(Context context) {
-        return context.battle.players().stream()
-                .filter(target -> target.playerId != context.team.main().playerId && target.isAlive())
-                .toList();
     }
 }

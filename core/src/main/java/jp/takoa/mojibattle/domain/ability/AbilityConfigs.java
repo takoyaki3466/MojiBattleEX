@@ -1,13 +1,20 @@
 package jp.takoa.mojibattle.domain.ability;
 
-/** 設定可能なキャラクター能力が共有する型付き設定スキーマ群。 */
+/**
+ * 設定可能なキャラクター能力が共有する型付き設定スキーマ群。
+ */
 public final class AbilityConfigs {
     private AbilityConfigs() {
     }
 
-    /** 投射型スキルの弾、再使用時間、追加効果およびストック設定を保持するDTO。 */
+    /**
+     * 投射型スキルの弾、再使用時間、追加効果およびストック設定を保持するDTO。
+     */
     public static final class ProjectileSkill {
         public String id;
+        public String implementationId;
+        public String nameKey;
+        public String descriptionKey;
         public float cooldownSeconds;
         public float baseDamage;
         public float projectileSpeed;
@@ -49,12 +56,19 @@ public final class AbilityConfigs {
         public float[] damages;
         public float[] bindDurations;
         public int effectIndex;
+        public String activationEffectId;
+        public String projectileEffectId;
+        public String hitEffectId;
     }
 
-    /** 範囲・回復・召喚など複数方式で共有される必殺技設定DTO。 */
+    /**
+     * 範囲・回復・召喚など複数方式で共有される必殺技設定DTO。
+     */
     public static final class AreaUltimate {
         public String id;
+        public String implementationId;
         public String nameKey;
+        public String descriptionKey;
         public String dropStyle;
         public String type;
         public String objectTexture;
@@ -93,11 +107,19 @@ public final class AbilityConfigs {
         public String barrageSkillId;
         public int warningEffectIndex;
         public int impactEffectIndex;
+        public String warningEffectId;
+        public String impactEffectId;
+        public String renderEffectId;
     }
 
-    /** パッシブ種別と、戦闘計算へ供給する倍率・周期値を保持するDTO。 */
+    /**
+     * パッシブ種別と、戦闘計算へ供給する倍率・周期値を保持するDTO。
+     */
     public static final class TimedPassive {
         public String id;
+        public String implementationId;
+        public String nameKey;
+        public String descriptionKey;
         public String type;
         public float intervalSeconds;
         public float attackIncreasePerInterval;

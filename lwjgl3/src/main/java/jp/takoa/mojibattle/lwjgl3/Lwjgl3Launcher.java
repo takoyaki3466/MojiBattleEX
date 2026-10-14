@@ -4,7 +4,9 @@ import com.badlogic.gdx.backends.lwjgl3.Lwjgl3Application;
 import com.badlogic.gdx.backends.lwjgl3.Lwjgl3ApplicationConfiguration;
 import com.badlogic.gdx.utils.Json;
 import jp.takoa.mojibattle.GameApplication;
+import jp.takoa.mojibattle.GameContext;
 import jp.takoa.mojibattle.config.GraphicsConfig;
+import jp.takoa.mojibattle.item.bootstrap.GameBootstrap;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -32,7 +34,10 @@ public final class Lwjgl3Launcher {
         }
         configuration.useVsync(true);
         configuration.setForegroundFPS(120);
-        new Lwjgl3Application(new GameApplication(), configuration);
+        new Lwjgl3Application(
+                new GameApplication(() -> new GameContext(
+                        GameBootstrap.bootstrap())),
+                configuration);
     }
 
     private static GraphicsConfig readGraphicsConfig() {

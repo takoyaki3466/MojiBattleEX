@@ -1,6 +1,8 @@
 package jp.takoa.mojibattle.domain;
 
-/** 指定された試合時間の経過と残り時間を範囲内に保って管理する。 */
+/**
+ * 指定された試合時間の経過と残り時間を範囲内に保って管理する。
+ */
 public final class BattleTimer {
     private final float duration;
     private float elapsed;
@@ -13,10 +15,13 @@ public final class BattleTimer {
         if (duration <= 0) {
             throw new IllegalArgumentException("Duration must be positive");
         }
+
         this.duration = duration;
     }
 
-    /** 負数を無視し、終了時刻を超えない範囲で時間を進める。 */
+    /**
+     * 負数を無視し、終了時刻を超えない範囲で時間を進める。
+     */
     public void update(float delta) {
         elapsed = Math.min(duration, elapsed + Math.max(0, delta));
     }
@@ -33,7 +38,9 @@ public final class BattleTimer {
         return elapsed >= duration;
     }
 
-    /** 経過時間を0から試合時間までの範囲へ補正して設定する。 */
+    /**
+     * 経過時間を0から試合時間までの範囲へ補正して設定する。
+     */
     public void setElapsed(float value) {
         elapsed = Math.min(duration, Math.max(0, value));
     }
