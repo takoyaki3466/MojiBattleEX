@@ -4,6 +4,8 @@ import com.badlogic.gdx.Game;
 import jp.takoa.mojibattle.screen.ScreenManager;
 import jp.takoa.mojibattle.screen.TitleScreen;
 
+import java.util.function.Supplier;
+
 /**
  * libGDXアプリケーションのライフサイクルをゲーム固有の画面管理へ接続するエントリーポイント。
  *
@@ -11,20 +13,29 @@ import jp.takoa.mojibattle.screen.TitleScreen;
  * UIリソースを解放する。</p>
  */
 public final class GameApplication extends Game {
+    private final Supplier<GameContext> contextFactory;
     private GameContext context;
+
+    public GameApplication(Supplier<GameContext> contextFactory) {
+        this.contextFactory = contextFactory;
+    }
 
     @Override
     public void create() {
-        context = new GameContext();
+        context = contextFactory.get();
+
         ScreenManager screens = new ScreenManager(this);
         screens.show(new TitleScreen(context, screens));
     }
 
     @Override
     public void dispose() {
-        super.dispose();
-        if (context != null) {
-            context.close();
+        try {
+            super.dispose();
+        } finally {
+            if (context != null) {
+                context.close();
+            }
         }
     }
 }

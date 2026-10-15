@@ -3,7 +3,9 @@ package jp.takoa.mojibattle.domain.support;
 import com.badlogic.gdx.math.Vector3;
 import jp.takoa.mojibattle.domain.PlayerId;
 
-/** 補助キャラクターの位置、攻撃間隔、スキル再使用時間および独立した必殺ゲージを保持する。 */
+/**
+ * 補助キャラクターの位置、攻撃間隔、スキル再使用時間および独立した必殺ゲージを保持する。
+ */
 public final class SupportCharacterRuntime {
     public final PlayerId owner;
     public final SupportCharacterDefinition definition;
@@ -23,12 +25,7 @@ public final class SupportCharacterRuntime {
     public void update(float delta, float ultimateChargeMultiplier) {
         attackCooldown = Math.max(0, attackCooldown - delta);
         skillCooldown = Math.max(0, skillCooldown - delta);
-        ultimatePoints = Math.min(
-                100,
-                ultimatePoints
-                        + Math.max(0, delta)
-                        * definition.ultimateChargePerSecond
-                        * Math.max(0, ultimateChargeMultiplier));
+        ultimatePoints = Math.min(100, ultimatePoints + Math.max(0, delta) * definition.ultimateChargePerSecond * Math.max(0, ultimateChargeMultiplier));
     }
 
     public boolean attackReady() {
@@ -53,9 +50,7 @@ public final class SupportCharacterRuntime {
     }
 
     public float skillChargeRatio() {
-        return skillCooldownDuration <= 0
-                ? 1f
-                : Math.max(0, Math.min(1, 1 - skillCooldown / skillCooldownDuration));
+        return skillCooldownDuration <= 0 ? 1f : Math.max(0, Math.min(1, 1 - skillCooldown / skillCooldownDuration));
     }
 
     public void scaleSkillCooldown(float multiplier) {
@@ -78,6 +73,7 @@ public final class SupportCharacterRuntime {
         if (points < 0 || ultimatePoints < points) {
             return false;
         }
+
         ultimatePoints -= points;
         return true;
     }

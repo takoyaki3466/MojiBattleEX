@@ -2,11 +2,18 @@ package jp.takoa.mojibattle.domain.support;
 
 import jp.takoa.mojibattle.domain.CharacterType;
 
-/** 補助キャラクターの追従AI、通常攻撃、能力および外観を保持する定義DTO。 */
+/**
+ * 補助キャラクターの追従AI、通常攻撃、能力および外観を保持する定義DTO。
+ */
 public final class SupportCharacterDefinition {
     public String id;
     public String displayGlyph;
     public String nameKey;
+
+    /**
+     * 選択画面に表示する戦闘スタイルの翻訳キー。
+     */
+    public String styleKey;
     public String glyphTexture;
     public String projectileTexture;
     public CharacterType type = CharacterType.SUPPORT;
@@ -21,7 +28,10 @@ public final class SupportCharacterDefinition {
     public float criticalDamageMultiplier;
     public boolean criticalEnabled;
     public boolean curvedProjectile;
-    /** 編成したメインキャラクターを防御力0にする永続デバフ。 */
+
+    /**
+     * 編成したメインキャラクターを防御力0にする永続デバフ。
+     */
     public boolean zeroDefenseMain;
     public SupportAbilityDefinition skill;
     public SupportAbilityDefinition ultimate;

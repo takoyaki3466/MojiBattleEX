@@ -3,7 +3,9 @@ package jp.takoa.mojibattle.screen;
 import com.badlogic.gdx.Game;
 import com.badlogic.gdx.Screen;
 
-/** libGDXの現在画面を置き換え、置換前の画面を確実に破棄する。 */
+/**
+ * libGDXの現在画面を置き換え、置換前の画面を確実に破棄する。
+ */
 public final class ScreenManager {
     private final Game game;
 

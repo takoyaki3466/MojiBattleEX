@@ -3,17 +3,21 @@ package jp.takoa.mojibattle;
 import com.badlogic.gdx.scenes.scene2d.ui.Skin;
 import jp.takoa.mojibattle.audio.BattleAudio;
 import jp.takoa.mojibattle.config.ConfigManager;
+import jp.takoa.mojibattle.custom.CustomCharacterData;
 import jp.takoa.mojibattle.custom.CustomCharacterStore;
+import jp.takoa.mojibattle.domain.CharacterDefinition;
 import jp.takoa.mojibattle.domain.CharacterRegistry;
-import jp.takoa.mojibattle.domain.CharacterType;
+import jp.takoa.mojibattle.domain.ability.AbilityConfigs;
+import jp.takoa.mojibattle.domain.support.SupportCharacterDefinition;
 import jp.takoa.mojibattle.domain.support.SupportRegistry;
 import jp.takoa.mojibattle.domain.ability.AbilityRegistry;
-import jp.takoa.mojibattle.domain.ability.ConfiguredUltimateFactory;
-import jp.takoa.mojibattle.domain.ability.LongTermInvestmentPassive;
-import jp.takoa.mojibattle.domain.ability.StockRiseSkill;
 import jp.takoa.mojibattle.i18n.LocalizationManager;
 import jp.takoa.mojibattle.log.GameLog;
+import jp.takoa.mojibattle.event.EventChannels;
+import jp.takoa.mojibattle.registry.BuiltInRegistries;
+import jp.takoa.mojibattle.registry.RegistrySnapshot;
 import jp.takoa.mojibattle.ui.UiFactory;
+import jp.takoa.mojibattle.resource.ResourceManager;
 
 /**
  * 画面間で共有する設定、レジストリ、ローカライズおよびUIリソースを構築して保持する。
@@ -29,105 +33,101 @@ public final class GameContext implements AutoCloseable {
     public final SupportRegistry supports;
     public final AbilityRegistry abilities;
     public final CustomCharacterStore customCharacters;
+
     public final Skin skin;
     public final BattleAudio audio;
+    public final BuiltInRegistries registries;
+    public final EventChannels events;
+    public final ResourceManager resources;
+    private final AutoCloseable modRuntime;
 
-    /** 共有サービスを設定データから構築し、相互参照可能な状態へ初期化する。 */
-    public GameContext() {
-        config = new ConfigManager();
+    /**
+     * 共有サービスを設定データから構築し、相互参照可能な状態へ初期化する。
+     */
+    public GameContext(RegistrySnapshot bootstrap) {
+        this(bootstrap, null);
+    }
+
+    /**
+     * MOD ClassLoader等、ゲーム終了時に閉じる外部ランタイムを伴って共有サービスを構築する。
+     */
+    public GameContext(RegistrySnapshot bootstrap, AutoCloseable modRuntime) {
+        this.modRuntime = modRuntime;
+        registries = bootstrap.registries();
+        events = bootstrap.events();
+        resources = bootstrap.resources();
+        config = bootstrap.config();
+
         GameLog.info("Config", "Configuration loaded and validated");
+
         audio = new BattleAudio(config.game.masterVolume);
-        i18n = new LocalizationManager(config.game.language);
-        characters = new CharacterRegistry();
-        supports = new SupportRegistry();
-        abilities = new AbilityRegistry();
-        customCharacters = new CustomCharacterStore(config);
+
+        i18n = bootstrap.i18n();
+        characters = bootstrap.characters();
+        supports = bootstrap.supports();
+        abilities = bootstrap.abilities();
+        customCharacters = bootstrap.customCharacters();
+
         StringBuilder extraCharacters = new StringBuilder();
-        for (var character : config.characters()) {
+
+        for (CharacterDefinition character : config.characters()) {
             extraCharacters.append(character.displayGlyph);
         }
-        for (var support : config.supports()) {
+
+        for (SupportCharacterDefinition support : config.supports()) {
             extraCharacters.append(support.displayGlyph);
         }
-        for (var custom : customCharacters.all()) {
+
+        for (CustomCharacterData custom : customCharacters.all()) {
             if (custom.displayName != null) {
                 extraCharacters.append(custom.displayName);
             }
         }
-        for (var skill : config.skills()) {
+
+        for (AbilityConfigs.ProjectileSkill skill : config.skills()) {
             extraCharacters.append(String.join("", skill.glyphs));
         }
-        skin = UiFactory.createSkin(i18n, extraCharacters.toString());
-        for (var character : config.characters()) {
-            characters.register(character);
-        }
-        for (var support : config.supports()) {
-            supports.register(support);
-        }
-        for (var custom : customCharacters.all()) {
-            if (custom.type == CharacterType.MAIN) {
-                characters.register(customCharacters.createMain(custom));
-            } else {
-                supports.register(customCharacters.createSupport(custom));
-            }
-        }
-        for (var skill : config.skills()) {
-            abilities.register(new StockRiseSkill(skill));
-        }
-        for (var ultimate : config.ultimates()) {
-            abilities.register(ConfiguredUltimateFactory.create(ultimate));
-        }
-        for (var passive : config.passives()) {
-            abilities.register(new LongTermInvestmentPassive(passive));
-        }
-        GameLog.info("Registry", "Registered characters: " + config.characters().size());
-        validateTranslations();
-    }
 
-    /** 設定から参照される必須翻訳キーがすべて存在することを検証する。 */
-    private void validateTranslations() {
-        for (var character : config.characters()) {
-            if (!i18n.contains(character.nameKey)) {
-                throw new IllegalArgumentException("Missing i18n key: " + character.nameKey);
-            }
-            var ultimate = config.ultimates().stream()
-                    .filter(value -> value.id.equals(character.ultimateId))
-                    .findFirst()
-                    .orElseThrow();
-            if (!i18n.contains(ultimate.nameKey)) {
-                throw new IllegalArgumentException("Missing i18n key: " + ultimate.nameKey);
-            }
-            String[] requiredKeys = {
-                    "ability." + character.id + ".skill.name",
-                    "ability." + character.id + ".passive.name"
-            };
-            for (String key : requiredKeys) {
-                requireTranslation(key);
-            }
-        }
-        for (var support : config.supports()) {
-            String[] requiredKeys = {support.nameKey, support.skill.nameKey, support.ultimate.nameKey};
-            for (String key : requiredKeys) {
-                requireTranslation(key);
-            }
-        }
+        skin = UiFactory.createSkin(i18n, extraCharacters.toString());
+        GameLog.info("Registry", "Registered characters: " + config.characters().size());
     }
 
     /**
-     * 翻訳キーが存在しない場合に、設定不備を示す例外を送出する。
-     *
-     * @param key 検証する翻訳キー
+     * このコンテキストが所有するUIリソースを解放する。
      */
-    private void requireTranslation(String key) {
-        if (!i18n.contains(key)) {
-            throw new IllegalArgumentException("Missing i18n key: " + key);
+    @Override
+    public void close() {
+        RuntimeException failure = null;
+        failure = closeStep(failure, audio::dispose);
+        failure = closeStep(failure, skin::dispose);
+        failure = closeStep(failure, events::close);
+        if (modRuntime != null) {
+            failure = closeStep(failure, modRuntime::close);
+        }
+        if (failure != null) {
+            throw failure;
         }
     }
 
-    /** このコンテキストが所有するUIリソースを解放する。 */
-    @Override
-    public void close() {
-        audio.dispose();
-        skin.dispose();
+    /** 一つの解放失敗で後続リソースの解放を省略せず、追加失敗をsuppressedへ保持する。 */
+    private static RuntimeException closeStep(RuntimeException failure, CloseStep step) {
+        try {
+            step.close();
+            return failure;
+        } catch (Exception error) {
+            RuntimeException wrapped = error instanceof RuntimeException runtime
+                    ? runtime
+                    : new IllegalStateException("Cannot close game resource", error);
+            if (failure == null) {
+                return wrapped;
+            }
+            failure.addSuppressed(wrapped);
+            return failure;
+        }
+    }
+
+    @FunctionalInterface
+    private interface CloseStep {
+        void close() throws Exception;
     }
 }

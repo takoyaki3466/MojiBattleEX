@@ -12,4 +12,5 @@ public final class BattleConfig {
     public float playerCollisionRadius;
     public float skillCooldownMultiplier;
     public float healthMultiplier;
+    public float chaosHealthMultiplier;
 }

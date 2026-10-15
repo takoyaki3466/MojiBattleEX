@@ -1,6 +1,5 @@
 package jp.takoa.mojibattle.screen;
 
-import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.scenes.scene2d.Actor;
@@ -20,6 +19,8 @@ import jp.takoa.mojibattle.domain.BattleMode;
 import jp.takoa.mojibattle.domain.CharacterDefinition;
 import jp.takoa.mojibattle.domain.support.SupportCharacterDefinition;
 import jp.takoa.mojibattle.domain.ability.AbilityConfigs;
+import jp.takoa.mojibattle.registry.AbilityPresentationFormatter;
+import jp.takoa.mojibattle.resource.GdxTextureLoader;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -27,45 +28,49 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-/** プレイヤーごとにメインと補助キャラクターを選び、詳細確認後に戦闘を開始する画面。 */
+/**
+ * プレイヤーごとにメインと補助キャラクターを選び、詳細確認後に戦闘を開始する画面。
+ */
 public final class CharacterSelectScreen extends StageScreen {
-    private static final float SKILL_DAMAGE_SCALE = .55f;
-    private static final float ULTIMATE_DAMAGE_SCALE = .65f;
     private static final float MENU_WIDTH_RATIO = .985f;
     private static final float MENU_HEIGHT_RATIO = .97f;
     private static final int CARD_COLUMNS = 5;
+
     private final BattleMode mode;
     private final int playerCount;
+    private final int mainCount;
+    private final GdxTextureLoader textureLoader;
     private final Label prompt;
     private final Label chosen;
     private final Label details;
+
     private final Image preview = new Image();
     private final Table cardGrid = new Table();
     private final Table playerPreviews = new Table();
     private final Table supportCountControls = new Table();
+
     private final TextButton existingTab;
     private final TextButton customTab;
     private final TextButton confirm;
     private final TextButton cancel;
+
     private final Map<String, Texture> previewTextures = new HashMap<>();
     private final List<String> mainIds = new ArrayList<>();
     private final List<String> supportIds = new ArrayList<>();
+
     private Table selectedCard;
     private String pendingId;
     private int phase;
     private int supportCount = 1;
     private boolean showingCustom;
 
-    public CharacterSelectScreen(
-            GameContext context,
-            ScreenManager screens,
-            BattleMode mode,
-            int playerCount) {
+    public CharacterSelectScreen(GameContext context, ScreenManager screens, BattleMode mode, int playerCount) {
         super(context, screens);
         this.mode = mode;
-        this.playerCount = mode == BattleMode.TRAINING
-                ? 1
-                : Math.max(2, Math.min(4, playerCount));
+        textureLoader = new GdxTextureLoader(context.resources);
+        this.playerCount = mode == BattleMode.TRAINING ? 1 : Math.max(2, Math.min(4, playerCount));
+        mainCount = mode == BattleMode.CHAOS ? 3 : 1;
+        supportCount = mode == BattleMode.CHAOS ? 4 : 1;
 
         Table root = new Table();
         root.setFillParent(true);
@@ -73,12 +78,15 @@ public final class CharacterSelectScreen extends StageScreen {
         Table roster = new Table(context.skin);
         roster.setBackground("panel");
         roster.pad(10);
+
         Label heading = new Label(context.i18n.text("select.title"), context.skin, "title");
         heading.setFontScale(.48f);
         roster.add(heading).width(705).height(58).left().row();
+
         prompt = new Label("", context.skin);
         prompt.setColor(.62f, 1f, .76f, 1f);
         roster.add(prompt).left().row();
+
         chosen = new Label("", context.skin);
         chosen.setFontScale(.62f);
         roster.add(chosen).left().padBottom(8).row();
@@ -86,10 +94,12 @@ public final class CharacterSelectScreen extends StageScreen {
         Label supportCountLabel = new Label(context.i18n.text("select.support_count"), context.skin);
         TextButton oneSupport = new TextButton(context.i18n.text("select.support_count_one"), context.skin);
         TextButton twoSupports = new TextButton(context.i18n.text("select.support_count_two"), context.skin);
+
         supportCountControls.add(supportCountLabel).padRight(8);
         supportCountControls.add(oneSupport).width(150).height(42).padRight(4);
         supportCountControls.add(twoSupports).width(150).height(42).padLeft(4);
         supportCountControls.setVisible(false);
+
         roster.add(supportCountControls).left().height(46).row();
         oneSupport.addListener(new ChangeListener() {
             public void changed(ChangeEvent event, Actor actor) {
@@ -105,16 +115,20 @@ public final class CharacterSelectScreen extends StageScreen {
         Table tabs = new Table();
         existingTab = new TextButton(context.i18n.text("select.existing"), context.skin);
         customTab = new TextButton(context.i18n.text("select.custom"), context.skin);
+
         tabs.add(existingTab).width(260).height(52).padRight(5);
         tabs.add(customTab).width(260).height(52).padLeft(5);
+
         roster.add(tabs).left().padBottom(5).row();
         roster.add(cardGrid).width(705).height(302).top().left();
 
         Table information = new Table(context.skin);
         information.setBackground("panel");
         information.pad(12);
+
         preview.setScaling(Scaling.fit);
         information.add(preview).size(145, 145).row();
+
         details = new Label(context.i18n.text("select.choose_card_hint"), context.skin);
         details.setWrap(true);
         details.setAlignment(Align.left, Align.top);
@@ -124,10 +138,14 @@ public final class CharacterSelectScreen extends StageScreen {
         Table decisions = new Table();
         cancel = new TextButton(context.i18n.text("select.cancel"), context.skin);
         confirm = new TextButton(context.i18n.text("select.confirm"), context.skin);
+
         confirm.setDisabled(true);
+
         decisions.add(cancel).width(180).height(50).padRight(5);
         decisions.add(confirm).width(200).height(50).padLeft(5);
+
         information.add(decisions).padTop(6);
+
         cancel.addListener(new ChangeListener() {
             public void changed(ChangeEvent event, Actor actor) {
                 clearCandidate();
@@ -142,11 +160,13 @@ public final class CharacterSelectScreen extends StageScreen {
         Table upper = new Table();
         upper.add(roster).width(735).height(548).top().padRight(5);
         upper.add(information).width(495).height(548).top().padLeft(5);
+
         Table shell = new Table(context.skin);
         shell.setBackground("bar-bg");
         shell.pad(5);
         shell.add(upper).growX().top().row();
         shell.add(playerPreviews).growX().height(126).padTop(3);
+
         addMenu(root, shell, MENU_WIDTH_RATIO, MENU_HEIGHT_RATIO);
 
         existingTab.addListener(new ChangeListener() {
@@ -161,21 +181,26 @@ public final class CharacterSelectScreen extends StageScreen {
                 refreshCards();
             }
         });
+
         updatePrompt();
         refreshCards();
     }
 
     private void refreshCards() {
         cardGrid.clearChildren();
+
         selectedCard = null;
         pendingId = null;
+
         confirm.setDisabled(true);
         preview.setDrawable(null);
+
         details.setText(context.i18n.text("select.choose_card_hint"));
         existingTab.setText((showingCustom ? "" : "▶ ") + context.i18n.text("select.existing"));
         customTab.setText((showingCustom ? "▶ " : "") + context.i18n.text("select.custom"));
 
         int index = selectingMain() ? addMainCards() : addSupportCards();
+
         if (index == 0) {
             Label empty = new Label(context.i18n.text("select.custom_empty"), context.skin);
             empty.setWrap(true);
@@ -186,18 +211,17 @@ public final class CharacterSelectScreen extends StageScreen {
 
     private int addMainCards() {
         int index = 0;
+
         for (CharacterDefinition character : context.characters.all()) {
             if (character.custom != showingCustom) {
                 continue;
             }
+
             String glyph = character.uiLabel == null ? character.displayGlyph : character.uiLabel;
-            addCard(
-                    character.id,
-                    character.glyphTexture,
-                    glyph,
-                    name(character),
-                    () -> showMain(character));
+            addCard(character.id, character.glyphTexture, glyph, name(character), () -> showMain(character));
+
             index++;
+
             if (index % CARD_COLUMNS == 0) {
                 cardGrid.row();
             }
@@ -207,17 +231,16 @@ public final class CharacterSelectScreen extends StageScreen {
 
     private int addSupportCards() {
         int index = 0;
+
         for (SupportCharacterDefinition support : context.supports.all()) {
             if (support.custom != showingCustom) {
                 continue;
             }
-            addCard(
-                    support.id,
-                    support.glyphTexture,
-                    support.displayGlyph,
-                    name(support),
-                    () -> showSupport(support));
+
+            addCard(support.id, support.glyphTexture, support.displayGlyph, name(support), () -> showSupport(support));
+
             index++;
+
             if (index % CARD_COLUMNS == 0) {
                 cardGrid.row();
             }
@@ -230,44 +253,51 @@ public final class CharacterSelectScreen extends StageScreen {
         card.setBackground("button");
         card.pad(6);
         card.setTouchable(Touchable.enabled);
+
         Image image = new Image(drawable(texturePath));
         image.setScaling(Scaling.fit);
+
         Label glyphLabel = new Label(glyph, context.skin);
         glyphLabel.setFontScale(.7f);
         glyphLabel.setAlignment(Align.center);
+
         Label summaryLabel = new Label(summary, context.skin);
         summaryLabel.setWrap(true);
         summaryLabel.setAlignment(Align.center);
         summaryLabel.setFontScale(.47f);
+
         card.add(image).size(46, 46).row();
         card.add(glyphLabel).width(118).height(20).row();
         card.add(summaryLabel).width(118).height(28).top();
+
         card.addListener(new InputListener() {
             @Override
             public boolean touchDown(InputEvent event, float x, float y, int pointer, int button) {
                 if (selectedCard != null) {
                     selectedCard.setBackground("button");
                 }
+
                 selectedCard = card;
                 card.setBackground("button-down");
                 pendingId = id;
                 confirm.setDisabled(false);
                 detailsAction.run();
+
                 refreshPlayerPreviews();
                 return true;
             }
         });
+
         cardGrid.add(card).width(132).height(108).pad(4).top();
     }
 
     private TextureRegionDrawable drawable(String path) {
         Texture texture = previewTextures.computeIfAbsent(path, key -> {
-            Texture created = new Texture(Gdx.files.internal(key), true);
-            created.setFilter(
-                    Texture.TextureFilter.MipMapLinearLinear,
-                    Texture.TextureFilter.Linear);
+            Texture created = textureLoader.load(key, true);
+            created.setFilter(Texture.TextureFilter.MipMapLinearLinear, Texture.TextureFilter.Linear);
             return created;
         });
+
         return new TextureRegionDrawable(new TextureRegion(texture));
     }
 
@@ -279,175 +309,60 @@ public final class CharacterSelectScreen extends StageScreen {
         showTexture(character.glyphTexture);
         AbilityConfigs.ProjectileSkill skill = context.config.skill(character.skillId);
         AbilityConfigs.AreaUltimate ultimate = context.config.ultimate(character.ultimateId);
-        String style = character.custom
-                ? context.i18n.text("select.custom_style")
-                : context.i18n.text("guide.character." + character.id);
-        details.setText(
-                "- " + context.i18n.text("guide.skill", abilityName(character.skillId, "skill"))
-                        + "\n  " + skillDetail(skill)
-                        + "\n- " + context.i18n.text("guide.ultimate", context.i18n.text(ultimate.nameKey))
-                        + "\n  " + ultimateDetail(ultimate)
-                        + " / " + context.i18n.text("guide.cost", Math.round(ultimate.pointCost))
-                        + "\n- " + context.i18n.text("guide.passive", passiveNames(character))
-                        + "\n  " + passiveDescriptions(character)
-                        + "\n- " + context.i18n.text("select.style", style));
+
+        String style = character.custom ? context.i18n.text("select.custom_style") : context.i18n.text("guide.character." + character.id);
+
+        details.setText("- " + context.i18n.text("guide.skill", context.i18n.text(skill.nameKey)) + "\n  " + skillDetail(skill) + "\n- " + context.i18n.text("guide.ultimate", context.i18n.text(ultimate.nameKey)) + "\n  " + ultimateDetail(ultimate) + " / " + context.i18n.text("guide.cost", Math.round(ultimate.pointCost)) + "\n- " + context.i18n.text("guide.passive", passiveNames(character)) + "\n  " + passiveDescriptions(character) + "\n- " + context.i18n.text("select.style", style));
     }
 
     private void showSupport(SupportCharacterDefinition support) {
         showTexture(support.glyphTexture);
-        String skillOwner = supportOwner(support.skill.id, true);
-        String ultimateOwner = supportOwner(support.ultimate.id, false);
-        String skill = context.i18n.text(
-                "guide.support_skill",
-                context.i18n.text(support.skill.nameKey),
-                decimal(cooldown(support.skill.cooldownSeconds)),
-                decimal(support.skill.durationSeconds),
-                Math.round(support.skill.magnitude * 100));
-        String ultimate = context.i18n.text(
-                "guide.support_ultimate",
-                context.i18n.text(support.ultimate.nameKey),
-                Math.round(support.ultimate.pointCost));
-        String style = support.custom
-                ? context.i18n.text("select.custom_style")
-                : context.i18n.text("select.support_style." + support.id);
-        details.setText(
-                "- " + skill
-                        + "\n  " + context.i18n.text("select.support_skill_detail." + skillOwner)
-                        + "\n- " + ultimate
-                        + "\n  " + context.i18n.text("select.support_ultimate_detail." + ultimateOwner)
-                        + "\n- " + context.i18n.text("guide.field_passives_title")
-                        + "\n  " + fieldDetails(support)
-                        + "\n- " + context.i18n.text("select.style", style));
+
+        String skillDescriptionKey = support.skill.descriptionKey != null ? support.skill.descriptionKey : "select.support_skill_detail." + supportOwner(support.skill.id, true);
+        String ultimateDescriptionKey = support.ultimate.descriptionKey != null ? support.ultimate.descriptionKey : "select.support_ultimate_detail." + supportOwner(support.ultimate.id, false);
+        String skill = context.i18n.text("guide.support_skill", context.i18n.text(support.skill.nameKey), decimal(cooldown(support.skill.cooldownSeconds)), decimal(support.skill.durationSeconds), Math.round(support.skill.magnitude * 100));
+        String ultimate = context.i18n.text("guide.support_ultimate", context.i18n.text(support.ultimate.nameKey), Math.round(support.ultimate.pointCost));
+        String style = support.custom ? context.i18n.text("select.custom_style") : context.i18n.text(support.styleKey);
+
+        details.setText("- " + skill + "\n  " + context.i18n.text(skillDescriptionKey) + "\n- " + ultimate + "\n  " + context.i18n.text(ultimateDescriptionKey) + "\n- " + context.i18n.text("guide.field_passives_title") + "\n  " + fieldDetails(support) + "\n- " + context.i18n.text("select.style", style));
     }
 
     private String fieldDetails(SupportCharacterDefinition support) {
-        List<String> descriptions = new ArrayList<>(
-                Arrays.stream(support.fieldPassiveIds)
-                        .map(id -> context.i18n.text("field." + id)
-                                + ": "
-                                + context.i18n.text("field.description." + id))
-                        .toList());
+        List<String> descriptions = new ArrayList<>(Arrays.stream(support.fieldPassiveIds).map(id -> context.i18n.text("field." + id) + ": " + context.i18n.text("field.description." + id)).toList());
+
         if (support.zeroDefenseMain) {
             descriptions.add(context.i18n.text("support.passive.zero_defense_main"));
         }
+
         return String.join("\n  ", descriptions);
     }
 
     private String skillDetail(AbilityConfigs.ProjectileSkill skill) {
-        int count = "bind_follow_up".equals(skill.type) ? 1 : skill.glyphs.length;
-        float points = skill.ultimatePointsPerHit * (skill.pointsOnHit ? 1 : count);
-        String health = skill.healthCostRatio > 0
-                ? " / " + context.i18n.text("guide.health_cost", Math.round(skill.healthCostRatio * 100))
-                : "";
-        if ("random_economy".equals(skill.type)) {
-            return context.i18n.text(
-                    "guide.random_economy",
-                    decimal(cooldown(skill.cooldownSeconds)),
-                    Math.round(points));
-        }
-        if ("self_attack_buff".equals(skill.type)) {
-            return context.i18n.text(
-                    "guide.attack_buff",
-                    decimal(cooldown(skill.cooldownSeconds)),
-                    Math.round((skill.buffAttackMultiplier - 1) * 100),
-                    decimal(skill.buffDurationSeconds));
-        }
-        if ("bind_follow_up".equals(skill.type)) {
-            return context.i18n.text(
-                    "guide.bind_follow_up",
-                    decimal(cooldown(skill.cooldownSeconds)),
-                    Math.round(skill.damages[0] * SKILL_DAMAGE_SCALE),
-                    decimal(skill.bindDurations[0]),
-                    Math.round(skill.followUpDamage * SKILL_DAMAGE_SCALE),
-                    Math.round(points)) + health;
-        }
-        String stun = skill.stunSeconds > 0
-                ? context.i18n.text("guide.stun", decimal(skill.stunSeconds))
-                : context.i18n.text("guide.no_stun");
-        String result = context.i18n.text(
-                "guide.skill_stats",
-                decimal(cooldown(skill.cooldownSeconds)),
-                Math.round(skill.baseDamage * SKILL_DAMAGE_SCALE),
-                count,
-                decimal(Math.max(3.2f, skill.projectileRadius * 5f) * 2f),
-                Math.round(points),
-                stun) + health;
-        if (skill.fallingObjectTexture != null) {
-            result += "\n" + context.i18n.text(
-                    "guide.falling_skill",
-                    Math.round(skill.fallingDamage * SKILL_DAMAGE_SCALE),
-                    decimal(skill.fallingRadius * 5f));
-        }
-        return result;
+        return AbilityPresentationFormatter.format(context.registries.skillImplementations.require(skill.implementationId).presentation().apply(skill, context.config.battle.skillCooldownMultiplier), context.i18n);
     }
 
     private String ultimateDetail(AbilityConfigs.AreaUltimate ultimate) {
-        return switch (ultimate.type) {
-            case "self_heal" -> context.i18n.text("guide.heal", Math.round(ultimate.healAmount));
-            case "line" -> context.i18n.text(
-                    "guide.line",
-                    Math.round(ultimate.baseDamage * ULTIMATE_DAMAGE_SCALE),
-                    decimal(ultimate.lineLength),
-                    decimal(ultimate.lineWidth * 5.2f),
-                    Math.max(1, ultimate.directions));
-            case "meteor_shower" -> context.i18n.text(
-                    "guide.meteor",
-                    ultimate.meteorCount,
-                    Math.round(ultimate.baseDamage * ULTIMATE_DAMAGE_SCALE),
-                    decimal(ultimate.radius * 5f));
-            case "summon_family" -> context.i18n.text(
-                    "guide.family_ultimate",
-                    ultimate.summonCount,
-                    Math.round(ultimate.summonHp),
-                    decimal(ultimate.summonAttackDamage),
-                    decimal(ultimate.summonDefense));
-            case "moving_car" -> context.i18n.text(
-                    "guide.car",
-                    Math.round(ultimate.baseDamage * ULTIMATE_DAMAGE_SCALE),
-                    decimal(ultimate.effectSeconds),
-                    decimal(ultimate.stunSeconds));
-            case "spinning_one" -> context.i18n.text(
-                    "guide.spinning_one",
-                    Math.round(ultimate.baseDamage * ULTIMATE_DAMAGE_SCALE),
-                    decimal(ultimate.lineLength),
-                    Math.round(ultimate.healAmount));
-            case "skill_barrage" -> context.i18n.text(
-                    "guide.barrage",
-                    ultimate.barrageCount,
-                    decimal(ultimate.barrageInterval));
-            case "sushi_barrage" -> context.i18n.text(
-                    "guide.sushi_barrage",
-                    ultimate.barrageCount,
-                    Math.round(ultimate.baseDamage),
-                    decimal(ultimate.barrageInterval),
-                    decimal(ultimate.projectileSpeed));
-            case "cash_crash" -> context.i18n.text(
-                    "guide.cash_crash",
-                    Math.round(ultimate.baseDamage * ULTIMATE_DAMAGE_SCALE),
-                    decimal(ultimate.radius * 5f),
-                    Math.round((ultimate.defenseDownMultiplier - 1f) * 100),
-                    decimal(ultimate.defenseDownDuration));
-            default -> context.i18n.text(
-                    "guide.area",
-                    Math.round(ultimate.baseDamage * ULTIMATE_DAMAGE_SCALE),
-                    decimal(ultimate.radius * 5f));
-        };
+        return AbilityPresentationFormatter.format(context.registries.ultimateImplementations.require(ultimate.implementationId).presentation().apply(ultimate), context.i18n);
     }
 
     private void confirmCandidate() {
         if (pendingId == null) {
             return;
         }
+
         if (selectingMain()) {
             mainIds.add(pendingId);
         } else {
             supportIds.add(pendingId);
         }
+
         phase++;
-        if (phase == playerCount + playerCount * supportCount) {
+
+        if (phase == totalSelections()) {
             startBattle();
             return;
         }
+
         updatePrompt();
         refreshCards();
     }
@@ -456,120 +371,131 @@ public final class CharacterSelectScreen extends StageScreen {
         if (selectedCard != null) {
             selectedCard.setBackground("button");
         }
+
         selectedCard = null;
         pendingId = null;
         confirm.setDisabled(true);
         preview.setDrawable(null);
         details.setText(context.i18n.text("select.choose_card_hint"));
+
         refreshPlayerPreviews();
     }
 
     private boolean selectingMain() {
-        return phase < playerCount;
+        return phase < mainSelectionCount();
     }
 
     private void setSupportCount(int value) {
         if (selectingMain()) {
             return;
         }
+
         supportCount = Math.max(1, Math.min(2, value));
         supportIds.clear();
-        phase = playerCount;
+        phase = mainSelectionCount();
+
         updatePrompt();
         refreshCards();
         refreshPlayerPreviews();
     }
 
     private void updatePrompt() {
-        int supportSelection = Math.max(0, phase - playerCount);
-        int player = selectingMain() ? phase + 1 : supportSelection / supportCount + 1;
-        supportCountControls.setVisible(!selectingMain());
+        int supportSelection = Math.max(0, phase - mainSelectionCount());
+        int player = selectingMain() ? phase / mainCount + 1 : supportSelection / supportCount + 1;
+
+        supportCountControls.setVisible(mode != BattleMode.CHAOS && !selectingMain());
+
         if (selectingMain()) {
-            prompt.setText(context.i18n.text("select.main_prompt", player));
+            if (mode == BattleMode.CHAOS) {
+                prompt.setText(context.i18n.text(
+                        "select.chaos_main_prompt",
+                        player,
+                        phase % mainCount + 1,
+                        mainCount));
+            } else {
+                prompt.setText(context.i18n.text("select.main_prompt", player));
+            }
         } else {
-            prompt.setText(context.i18n.text(
-                    "select.support_prompt_slot",
-                    player,
-                    supportSelection % supportCount + 1,
-                    supportCount));
+            prompt.setText(context.i18n.text("select.support_prompt_slot", player, supportSelection % supportCount + 1, supportCount));
         }
-        chosen.setText(context.i18n.text(
-                "select.selection_progress",
-                Math.min(phase, playerCount + playerCount * supportCount),
-                playerCount + playerCount * supportCount));
+
+        chosen.setText(context.i18n.text("select.selection_progress", Math.min(phase, totalSelections()), totalSelections()));
     }
 
     private void startBattle() {
-        screens.show(new BattleScreen(
-                context,
-                screens,
-                mode,
-                List.copyOf(mainIds),
-                List.copyOf(supportIds),
-                supportCount));
+        screens.show(new BattleScreen(context, screens, mode, List.copyOf(mainIds), List.copyOf(supportIds), supportCount));
     }
+
     private void refreshPlayerPreviews() {
         playerPreviews.clearChildren();
-        boolean compact = playerCount > 2 && supportCount > 1;
-        float mainSize = compact ? 42 : playerCount > 2 ? 48 : 74;
-        float supportSize = compact ? 28 : playerCount > 2 ? 32 : 46;
-        float nameWidth = compact ? 48 : playerCount > 2 ? 72 : 125;
+
+        boolean denseChaos = mode == BattleMode.CHAOS && playerCount > 2;
+        boolean compact = mode == BattleMode.CHAOS || playerCount > 2 && supportCount > 1;
+        float mainSize = denseChaos ? 24 : compact ? 42 : playerCount > 2 ? 48 : 74;
+        float supportSize = denseChaos ? 20 : compact ? 28 : playerCount > 2 ? 32 : 46;
+        float nameWidth = denseChaos ? 30 : compact ? 48 : playerCount > 2 ? 72 : 125;
+
         for (int player = 0; player < playerCount; player++) {
             Table card = new Table(context.skin);
             card.setBackground("panel");
             card.pad(6);
+
             Label playerLabel = new Label((player + 1) + "P", context.skin);
             playerLabel.setFontScale(.72f);
             card.add(playerLabel).left().row();
 
-            Table portraits = new Table();
-            addMainPreview(portraits, player, mainSize, nameWidth);
-            for (int slot = 0; slot < supportCount; slot++) {
-                addSupportPreview(portraits, player, slot, supportSize, nameWidth);
+            Table mainPortraits = new Table();
+            for (int slot = 0; slot < mainCount; slot++) {
+                addMainPreview(mainPortraits, player, slot, mainSize, nameWidth);
             }
-            card.add(portraits);
+
+            Table supportPortraits = new Table();
+            for (int slot = 0; slot < supportCount; slot++) {
+                addSupportPreview(supportPortraits, player, slot, supportSize, nameWidth);
+            }
+            card.add(mainPortraits).left().row();
+            card.add(supportPortraits).left();
             playerPreviews.add(card).expandX().fillX().height(120).pad(3);
         }
     }
 
-    private void addMainPreview(Table portraits, int player, float imageSize, float nameWidth) {
-        String mainId = player < mainIds.size()
-                ? mainIds.get(player)
-                : selectingMain() && player == phase ? pendingId : null;
+    private void addMainPreview(Table portraits, int player, int slot, float imageSize, float nameWidth) {
+        int index = player * mainCount + slot;
+        String mainId = index < mainIds.size()
+                ? mainIds.get(index)
+                : selectingMain() && index == phase ? pendingId : null;
+
         if (mainId == null) {
-            portraits.add(new Label(context.i18n.text("select.unselected"), context.skin))
-                    .width(imageSize + nameWidth);
+            portraits.add(new Label(context.i18n.text("select.unselected"), context.skin)).width(imageSize + nameWidth);
             return;
         }
+
         CharacterDefinition main = context.characters.require(mainId);
         portraits.add(new Image(drawable(main.glyphTexture))).size(imageSize, imageSize);
+
         Label label = new Label(name(main), context.skin);
         label.setWrap(true);
-        label.setFontScale(playerCount > 2 && supportCount > 1 ? .44f : playerCount > 2 ? .52f : .7f);
+        label.setFontScale(mode == BattleMode.CHAOS && playerCount > 2 ? .34f : playerCount > 2 && supportCount > 1 ? .44f : playerCount > 2 ? .52f : .7f);
+
         portraits.add(label).width(nameWidth).left();
     }
 
-    private void addSupportPreview(
-            Table portraits,
-            int player,
-            int slot,
-            float imageSize,
-            float nameWidth) {
-        int supportSelection = phase - playerCount;
+    private void addSupportPreview(Table portraits, int player, int slot, float imageSize, float nameWidth) {
+        int supportSelection = phase - mainSelectionCount();
         int index = player * supportCount + slot;
-        String supportId = index < supportIds.size()
-                ? supportIds.get(index)
-                : !selectingMain() && index == supportSelection ? pendingId : null;
+
+        String supportId = index < supportIds.size() ? supportIds.get(index) : !selectingMain() && index == supportSelection ? pendingId : null;
         if (supportId == null) {
             return;
         }
+
         SupportCharacterDefinition support = context.supports.require(supportId);
-        portraits.add(new Image(drawable(support.glyphTexture)))
-                .size(imageSize, imageSize)
-                .padLeft(playerCount > 2 && supportCount > 1 ? 2 : 6);
+        portraits.add(new Image(drawable(support.glyphTexture))).size(imageSize, imageSize).padLeft(playerCount > 2 && supportCount > 1 ? 2 : 6);
+
         Label label = new Label(name(support), context.skin);
         label.setWrap(true);
-        label.setFontScale(playerCount > 2 && supportCount > 1 ? .4f : playerCount > 2 ? .48f : .65f);
+        label.setFontScale(mode == BattleMode.CHAOS && playerCount > 2 ? .32f : playerCount > 2 && supportCount > 1 ? .4f : playerCount > 2 ? .48f : .65f);
+
         portraits.add(label).width(nameWidth).left();
     }
 
@@ -577,50 +503,28 @@ public final class CharacterSelectScreen extends StageScreen {
         return value.displayName != null ? value.displayName : context.i18n.text(value.nameKey);
     }
 
+    private int mainSelectionCount() {
+        return playerCount * mainCount;
+    }
+
+    private int totalSelections() {
+        return mainSelectionCount() + playerCount * supportCount;
+    }
+
     private String name(SupportCharacterDefinition value) {
         return value.displayName != null ? value.displayName : context.i18n.text(value.nameKey);
     }
 
-    private String abilityName(String id, String kind) {
-        CharacterDefinition owner = context.config.characters().stream()
-                .filter(value -> kind.equals("skill")
-                        ? id.equals(value.skillId)
-                        : Arrays.asList(value.equippedPassiveIds()).contains(id))
-                .findFirst()
-                .orElse(null);
-        return owner == null
-                ? id
-                : context.i18n.text("ability." + owner.id + "." + kind + ".name");
-    }
-
     private String passiveNames(CharacterDefinition value) {
-        return String.join(
-                " / ",
-                Arrays.stream(value.equippedPassiveIds())
-                        .map(id -> abilityName(id, "passive"))
-                        .toList());
+        return String.join(" / ", Arrays.stream(value.equippedPassiveIds()).map(id -> context.i18n.text(context.config.passive(id).nameKey)).toList());
     }
 
     private String passiveDescriptions(CharacterDefinition value) {
-        return String.join(
-                "\n  ",
-                Arrays.stream(value.equippedPassiveIds()).map(id -> {
-                    CharacterDefinition owner = context.config.characters().stream()
-                            .filter(candidate -> id.equals(candidate.passiveId))
-                            .findFirst()
-                            .orElse(null);
-                    return owner == null
-                            ? id
-                            : context.i18n.text("guide.passive_effect." + owner.id);
-                }).toList());
+        return String.join("\n  ", Arrays.stream(value.equippedPassiveIds()).map(id -> context.i18n.text(context.config.passive(id).descriptionKey)).toList());
     }
 
     private String supportOwner(String abilityId, boolean skill) {
-        return context.config.supports().stream()
-                .filter(value -> abilityId.equals(skill ? value.skill.id : value.ultimate.id))
-                .map(value -> value.id)
-                .findFirst()
-                .orElse("t");
+        return context.config.supports().stream().filter(value -> abilityId.equals(skill ? value.skill.id : value.ultimate.id)).map(value -> value.id).findFirst().orElse("t");
     }
 
     private static String decimal(float value) {

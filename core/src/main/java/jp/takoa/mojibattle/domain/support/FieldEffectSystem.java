@@ -26,17 +26,19 @@ public final class FieldEffectSystem {
         return active.values().stream().anyMatch(effect -> effect.type.equals(type));
     }
 
-    /** 指定種別の効果を、時間成長の上限を考慮して乗算する。 */
+    /**
+     * 指定種別の効果を、時間成長の上限を考慮して乗算する。
+     */
     public float multiplier(String type, float elapsed) {
         float result = 1f;
         for (FieldEffectDefinition effect : active.values()) {
             if (effect.type.equals(type)) {
                 float value = effect.magnitude;
+
                 if (effect.intervalSeconds > 0) {
-                    value = Math.min(
-                            effect.maximum,
-                            (float) Math.floor(elapsed / effect.intervalSeconds) * effect.magnitude);
+                    value = Math.min(effect.maximum, (float) Math.floor(elapsed / effect.intervalSeconds) * effect.magnitude);
                 }
+
                 result *= ATTACK_GROWTH_TYPE.equals(type) ? 1f + value : value;
             }
         }
@@ -45,6 +47,7 @@ public final class FieldEffectSystem {
 
     public float additive(String type) {
         float result = 0;
+
         for (FieldEffectDefinition effect : active.values()) {
             if (effect.type.equals(type)) {
                 result += effect.magnitude;
@@ -53,14 +56,16 @@ public final class FieldEffectSystem {
         return result;
     }
 
-    /** 周期内の有効時間に入っている効果だけを乗算する。 */
+    /**
+     * 周期内の有効時間に入っている効果だけを乗算する。
+     */
     public float timedMultiplier(String type, float elapsed) {
         float result = 1f;
+
         for (FieldEffectDefinition effect : active.values()) {
             if (effect.type.equals(type)) {
-                boolean activeNow = effect.intervalSeconds <= 0
-                        || effect.durationSeconds <= 0
-                        || elapsed % effect.intervalSeconds < effect.durationSeconds;
+                boolean activeNow = effect.intervalSeconds <= 0 || effect.durationSeconds <= 0 || elapsed % effect.intervalSeconds < effect.durationSeconds;
+
                 if (activeNow) {
                     result *= effect.magnitude;
                 }

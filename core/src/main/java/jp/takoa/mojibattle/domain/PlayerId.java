@@ -1,6 +1,8 @@
 package jp.takoa.mojibattle.domain;
 
-/** 最大4人のプレイヤーを安定した列挙順で識別するID。 */
+/**
+ * 最大4人のプレイヤーを安定した列挙順で識別するID。
+ */
 public enum PlayerId {
     ONE,
     TWO,

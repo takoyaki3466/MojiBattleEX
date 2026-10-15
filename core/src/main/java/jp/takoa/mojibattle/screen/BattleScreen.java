@@ -13,6 +13,7 @@ import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
 import jp.takoa.mojibattle.GameContext;
 import jp.takoa.mojibattle.domain.BattleController;
 import jp.takoa.mojibattle.domain.BattleMode;
+import jp.takoa.mojibattle.domain.BattleTeamDefinition;
 import jp.takoa.mojibattle.domain.CharacterDefinition;
 import jp.takoa.mojibattle.domain.PlayerId;
 import jp.takoa.mojibattle.domain.support.SupportCharacterDefinition;
@@ -42,50 +43,43 @@ public final class BattleScreen extends ScreenAdapter {
     private boolean transitioned;
     private float resultCountdown = -1f;
 
-    public BattleScreen(
-            GameContext context,
-            ScreenManager screens,
-            BattleMode mode,
-            List<String> mainIds,
-            List<String> supportIds,
-            int supportCount) {
+    public BattleScreen(GameContext context, ScreenManager screens, BattleMode mode, List<String> mainIds, List<String> supportIds, int supportCount) {
         this.context = context;
         this.screens = screens;
-        List<CharacterDefinition> characters = new ArrayList<>(
-                mainIds.stream().map(context.characters::require).toList());
-        List<List<SupportCharacterDefinition>> supports = new ArrayList<>();
-        for (int player = 0; player < mainIds.size(); player++) {
+
+        int mainCount = mode == BattleMode.CHAOS ? 3 : 1;
+        int playerCount = mode == BattleMode.TRAINING ? 1 : mainIds.size() / mainCount;
+        List<BattleTeamDefinition> teams = new ArrayList<>();
+
+        for (int player = 0; player < playerCount; player++) {
+            int mainOffset = player * mainCount;
+            CharacterDefinition representative = context.characters.require(mainIds.get(mainOffset));
+            List<CharacterDefinition> subMains = new ArrayList<>();
+            for (int slot = 1; slot < mainCount; slot++) {
+                subMains.add(context.characters.require(mainIds.get(mainOffset + slot)));
+            }
             List<SupportCharacterDefinition> playerSupports = new ArrayList<>();
+
             for (int slot = 0; slot < supportCount; slot++) {
                 int index = player * supportCount + slot;
+
                 if (index < supportIds.size()) {
                     playerSupports.add(context.supports.require(supportIds.get(index)));
                 }
             }
-            supports.add(playerSupports);
+
+            teams.add(new BattleTeamDefinition(representative, subMains, playerSupports));
         }
+
         if (mode == BattleMode.TRAINING) {
-            characters.add(TrainingDummy.definition());
-            supports.add(List.of());
+            teams.add(new BattleTeamDefinition(TrainingDummy.definition(), List.of(), List.of()));
         }
-        battle = new BattleController(
-                context.config.battle,
-                context.config.critical,
-                context.config.awakening,
-                context.abilities,
-                mode,
-                characters,
-                supports,
-                context.config.fieldEffects());
+
+        battle = new BattleController(context.config.battle, context.config.critical, context.config.awakening, context.abilities, mode, teams, context.config.fieldEffects(), context.registries.supportAbilityImplementations, context.events.gameplay());
         input = new InputBindingManager(context.config.controls);
-        renderer = new SplitScreenRenderer(
-                context.config.battle,
-                context.config.graphics,
-                characters,
-                supports,
-                context.config.skills(),
-                context.config.ultimates(),
-                context.config.awakening.texturePath);
+        renderer = new SplitScreenRenderer(context.config.battle, context.config.graphics, teams,
+                context.config.skills(), context.config.ultimates(), context.config.awakening.texturePath,
+                context.registries.effects.values(), context.resources);
         hud = new BattleHud(context, battle);
         pauseMenu = createPauseMenu();
     }
@@ -98,6 +92,7 @@ public final class BattleScreen extends ScreenAdapter {
                 if (battle.mode() != BattleMode.TRAINING) {
                     return false;
                 }
+
                 switch (keycode) {
                     case Input.Keys.F1 -> battle.trainingResetCooldown();
                     case Input.Keys.F2 -> battle.trainingMaxUltimate();
@@ -119,37 +114,47 @@ public final class BattleScreen extends ScreenAdapter {
         if (input.consumePause()) {
             togglePause();
         }
+
         float frameDelta = Math.min(MAX_FRAME_DELTA, Math.max(0, delta));
+
         if (!battle.paused()) {
             accumulator += frameDelta;
+
             while (accumulator >= context.config.battle.fixedStepSeconds) {
                 EnumMap<PlayerId, PlayerCommand> commands = new EnumMap<>(PlayerId.class);
+
                 for (PlayerId id : battle.playerIds()) {
                     commands.put(id, input.consume(id));
                 }
+
                 battle.update(context.config.battle.fixedStepSeconds, commands);
                 accumulator -= context.config.battle.fixedStepSeconds;
+
                 if (battle.result() != null) {
                     break;
                 }
             }
         }
         context.audio.play(battle.drainSoundEvents());
+
         Gdx.gl.glEnable(GL20.GL_DEPTH_TEST);
         renderer.render(battle, frameDelta, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
+
         Gdx.gl.glDisable(GL20.GL_DEPTH_TEST);
         Gdx.gl.glViewport(0, 0, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
+
         hud.draw(battle);
+
         if (battle.result() != null && !transitioned) {
             if (resultCountdown < 0) {
                 resultCountdown = 1f;
             } else {
                 resultCountdown -= frameDelta;
             }
+
             if (resultCountdown <= 0) {
                 transitioned = true;
                 screens.show(new ResultScreen(context, screens, battle.result()));
-                return;
             }
         }
     }
@@ -160,6 +165,7 @@ public final class BattleScreen extends ScreenAdapter {
         table.setFillParent(true);
         table.setVisible(false);
         table.defaults().width(320).height(58).pad(8);
+
         TextButton resume = new TextButton(context.i18n.text("menu.resume"), context.skin);
         table.add(resume).row();
         TextButton quit = new TextButton(context.i18n.text("menu.quit"), context.skin);
@@ -174,6 +180,7 @@ public final class BattleScreen extends ScreenAdapter {
                 screens.show(new TitleScreen(context, screens));
             }
         });
+
         hud.stage().addActor(table);
         return table;
     }

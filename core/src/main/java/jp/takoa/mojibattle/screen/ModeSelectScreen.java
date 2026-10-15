@@ -8,13 +8,17 @@ import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
 import jp.takoa.mojibattle.GameContext;
 import jp.takoa.mojibattle.domain.BattleMode;
 
-/** 対戦人数またはトレーニングを選び、キャラクター選択画面へ遷移する画面。 */
+/**
+ * 対戦人数またはトレーニングを選び、キャラクター選択画面へ遷移する画面。
+ */
 public final class ModeSelectScreen extends StageScreen {
     public ModeSelectScreen(GameContext context, ScreenManager screens) {
         super(context, screens);
+
         Table root = new Table();
         root.setFillParent(true);
         root.pad(28);
+
         Table card = new Table(context.skin);
         card.setBackground("panel");
         card.pad(28);
@@ -23,21 +27,24 @@ public final class ModeSelectScreen extends StageScreen {
         Label title = new Label(context.i18n.text("menu.player_count_title"), context.skin, "title");
         title.setFontScale(.62f);
         card.add(title).height(82).row();
+
         Label help = new Label(context.i18n.text("menu.player_count_help"), context.skin);
         help.setColor(.62f, 1f, .76f, 1f);
         card.add(help).height(45).row();
 
-        addBattle(card, "menu.battle_two", 2);
-        addBattle(card, "menu.battle_three", 3);
-        addBattle(card, "menu.battle_four", 4);
+        addBattleRow(card, "menu.battle_two", "menu.battle_chaos_two", 2);
+        addBattleRow(card, "menu.battle_three", "menu.battle_chaos_three", 3);
+        addBattleRow(card, "menu.battle_four", "menu.battle_chaos_four", 4);
 
         TextButton training = new TextButton(context.i18n.text("menu.training"), context.skin);
         card.add(training).row();
+
         training.addListener(new ChangeListener() {
             public void changed(ChangeEvent event, Actor actor) {
                 screens.show(new CharacterSelectScreen(context, screens, BattleMode.TRAINING, 1));
             }
         });
+
         TextButton guide = new TextButton(context.i18n.text("menu.character_guide"), context.skin);
         card.add(guide).row();
         guide.addListener(new ChangeListener() {
@@ -45,6 +52,7 @@ public final class ModeSelectScreen extends StageScreen {
                 screens.show(new CharacterGuideScreen(context, screens));
             }
         });
+
         TextButton back = new TextButton(context.i18n.text("menu.back"), context.skin);
         card.add(back);
         back.addListener(new ChangeListener() {
@@ -52,15 +60,29 @@ public final class ModeSelectScreen extends StageScreen {
                 screens.show(new TitleScreen(context, screens));
             }
         });
+
         addStandardMenu(root, card);
     }
 
-    private void addBattle(Table table, String key, int players) {
-        TextButton button = new TextButton(context.i18n.text(key), context.skin);
-        table.add(button).row();
-        button.addListener(new ChangeListener() {
+    /** 通常対戦と同人数のカオス対戦を1行に並べ、人数ごとの入口を揃える。 */
+    private void addBattleRow(Table table, String versusKey, String chaosKey, int players) {
+        Table row = new Table();
+        row.defaults().growX().height(52).pad(2);
+
+        TextButton versus = new TextButton(context.i18n.text(versusKey), context.skin);
+        TextButton chaos = new TextButton(context.i18n.text(chaosKey), context.skin);
+        row.add(versus);
+        row.add(chaos);
+        table.add(row).growX().height(60).row();
+
+        versus.addListener(new ChangeListener() {
             public void changed(ChangeEvent event, Actor actor) {
                 screens.show(new CharacterSelectScreen(context, screens, BattleMode.VERSUS, players));
+            }
+        });
+        chaos.addListener(new ChangeListener() {
+            public void changed(ChangeEvent event, Actor actor) {
+                screens.show(new CharacterSelectScreen(context, screens, BattleMode.CHAOS, players));
             }
         });
     }

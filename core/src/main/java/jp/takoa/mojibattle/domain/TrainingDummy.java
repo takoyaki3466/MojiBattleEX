@@ -1,6 +1,8 @@
 package jp.takoa.mojibattle.domain;
 
-/** トレーニング専用の攻撃しない標的キャラクター定義を生成する。 */
+/**
+ * トレーニング専用の攻撃しない標的キャラクター定義を生成する。
+ */
 public final class TrainingDummy {
     private TrainingDummy() {
     }
@@ -12,6 +14,7 @@ public final class TrainingDummy {
      */
     public static CharacterDefinition definition() {
         CharacterDefinition value = new CharacterDefinition();
+
         value.id = "training_dummy";
         value.type = CharacterType.MAIN;
         value.displayGlyph = "■";
@@ -22,6 +25,7 @@ public final class TrainingDummy {
         value.collisionRadius = .7f;
         value.glyphTexture = "glyphs/training-dummy.png";
         value.trainingDummy = true;
+
         return value;
     }
 }

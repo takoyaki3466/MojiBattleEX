@@ -18,22 +18,28 @@ public final class StatusEffectSystem {
         this.owner = owner;
     }
 
-    /** 状態を付与し、同一効果が存在する場合は重複規則に従って更新する。 */
+    /**
+     * 状態を付与し、同一IDかつ同一付与元が存在する場合は重複規則に従って更新する。
+     * 対象プレイヤーはこのシステムの所有者で上書きされる。
+     *
+     * @param effect 所有権をこのシステムへ移す可変状態効果
+     */
     public void apply(StatusEffect effect) {
         effect.target = owner;
-        StatusEffect current = effects.stream()
-                .filter(old -> old.id.equals(effect.id) && old.source == effect.source)
-                .findFirst()
-                .orElse(null);
+        StatusEffect current = effects.stream().filter(old -> old.id.equals(effect.id) && old.source == effect.source).findFirst().orElse(null);
+
         if (current == null || effect.stackRule == StatusStackRule.REPLACE) {
             if (current != null) {
                 effects.remove(current);
             }
+
             effects.add(effect);
             return;
         }
+
         current.remaining = Math.max(current.remaining, effect.remaining);
         current.tickRemaining = Math.min(current.tickRemaining, effect.tickRemaining);
+
         if (effect.stackRule == StatusStackRule.STACK) {
             current.stacks = Math.min(current.maximumStacks, current.stacks + 1);
         }
@@ -43,19 +49,28 @@ public final class StatusEffectSystem {
         for (StatusEffect effect : effects) {
             effect.remaining -= delta;
         }
+
         effects.removeIf(effect -> effect.remaining <= 0);
     }
 
+    /**
+     * 同じ種類の各効果をスタック数だけ累乗し、すべて乗算した実効倍率を返す。
+     */
     public float multiplier(StatusType type) {
         float result = 1f;
+
         for (StatusEffect effect : effects) {
             if (effect.type == type) {
-                result *= Math.pow(effect.magnitude, effect.stacks);
+                result *= (float) Math.pow(effect.magnitude, effect.stacks);
             }
+
         }
         return result;
     }
 
+    /**
+     * 同じ種類の効果量へスタック数を掛け、すべて加算した補正値を返す。
+     */
     public float additive(StatusType type) {
         float result = 0;
         for (StatusEffect effect : effects) {
@@ -70,7 +85,9 @@ public final class StatusEffectSystem {
         return effects.stream().anyMatch(effect -> effect.type == type);
     }
 
-    /** 攻撃低下や行動不能など、回復対象として定義された負の状態だけを解除する。 */
+    /**
+     * 攻撃低下や行動不能など、回復対象として定義された負の状態だけを解除する。
+     */
     public void clearNegative() {
         effects.removeIf(effect -> switch (effect.type) {
             case ATTACK_DOWN, DAMAGE_TAKEN_UP, MOVE_DOWN, STUN, BIND, BURN -> true;
@@ -78,7 +95,9 @@ public final class StatusEffectSystem {
         });
     }
 
-    /** @return 現在の状態効果を変更不能なコピーとして返す */
+    /**
+     * @return 現在の状態効果を変更不能なコピーとして返す
+     */
     public List<StatusEffect> active() {
         return List.copyOf(effects);
     }

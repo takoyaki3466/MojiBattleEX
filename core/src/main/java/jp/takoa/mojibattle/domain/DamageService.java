@@ -1,18 +1,34 @@
 package jp.takoa.mojibattle.domain;
 
-/** 攻撃・防御倍率を適用し、実ダメージを対象と攻撃者の統計へ反映する。 */
+import jp.takoa.mojibattle.event.EventBus;
+import jp.takoa.mojibattle.event.gameplay.CharacterDiedEvent;
+import jp.takoa.mojibattle.event.gameplay.DamageEvent;
+
+/**
+ * 攻撃・防御倍率を適用し、実ダメージを対象と攻撃者の統計へ反映する。
+ */
 public final class DamageService {
-    /** 攻撃ごとに切り替え可能なダメージ計算特性。 */
+    private final EventBus gameplayEvents;
+
+    public DamageService() {
+        this(null);
+    }
+
+    /**
+     * ダメージ確定イベントを配送する任意のゲームイベントバスを受け取る。
+     */
+    public DamageService(EventBus gameplayEvents) {
+        this.gameplayEvents = gameplayEvents;
+    }
+
+    /**
+     * 攻撃ごとに切り替え可能なダメージ計算特性。
+     */
     public record AttackTraits(boolean ignoreDefense) {
         public static final AttackTraits STANDARD = new AttackTraits(false);
     }
 
-    public float apply(
-            CharacterRuntime attacker,
-            CharacterRuntime target,
-            float baseDamage,
-            float attackMultiplier,
-            float defenseMultiplier) {
+    public float apply(CharacterRuntime attacker, CharacterRuntime target, float baseDamage, float attackMultiplier, float defenseMultiplier) {
         return apply(attacker, target, baseDamage, attackMultiplier, defenseMultiplier, AttackTraits.STANDARD);
     }
 
@@ -21,25 +37,32 @@ public final class DamageService {
      *
      * @throws IllegalArgumentException 数値が負数または有限値でない場合
      */
-    public float apply(
-            CharacterRuntime attacker,
-            CharacterRuntime target,
-            float baseDamage,
-            float attackMultiplier,
-            float defenseMultiplier,
-            AttackTraits traits) {
+    public float apply(CharacterRuntime attacker, CharacterRuntime target, float baseDamage, float attackMultiplier, float defenseMultiplier, AttackTraits traits) {
         validate(baseDamage, "baseDamage");
         validate(attackMultiplier, "attackMultiplier");
         validate(defenseMultiplier, "defenseMultiplier");
+
         if (!target.isAlive()) {
             return 0;
         }
+
         float requested = baseDamage * attackMultiplier * (traits.ignoreDefense() ? 1f : defenseMultiplier);
+
         if (!Float.isFinite(requested) || requested < 0) {
             throw new IllegalArgumentException("Invalid calculated damage");
         }
+
         float applied = target.receiveDamage(requested);
+
         attacker.recordDamage(applied);
+
+        if (gameplayEvents != null && applied > 0) {
+            gameplayEvents.post(new DamageEvent(attacker, target, applied));
+
+            if (!target.isAlive()) {
+                gameplayEvents.post(new CharacterDiedEvent(target));
+            }
+        }
         return applied;
     }
 

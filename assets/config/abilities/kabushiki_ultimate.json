@@ -1,17 +1,1 @@
-{
-  "id":"kabushiki_bankruptcy",
-  "nameKey":"ability.kabushiki.ultimate.name",
-  "type":"meteor_shower",
-  "dropStyle":"building",
-  "objectTexture":"objects/falling-building.png",
-  "pointCost":100.0,
-  "baseDamage":150.0,
-  "warningSeconds":1.3,
-  "effectSeconds":1.0,
-  "radius":8.5,
-  "meteorCount":2,
-  "spawnHeight":24.0,
-  "warningEffectIndex":5,
-  "impactEffectIndex":4,
-  "fallHorizontalOffset":14.0
-}
+{"id":"kabushiki_bankruptcy","nameKey":"ability.kabushiki.ultimate.name","type":"meteor_shower","dropStyle":"building","objectTexture":"objects/falling-building.png","pointCost":100.0,"baseDamage":150.0,"warningSeconds":1.3,"effectSeconds":1.0,"radius":8.5,"meteorCount":2,"spawnHeight":24.0,"fallHorizontalOffset":14.0,"implementationId":"meteor_shower","descriptionKey":"guide.character.kabushiki","warningEffectId":"mojibattle:impact","impactEffectId":"mojibattle:fire","renderEffectId":"mojibattle:fire"}

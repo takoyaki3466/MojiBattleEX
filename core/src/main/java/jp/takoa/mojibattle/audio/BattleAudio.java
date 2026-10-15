@@ -9,7 +9,9 @@ import com.badlogic.gdx.utils.Disposable;
 import java.util.EnumMap;
 import java.util.List;
 
-/** 生成済み戦闘効果音を読み込み、設定音量と同時発音数を考慮して再生する。 */
+/**
+ * 生成済み戦闘効果音を読み込み、設定音量と同時発音数を考慮して再生する。
+ */
 public final class BattleAudio implements Disposable {
     private static final String PREFERENCES_NAME = "mojibattle-user";
     private static final String AUDIO_DIRECTORY = "audio/sfx/";
@@ -29,16 +31,15 @@ public final class BattleAudio implements Disposable {
         sounds.put(BattleSoundCue.SUPPORT, load("support.wav"));
     }
 
-    /** 1描画フレーム分の通知を再生し、大量同時攻撃では音割れしない数へ制限する。 */
+    /**
+     * 1描画フレーム分の通知を再生し、大量同時攻撃では音割れしない数へ制限する。
+     */
     public void play(List<BattleSoundCue> cues) {
         if (cues.isEmpty()) {
             return;
         }
         Preferences preferences = Gdx.app.getPreferences(PREFERENCES_NAME);
-        float master = MathUtils.clamp(
-                preferences.getFloat("volume", defaultMasterVolume),
-                0f,
-                1f);
+        float master = MathUtils.clamp(preferences.getFloat("volume", defaultMasterVolume), 0f, 1f);
         if (master <= 0) {
             return;
         }
@@ -46,9 +47,7 @@ public final class BattleAudio implements Disposable {
         EnumMap<BattleSoundCue, Integer> voices = new EnumMap<>(BattleSoundCue.class);
         for (BattleSoundCue cue : cues) {
             int voice = voices.getOrDefault(cue, 0);
-            int maximumVoices = cue == BattleSoundCue.IMPACT || cue == BattleSoundCue.PROJECTILE
-                    ? 3
-                    : 2;
+            int maximumVoices = cue == BattleSoundCue.IMPACT || cue == BattleSoundCue.PROJECTILE ? 3 : 2;
             if (voice >= maximumVoices) {
                 continue;
             }
