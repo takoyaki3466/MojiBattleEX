@@ -23,18 +23,26 @@ public final class SupportController {
     /**
      * 補助キャラクターを更新し、味方追従と射程内の自動攻撃を処理する。
      */
-    public void update(BattleController battle, SupportCharacterRuntime support, CharacterRuntime ally, CharacterRuntime enemy, int supportIndex, float delta) {
+    public void update(
+            BattleController battle,
+            SupportCharacterRuntime support,
+            CharacterRuntime ally,
+            CharacterRuntime enemy,
+            int supportIndex,
+            int supportCount,
+            float delta) {
         support.update(delta, battle.supportUltimateChargeMultiplier());
 
         if (support.skillReady()) {
             abilities.useSkill(battle, battle.team(support.owner), support);
         }
 
-        float side = support.owner.ordinal() % 2 == 0 ? -support.definition.followDistance : support.definition.followDistance;
-
-        side *= supportIndex == 0 ? 1f : -1f;
-
-        Vector3 desired = new Vector3(ally.position).mulAdd(new Vector3(-ally.facing.z, 0, ally.facing.x), side);
+        float centeredIndex = supportIndex - (Math.max(1, supportCount) - 1) * .5f;
+        float side = centeredIndex * support.definition.followDistance * .9f;
+        float back = 2.7f + Math.abs(centeredIndex) * .35f;
+        Vector3 desired = new Vector3(ally.position)
+                .mulAdd(new Vector3(-ally.facing.z, 0, ally.facing.x), side)
+                .mulAdd(ally.facing, -back);
         Vector3 movement = desired.sub(support.position);
         movement.y = 0;
 

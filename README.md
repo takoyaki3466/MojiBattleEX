@@ -29,13 +29,13 @@
 
 ## ゲーム概要
 
-MojiBattleEX は、メインキャラクターと 1～2 体の補助キャラクターでチームを組み、同じ PC 上で戦うゲームです。メインキャラクターは移動、固有スキル、必殺技、パッシブを持ち、補助キャラクターは追従 AI、自動通常攻撃、自動スキル、手動必殺技、常時フィールド効果を持ちます。
+MojiBattleEX は、メインキャラクターと補助キャラクターでチームを組み、同じ PC 上で戦うゲームです。メインキャラクターは自動通常攻撃、移動、固有スキル、必殺技、パッシブを持ち、補助キャラクターは追従 AI、自動通常攻撃、自動スキル、手動必殺技、常時フィールド効果を持ちます。
 
 | 項目 | 現在の仕様 |
 |---|---|
 | 対戦人数 | 2～4 人。同一キーボードを使用 |
-| ゲームモード | 通常対戦、トレーニング |
-| 編成 | メイン 1 体 + 補助 1～2 体 / プレイヤー |
+| ゲームモード | 通常対戦、2～4人対応の超究極スーパーカオス、トレーニング |
+| 編成 | 通常: メイン1体＋補助1～2体。カオス: 代表メイン1体＋自動追従メイン2体＋補助4体 / プレイヤー |
 | 実装数 | メイン 12 体、補助 6 体、フィールド効果 10 種、VFX 16 種 |
 | 試合時間 | 180 秒。残り 60 秒から攻撃倍率 1.5 倍 |
 | 更新方式 | 60 Hz 固定時間ステップ（`1 / 60` 秒） |
@@ -265,7 +265,9 @@ flowchart LR
     W --> R[SplitScreenRenderer + HUD + Audio]
 ```
 
-`BattleController#update` の実際の順序は、タイマー → キャラクター / パッシブ → 移動 → プレイヤー同士の押し戻し → 自動照準 → メイン Ability / 補助必殺 → 補助 AI → 継続ダメージ → フィールド回復 / 交通 → 覚醒 → 戦場オブジェクト → 勝敗 → アナウンスです。
+`BattleController#update` の実際の順序は、タイマー → 全メイン / パッシブ → 代表移動 → プレイヤー同士の押し戻し → 自動照準・通常攻撃 → 代表のAbility / 補助必殺 → 追従メインAI → 補助AI → 継続ダメージ → フィールド回復 / 交通 → 覚醒 → 戦場オブジェクト → 勝敗 → アナウンスです。
+
+メインの通常攻撃はキャラクターの文字画像と既存の着弾VFXを利用する低威力投射物です。「は」は必殺技の発動後、通常攻撃が寿司へ変化し、発射間隔が通常の0.45倍になります。
 
 ### 実行状態の所有権
 
@@ -275,6 +277,7 @@ flowchart LR
 | Ability 実装 Factory | `BuiltInRegistries` | 起動中共有 |
 | スキルのクールダウン・ストック | プレイヤー別 `AbilityLoadout` | 共有しない |
 | HP・必殺ポイント・状態効果 | `CharacterRuntime` | 共有しない |
+| 代表・追従メイン・補助の編成 | `BattleTeamDefinition`, `PlayerTeam` | プレイヤー単位 |
 | 補助の攻撃間隔・ゲージ | `SupportCharacterRuntime` | 共有しない |
 | 投射物・召喚物・VFX | `BattleController` | 試合単位 |
 | UI / 音声 / RegistrySnapshot | `GameContext` | 画面間共有 |
@@ -477,7 +480,7 @@ glyphs/kabushiki.png
 | パス | 内容 |
 |---|---|
 | `assets/config/game.json` | 言語、音量、メイン / 補助 / フィールド効果 ID 一覧 |
-| `assets/config/battle.json` | 時間、固定ステップ、アリーナ、全体倍率 |
+| `assets/config/battle.json` | 時間、固定ステップ、アリーナ、全体倍率、カオスモードHP倍率 |
 | `assets/config/graphics.json` | ウィンドウ、カメラ |
 | `assets/config/controls.json` | 4 プレイヤーのキー |
 | `assets/config/critical.json` | 基本会心率・倍率 |
@@ -515,8 +518,9 @@ glyphs/kabushiki.png
 | トレーニング | ✅ | 不死のダミー、統計・状態・倍率表示、F1～F5 |
 | 固定ステップ | ✅ | 60 Hz、描画 delta 上限、入力を command 化 |
 | 分割画面 | ✅ | 2 人左右、3～4 人 2×2、独立追従カメラ |
-| メインキャラクター | ✅ | 12 体、個別スキル / 必殺 / パッシブ |
-| 補助キャラクター | ✅ | 6 体、1～2 体編成、追従・自動攻撃・自動スキル・手動必殺 |
+| メインキャラクター | ✅ | 12体、共通自動通常攻撃、個別スキル / 必殺 / パッシブ |
+| 補助キャラクター | ✅ | 6体、通常時1～2体・カオス時4体編成、横並びHUD、追従・自動攻撃・自動スキル・手動必殺 |
+| カオスモード | ✅ | 2～4チーム、各チームは操作メイン1体・自動追従メイン2体・補助4体。メインの最大HPは `battle.json` の `chaosHealthMultiplier` 倍 |
 | 状態効果 | ✅ | 15 分類、3 重複規則、解除対象の区別 |
 | フィールド効果 | ✅ | 10 種、ID 重複排除、周期 / 時間成長 |
 | 覚醒 | ✅ | 残り 30 秒で出現、攻撃 1.5 / 防御 1.5 / 移動 1.3 / 必殺獲得 1.5 倍 |
@@ -542,10 +546,10 @@ glyphs/kabushiki.png
 | 画面 | 実装内容 |
 |---|---|
 | タイトル | 対戦、設定、カスタムキャラクター編集へ遷移 |
-| モード選択 | 2 / 3 / 4 人戦、トレーニング、キャラクターガイド |
-| キャラクター選択 | カードグリッド、詳細、確定 / キャンセル、補助 1 / 2 体切替、編成プレビュー |
+| モード選択 | 通常・超究極スーパーカオスそれぞれの2 / 3 / 4人戦、トレーニング、キャラクターガイド |
+| キャラクター選択 | カードグリッド、詳細、確定 / キャンセル、補助1 / 2体切替、カオス専用3メイン＋4補助編成プレビュー |
 | ガイド | メイン / 補助の表示切替、実装 Registry 由来の能力説明 |
-| 戦闘 HUD | HP、スキル、必殺、補助ゲージ、中央アナウンス、終盤表示 |
+| 戦闘 HUD | HP、スキル、必殺、人数で等分した横並び補助ゲージ、中央アナウンス、終盤表示 |
 | トレーニング HUD | 与ダメージ、DPS、フィールド、パッシブ倍率、位置、状態効果等 |
 | 設定 | 解像度、全画面、音量、UI 倍率、カメラ追従、言語 / キー表示 |
 | 結果 | 勝者 / 引き分けとタイトル復帰 |
@@ -554,7 +558,7 @@ glyphs/kabushiki.png
 
 ## 実装済みキャラクター
 
-`battle.healthMultiplier = 2.5` のため、表には JSON 基礎 HP と実戦 HP を併記します。説明中のダメージは主に JSON 設定値であり、実戦では全体係数や各種倍率が適用されます。
+`battle.healthMultiplier = 2.5` のため、表には JSON 基礎 HP と実戦 HP を併記します。カオスモードでは、その実戦HPへさらに `battle.chaosHealthMultiplier`（初期値 `5.0`）を乗算します。説明中のダメージは主に JSON 設定値であり、実戦では全体係数や各種倍率が適用されます。
 
 ### メインキャラクター（12 体）
 
@@ -845,7 +849,12 @@ JSON だけで表現できない挙動は、次の 3 層を追加します。
 
 ### 主な Gradle コマンド
 
+Core ゲームと標準コンテンツ MOD を個別に生成する方法は [`build-tools/README.md`](build-tools/README.md) を参照してください。
+
 ```powershell
+# Java runtime、標準MOD、example MOD同梱の実行可能EXE
+.\build-tools\build-playable-package.ps1
+
 # 全モジュールのビルド
 .\gradlew.bat build
 
@@ -857,6 +866,9 @@ JSON だけで表現できない挙動は、次の 3 層を追加します。
 
 # デスクトップ配布用ディレクトリ
 .\gradlew.bat :lwjgl3:installDist
+
+# 標準コンテンツ MOD JAR
+.\gradlew.bat :item:jar
 ```
 
 ### Windows パッケージ
@@ -864,23 +876,28 @@ JSON だけで表現できない挙動は、次の 3 層を追加します。
 Java 21 の `jpackage` を使い、Java runtime 同梱の配布物を生成します。
 
 ```powershell
+# 展開不要でEXEを直接起動できるapp-image
+.\build-tools\build-playable-package.ps1
+
 # WiX 不要の portable ZIP
-.\packaging\package-windows.ps1 -Type portable
+.\gradlew.bat :lwjgl3:jpackagePortableZip
 
 # WiX Toolset が必要な EXE installer
-.\packaging\package-windows.ps1 -Type installer
+.\gradlew.bat :lwjgl3:jpackageWindowsExe
 
 # ZIP、EXE、SHA-256 を一括生成
-.\packaging\package-windows.ps1 -Type all
+.\gradlew.bat :lwjgl3:packageRelease
 ```
 
 | 種類 | 出力 |
 |---|---|
-| Portable ZIP | `lwjgl3/build/jpackage/distributions/MojiBattleEX-0.1.0-windows-x64.zip` |
-| Installer | `lwjgl3/build/jpackage/installer/MojiBattleEX-0.1.0.exe` |
+| 直接実行可能なEXE | `lwjgl3/build/jpackage/app-image/MojiBattleEX/MojiBattleEX.exe` |
+| 同梱MOD | `lwjgl3/build/jpackage/app-image/MojiBattleEX/app/mods/` |
+| Portable ZIP | `lwjgl3/build/jpackage/distributions/MojiBattleEX-<version>-windows-x64.zip` |
+| Installer | `lwjgl3/build/jpackage/installer/MojiBattleEX-<version>.exe` |
 | Checksum | `lwjgl3/build/jpackage/distributions/SHA256SUMS.txt` |
 
-詳しくは [`packaging/README.md`](packaging/README.md) を参照してください。`jpackage` はクロス OS パッケージングを行わないため、各 OS 用配布物は対象 OS 上で作成します。
+詳しくは [`build-tools/README.md`](build-tools/README.md) を参照してください。`jpackage` はクロス OS パッケージングを行わないため、各 OS 用配布物は対象 OS 上で作成します。
 
 ### アセット補助
 

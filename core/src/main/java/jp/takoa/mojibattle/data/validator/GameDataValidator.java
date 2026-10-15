@@ -56,7 +56,11 @@ public final class GameDataValidator {
     private void validateGlobalSettings(ConfigManager config) {
         require(config.customEditor.maximumSlots > 0 && config.customEditor.maximumMainPassives > 0 && config.customEditor.maximumSupportFieldPassives > 0 && config.customEditor.saveVersion > 0, "custom editor config is invalid");
         require(config.battle.durationSeconds > 0 && config.battle.fixedStepSeconds > 0, "battle times must be positive");
-        require(config.battle.skillCooldownMultiplier > 0 && config.battle.skillCooldownMultiplier <= 1 && config.battle.healthMultiplier >= 1, "battle pacing multipliers are invalid");
+        require(config.battle.skillCooldownMultiplier > 0
+                        && config.battle.skillCooldownMultiplier <= 1
+                        && config.battle.healthMultiplier >= 1
+                        && config.battle.chaosHealthMultiplier >= 1,
+                "battle pacing multipliers are invalid");
         require(config.battle.finalMinuteSeconds > 0 && config.battle.finalMinuteSeconds < config.battle.durationSeconds, "final minute threshold is invalid");
         require(config.critical.baseRate >= 0 && config.critical.baseRate <= 1 && config.critical.baseDamageMultiplier >= 1, "critical config is invalid");
         require(config.awakening.spawnAtRemainingSeconds > 0 && config.awakening.spawnAtRemainingSeconds < config.battle.durationSeconds && config.awakening.attackMultiplier >= 1 && config.awakening.defenseMultiplier >= 1 && config.awakening.moveSpeedMultiplier >= 1 && config.awakening.ultimateGainMultiplier >= 1 && config.awakening.pickupRadius > 0 && config.awakening.preferredDistance > config.awakening.pickupRadius && assetExists(config.awakening.texturePath), "awakening config is invalid");

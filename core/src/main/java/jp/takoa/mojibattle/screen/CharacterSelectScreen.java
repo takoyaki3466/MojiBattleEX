@@ -38,6 +38,7 @@ public final class CharacterSelectScreen extends StageScreen {
 
     private final BattleMode mode;
     private final int playerCount;
+    private final int mainCount;
     private final GdxTextureLoader textureLoader;
     private final Label prompt;
     private final Label chosen;
@@ -68,6 +69,8 @@ public final class CharacterSelectScreen extends StageScreen {
         this.mode = mode;
         textureLoader = new GdxTextureLoader(context.resources);
         this.playerCount = mode == BattleMode.TRAINING ? 1 : Math.max(2, Math.min(4, playerCount));
+        mainCount = mode == BattleMode.CHAOS ? 3 : 1;
+        supportCount = mode == BattleMode.CHAOS ? 4 : 1;
 
         Table root = new Table();
         root.setFillParent(true);
@@ -355,7 +358,7 @@ public final class CharacterSelectScreen extends StageScreen {
 
         phase++;
 
-        if (phase == playerCount + playerCount * supportCount) {
+        if (phase == totalSelections()) {
             startBattle();
             return;
         }
@@ -379,7 +382,7 @@ public final class CharacterSelectScreen extends StageScreen {
     }
 
     private boolean selectingMain() {
-        return phase < playerCount;
+        return phase < mainSelectionCount();
     }
 
     private void setSupportCount(int value) {
@@ -389,7 +392,7 @@ public final class CharacterSelectScreen extends StageScreen {
 
         supportCount = Math.max(1, Math.min(2, value));
         supportIds.clear();
-        phase = playerCount;
+        phase = mainSelectionCount();
 
         updatePrompt();
         refreshCards();
@@ -397,18 +400,26 @@ public final class CharacterSelectScreen extends StageScreen {
     }
 
     private void updatePrompt() {
-        int supportSelection = Math.max(0, phase - playerCount);
-        int player = selectingMain() ? phase + 1 : supportSelection / supportCount + 1;
+        int supportSelection = Math.max(0, phase - mainSelectionCount());
+        int player = selectingMain() ? phase / mainCount + 1 : supportSelection / supportCount + 1;
 
-        supportCountControls.setVisible(!selectingMain());
+        supportCountControls.setVisible(mode != BattleMode.CHAOS && !selectingMain());
 
         if (selectingMain()) {
-            prompt.setText(context.i18n.text("select.main_prompt", player));
+            if (mode == BattleMode.CHAOS) {
+                prompt.setText(context.i18n.text(
+                        "select.chaos_main_prompt",
+                        player,
+                        phase % mainCount + 1,
+                        mainCount));
+            } else {
+                prompt.setText(context.i18n.text("select.main_prompt", player));
+            }
         } else {
             prompt.setText(context.i18n.text("select.support_prompt_slot", player, supportSelection % supportCount + 1, supportCount));
         }
 
-        chosen.setText(context.i18n.text("select.selection_progress", Math.min(phase, playerCount + playerCount * supportCount), playerCount + playerCount * supportCount));
+        chosen.setText(context.i18n.text("select.selection_progress", Math.min(phase, totalSelections()), totalSelections()));
     }
 
     private void startBattle() {
@@ -418,10 +429,11 @@ public final class CharacterSelectScreen extends StageScreen {
     private void refreshPlayerPreviews() {
         playerPreviews.clearChildren();
 
-        boolean compact = playerCount > 2 && supportCount > 1;
-        float mainSize = compact ? 42 : playerCount > 2 ? 48 : 74;
-        float supportSize = compact ? 28 : playerCount > 2 ? 32 : 46;
-        float nameWidth = compact ? 48 : playerCount > 2 ? 72 : 125;
+        boolean denseChaos = mode == BattleMode.CHAOS && playerCount > 2;
+        boolean compact = mode == BattleMode.CHAOS || playerCount > 2 && supportCount > 1;
+        float mainSize = denseChaos ? 24 : compact ? 42 : playerCount > 2 ? 48 : 74;
+        float supportSize = denseChaos ? 20 : compact ? 28 : playerCount > 2 ? 32 : 46;
+        float nameWidth = denseChaos ? 30 : compact ? 48 : playerCount > 2 ? 72 : 125;
 
         for (int player = 0; player < playerCount; player++) {
             Table card = new Table(context.skin);
@@ -432,19 +444,26 @@ public final class CharacterSelectScreen extends StageScreen {
             playerLabel.setFontScale(.72f);
             card.add(playerLabel).left().row();
 
-            Table portraits = new Table();
-            addMainPreview(portraits, player, mainSize, nameWidth);
-
-            for (int slot = 0; slot < supportCount; slot++) {
-                addSupportPreview(portraits, player, slot, supportSize, nameWidth);
+            Table mainPortraits = new Table();
+            for (int slot = 0; slot < mainCount; slot++) {
+                addMainPreview(mainPortraits, player, slot, mainSize, nameWidth);
             }
-            card.add(portraits);
+
+            Table supportPortraits = new Table();
+            for (int slot = 0; slot < supportCount; slot++) {
+                addSupportPreview(supportPortraits, player, slot, supportSize, nameWidth);
+            }
+            card.add(mainPortraits).left().row();
+            card.add(supportPortraits).left();
             playerPreviews.add(card).expandX().fillX().height(120).pad(3);
         }
     }
 
-    private void addMainPreview(Table portraits, int player, float imageSize, float nameWidth) {
-        String mainId = player < mainIds.size() ? mainIds.get(player) : selectingMain() && player == phase ? pendingId : null;
+    private void addMainPreview(Table portraits, int player, int slot, float imageSize, float nameWidth) {
+        int index = player * mainCount + slot;
+        String mainId = index < mainIds.size()
+                ? mainIds.get(index)
+                : selectingMain() && index == phase ? pendingId : null;
 
         if (mainId == null) {
             portraits.add(new Label(context.i18n.text("select.unselected"), context.skin)).width(imageSize + nameWidth);
@@ -456,13 +475,13 @@ public final class CharacterSelectScreen extends StageScreen {
 
         Label label = new Label(name(main), context.skin);
         label.setWrap(true);
-        label.setFontScale(playerCount > 2 && supportCount > 1 ? .44f : playerCount > 2 ? .52f : .7f);
+        label.setFontScale(mode == BattleMode.CHAOS && playerCount > 2 ? .34f : playerCount > 2 && supportCount > 1 ? .44f : playerCount > 2 ? .52f : .7f);
 
         portraits.add(label).width(nameWidth).left();
     }
 
     private void addSupportPreview(Table portraits, int player, int slot, float imageSize, float nameWidth) {
-        int supportSelection = phase - playerCount;
+        int supportSelection = phase - mainSelectionCount();
         int index = player * supportCount + slot;
 
         String supportId = index < supportIds.size() ? supportIds.get(index) : !selectingMain() && index == supportSelection ? pendingId : null;
@@ -475,13 +494,21 @@ public final class CharacterSelectScreen extends StageScreen {
 
         Label label = new Label(name(support), context.skin);
         label.setWrap(true);
-        label.setFontScale(playerCount > 2 && supportCount > 1 ? .4f : playerCount > 2 ? .48f : .65f);
+        label.setFontScale(mode == BattleMode.CHAOS && playerCount > 2 ? .32f : playerCount > 2 && supportCount > 1 ? .4f : playerCount > 2 ? .48f : .65f);
 
         portraits.add(label).width(nameWidth).left();
     }
 
     private String name(CharacterDefinition value) {
         return value.displayName != null ? value.displayName : context.i18n.text(value.nameKey);
+    }
+
+    private int mainSelectionCount() {
+        return playerCount * mainCount;
+    }
+
+    private int totalSelections() {
+        return mainSelectionCount() + playerCount * supportCount;
     }
 
     private String name(SupportCharacterDefinition value) {

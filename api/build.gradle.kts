@@ -12,8 +12,8 @@ java {
 publishing {
     publications {
         create<MavenPublication>("gameApi") {
-            artifactId = "mojibattle-api"
             from(components["java"])
+            artifactId = "mojibattle-api"
         }
     }
 }

@@ -10,7 +10,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-/** required依存を検証し、mod IDで安定化したトポロジカル順序を返す。 */
+/**
+ * required依存を検証し、mod IDで安定化したトポロジカル順序を返す。
+ */
 final class ModDependencyResolver {
     private static final String HOST_MOD_ID = "mojibattle_game";
     private static final SemanticVersion HOST_VERSION = SemanticVersion.parse(GameApiVersion.GAME_VERSION);
@@ -23,8 +25,7 @@ final class ModDependencyResolver {
         List<DiscoveredMod> result = new ArrayList<>();
         Set<String> visiting = new HashSet<>();
         Set<String> visited = new HashSet<>();
-        input.stream().sorted(Comparator.comparing(mod -> mod.metadata().id))
-                .forEach(mod -> visit(mod, byId, visiting, visited, result));
+        input.stream().sorted(Comparator.comparing(mod -> mod.metadata().id)).forEach(mod -> visit(mod, byId, visiting, visited, result));
         return List.copyOf(result);
     }
 
@@ -39,8 +40,7 @@ final class ModDependencyResolver {
                 if (target == null) {
                     throw new ModLoadingException("Missing required MOD " + dependency.getKey() + " for " + mod.metadata().id);
                 }
-                validateMinimum(mod.metadata().id, dependency.getKey(), dependency.getValue(),
-                        SemanticVersion.parse(target.metadata().version));
+                validateMinimum(mod.metadata().id, dependency.getKey(), dependency.getValue(), SemanticVersion.parse(target.metadata().version));
             }
             for (Map.Entry<String, String> dependency : mod.metadata().dependencies.optional.entrySet()) {
                 if (HOST_MOD_ID.equals(dependency.getKey())) {
@@ -49,15 +49,13 @@ final class ModDependencyResolver {
                 }
                 DiscoveredMod target = byId.get(dependency.getKey());
                 if (target != null) {
-                    validateMinimum(mod.metadata().id, dependency.getKey(), dependency.getValue(),
-                            SemanticVersion.parse(target.metadata().version));
+                    validateMinimum(mod.metadata().id, dependency.getKey(), dependency.getValue(), SemanticVersion.parse(target.metadata().version));
                 }
             }
         }
     }
 
-    private static void validateMinimum(String owner, String dependencyId, String required,
-                                        SemanticVersion actual) {
+    private static void validateMinimum(String owner, String dependencyId, String required, SemanticVersion actual) {
         if (required == null || required.isBlank()) {
             return;
         }
@@ -70,8 +68,7 @@ final class ModDependencyResolver {
         }
     }
 
-    private static void visit(DiscoveredMod mod, Map<String, DiscoveredMod> byId, Set<String> visiting,
-                              Set<String> visited, List<DiscoveredMod> result) {
+    private static void visit(DiscoveredMod mod, Map<String, DiscoveredMod> byId, Set<String> visiting, Set<String> visited, List<DiscoveredMod> result) {
         String id = mod.metadata().id;
         if (visited.contains(id)) {
             return;
@@ -81,10 +78,7 @@ final class ModDependencyResolver {
         }
         Set<String> dependencies = new HashSet<>(mod.metadata().dependencies.required.keySet());
         dependencies.addAll(mod.metadata().dependencies.optional.keySet());
-        dependencies.stream()
-                .filter(byId::containsKey)
-                .sorted()
-                .forEach(dependency -> visit(byId.get(dependency), byId, visiting, visited, result));
+        dependencies.stream().filter(byId::containsKey).sorted().forEach(dependency -> visit(byId.get(dependency), byId, visiting, visited, result));
         visiting.remove(id);
         visited.add(id);
         result.add(mod);

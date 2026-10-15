@@ -10,21 +10,23 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
 
-/** 登録宣言と実体生成を分離し、登録イベントで一括確定する。 */
-public final class DeferredRegister<T> {
+/**
+ * 登録宣言と実体生成を分離し、登録イベントで一括確定する。
+ */
+public final class CompatRegister<T> {
     private final RegistryKey<T> registryKey;
     private final String namespace;
     private final Map<RegistryHandle<T>, Supplier<? extends T>> entries = new LinkedHashMap<>();
     private EventSubscription subscription;
     private boolean resolved;
 
-    private DeferredRegister(RegistryKey<T> registryKey, String namespace) {
+    private CompatRegister(RegistryKey<T> registryKey, String namespace) {
         this.registryKey = registryKey;
         this.namespace = RegistryId.of(namespace, "validation").namespace();
     }
 
-    public static <T> DeferredRegister<T> create(RegistryKey<T> registryKey, String namespace) {
-        return new DeferredRegister<>(registryKey, namespace);
+    public static <T> CompatRegister<T> create(RegistryKey<T> registryKey, String namespace) {
+        return new CompatRegister<>(registryKey, namespace);
     }
 
     public RegistryHandle<T> register(String path, Supplier<? extends T> factory) {
@@ -42,7 +44,9 @@ public final class DeferredRegister<T> {
         return handle;
     }
 
-    /** 登録イベントを受け取るため、購読専用バスへ一度だけ接続する。 */
+    /**
+     * 登録イベントを受け取るため、購読専用バスへ一度だけ接続する。
+     */
     public void attach(RegistrationBus registrationBus) {
         if (subscription != null) {
             throw new IllegalStateException("DeferredRegister is already attached: " + registryKey.id());

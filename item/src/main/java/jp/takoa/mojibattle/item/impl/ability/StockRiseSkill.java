@@ -46,7 +46,7 @@ public final class StockRiseSkill implements ISkill {
         if (!battle.acceptsActions() || !user.isAlive() || user.isStunned() || !user.skillReady()) {
             return false;
         }
-        float healthCost = user.definition.maxHp * Math.max(0, config.healthCostRatio);
+        float healthCost = user.maxHp() * Math.max(0, config.healthCostRatio);
         if (healthCost > 0 && !user.spendHealth(healthCost)) {
             return false;
         }
@@ -223,7 +223,7 @@ public final class StockRiseSkill implements ISkill {
                     config.boomerang,
                     config.boomerangDistance,
                     config.pointsOnHit ? config.ultimatePointsPerHit : 0);
-            projectile.attackTraits(ultimateAttack, false);
+            projectile.attackTraits(ultimateAttack, false).source(user);
             if ("bind_follow_up".equals(config.type)) {
                 projectile.followUp(
                         config.glyphs[1],

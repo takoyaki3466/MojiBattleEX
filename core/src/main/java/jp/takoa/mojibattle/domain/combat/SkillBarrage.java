@@ -1,6 +1,7 @@
 package jp.takoa.mojibattle.domain.combat;
 
 import com.badlogic.gdx.math.Vector3;
+import jp.takoa.mojibattle.domain.CharacterRuntime;
 import jp.takoa.mojibattle.domain.PlayerId;
 
 /**
@@ -8,14 +9,16 @@ import jp.takoa.mojibattle.domain.PlayerId;
  */
 public final class SkillBarrage extends PositionedCombatObject {
     public final PlayerId owner;
+    public final CharacterRuntime source;
     public final String skillId;
     private final float interval;
     private int remaining;
     private float timer;
     private boolean pulse;
 
-    public SkillBarrage(PlayerId owner, String skillId, int count, float interval, Vector3 position) {
-        this.owner = owner;
+    public SkillBarrage(CharacterRuntime source, String skillId, int count, float interval, Vector3 position) {
+        this.source = source;
+        this.owner = source.playerId;
         this.skillId = skillId;
         remaining = count;
         this.interval = interval;

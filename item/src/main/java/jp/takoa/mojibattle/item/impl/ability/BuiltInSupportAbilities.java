@@ -50,7 +50,7 @@ public final class BuiltInSupportAbilities {
 
     public static void applyHealCleanse(SupportAbilityContext context) {
         context.team.main().heal(
-                context.team.main().definition.maxHp * context.ability.magnitude);
+                context.team.main().maxHp() * context.ability.magnitude);
         context.team.main().clearNegativeStatuses();
         context.battle.emitImageEffect(
                 context.team.main().position, "glyphs/zero.png", EffectIds.IMPACT, 11, 1.5f);

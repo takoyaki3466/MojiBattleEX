@@ -25,6 +25,7 @@ import jp.takoa.mojibattle.domain.debug.CharacterDebugSnapshot;
 import jp.takoa.mojibattle.domain.status.StatusEffect;
 import jp.takoa.mojibattle.domain.support.SupportCharacterRuntime;
 
+import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.List;
 
@@ -71,8 +72,9 @@ public final class BattleHud implements Disposable {
             float scale = ids.size() > 2 ? .58f : .72f;
 
             for (int index = 0; index < ids.size(); index++) {
-                PlayerHud hud = new PlayerHud(ids.get(index), scale);
-                playerHuds.put(ids.get(index), hud);
+                PlayerId id = ids.get(index);
+                PlayerHud hud = new PlayerHud(id, scale, battle.supports(id).size());
+                playerHuds.put(id, hud);
 
                 grid.add(hud.panel).expand().fill().pad(5);
 
@@ -172,29 +174,20 @@ public final class BattleHud implements Disposable {
         private final ContinuousImageGauge hp = gauge("gauge-hp");
         private final ContinuousImageGauge skill = gauge("gauge-skill");
         private final ContinuousImageGauge ultimate = gauge("gauge-ultimate");
-        private final ContinuousImageGauge supportSkill = gauge("gauge-support-skill");
-        private final ContinuousImageGauge supportUltimate = gauge("gauge-support-ultimate");
-        private final ContinuousImageGauge supportSkillTwo = gauge("gauge-support-skill");
-        private final ContinuousImageGauge supportUltimateTwo = gauge("gauge-support-ultimate");
+        private final List<SupportHud> supportHuds = new ArrayList<>();
 
         private final Label title = label();
         private final Label hpText = label();
         private final Label skillReady = label();
         private final Label ultimateReady = label();
-        private final Label supportTitle = label();
-        private final Label supportSkillState = label();
-        private final Label supportUltimateReady = label();
-        private final Label supportTitleTwo = label();
-        private final Label supportSkillStateTwo = label();
-        private final Label supportUltimateReadyTwo = label();
         private final Label details = label();
 
-        private PlayerHud(PlayerId id, float scale) {
+        private PlayerHud(PlayerId id, float scale, int supportCount) {
             this.id = id;
             mainPanel.setBackground(context.skin.getDrawable("panel"));
             mainPanel.pad(9);
 
-            for (Label value : List.of(title, hpText, skillReady, ultimateReady, supportTitle, supportSkillState, supportUltimateReady, supportTitleTwo, supportSkillStateTwo, supportUltimateReadyTwo, details)) {
+            for (Label value : List.of(title, hpText, skillReady, ultimateReady, details)) {
                 value.setFontScale(scale);
             }
 
@@ -208,19 +201,16 @@ public final class BattleHud implements Disposable {
             details.setWrap(true);
             mainPanel.add(details).growX().left().padTop(3).row();
 
-            supportPanel.setBackground(context.skin.getDrawable("button-down"));
-            supportPanel.pad(6);
-            supportPanel.add(supportTitle).growX().left().row();
-            supportPanel.add(meter("battle.support_ultimate_gauge", supportUltimate, supportUltimateReady, scale * .9f)).growX().padTop(3).row();
-            supportPanel.add(meter("battle.support_skill_gauge", supportSkill, supportSkillState, scale * .9f)).growX().padTop(3);
-            supportPanel.row();
-            supportPanel.add(supportTitleTwo).growX().left().padTop(5).row();
-            supportPanel.add(meter("battle.support_ultimate_gauge", supportUltimateTwo, supportUltimateReadyTwo, scale * .9f)).growX().padTop(3).row();
-            supportPanel.add(meter("battle.support_skill_gauge", supportSkillTwo, supportSkillStateTwo, scale * .9f)).growX().padTop(3);
+            float supportScale = supportCount >= 4 ? scale * .7f : supportCount == 3 ? scale * .78f : scale * .9f;
+            for (int index = 0; index < supportCount; index++) {
+                SupportHud hud = new SupportHud(supportScale);
+                supportHuds.add(hud);
+                supportPanel.add(hud.panel).growX().fillX().uniformX().pad(1);
+            }
 
             panel.add(mainPanel).growX().top().row();
             panel.add().expandY().row();
-            panel.add(supportPanel).growX().right().bottom();
+            panel.add(supportPanel).growX().fillX().bottom();
         }
 
         private Table meter(String captionKey, ContinuousImageGauge gauge, Label state, float scale) {
@@ -239,55 +229,32 @@ public final class BattleHud implements Disposable {
         private void update(BattleController battle, CharacterRuntime player) {
             List<SupportCharacterRuntime> supports = battle.supports(id);
 
-            SupportCharacterRuntime support = supports.isEmpty() ? null : supports.get(0);
-            SupportCharacterRuntime supportTwo = supports.size() < 2 ? null : supports.get(1);
-
-            updateGaugeValues(player, support, supportTwo);
-            updateNames(player, support, supportTwo);
+            updateGaugeValues(player);
+            updateName(player);
             updateMainAbilityStates(player);
-            updateSupportAbilityState(support, supportSkillState, supportUltimateReady);
-            updateSupportAbilityState(supportTwo, supportSkillStateTwo, supportUltimateReadyTwo);
+            for (int index = 0; index < supportHuds.size(); index++) {
+                SupportCharacterRuntime support = index < supports.size() ? supports.get(index) : null;
+                supportHuds.get(index).update(support);
+            }
 
             String fields = String.join(" / ", battle.fieldEffectIds().stream().map(key -> context.i18n.text("field." + key)).toList());
             details.setText(statusBadges(player) + "  " + context.i18n.text("battle.field_effects", fields));
         }
 
-        private void updateGaugeValues(CharacterRuntime player, SupportCharacterRuntime support, SupportCharacterRuntime supportTwo) {
+        private void updateGaugeValues(CharacterRuntime player) {
             hp.setValue(player.hpRatio());
 
-            hpText.setText(context.i18n.text("battle.hp_value", Math.round(player.hp()), Math.round(player.definition.maxHp)));
+            hpText.setText(context.i18n.text("battle.hp_value", Math.round(player.hp()), Math.round(player.maxHp())));
 
             skill.setValue(player.skillChargeRatio());
             ultimate.setValue(player.ultimatePoints() / 100f);
-
-            supportSkill.setValue(support == null ? 0 : support.skillChargeRatio());
-            supportUltimate.setValue(support == null ? 0 : support.ultimateChargeRatio());
-            supportSkillTwo.setValue(supportTwo == null ? 0 : supportTwo.skillChargeRatio());
-            supportUltimateTwo.setValue(supportTwo == null ? 0 : supportTwo.ultimateChargeRatio());
         }
 
-        private void updateNames(CharacterRuntime player, SupportCharacterRuntime support, SupportCharacterRuntime supportTwo) {
+        private void updateName(CharacterRuntime player) {
             String playerName = player.definition.displayName != null ? player.definition.displayName : context.i18n.text(player.definition.nameKey);
             String awakened = player.awakened() ? "  " + context.i18n.text("battle.awakened") : "";
 
             title.setText(id.label() + "  " + playerName + awakened);
-
-            if (support == null) {
-                supportTitle.setText(context.i18n.text("battle.no_support"));
-                supportTitleTwo.setText("");
-                return;
-            }
-
-            String supportName = support.definition.displayName != null ? support.definition.displayName : context.i18n.text(support.definition.nameKey);
-            supportTitle.setText(context.i18n.text("battle.support", supportName));
-
-            if (supportTwo == null) {
-                supportTitleTwo.setText("");
-                return;
-            }
-
-            String supportTwoName = supportTwo.definition.displayName != null ? supportTwo.definition.displayName : context.i18n.text(supportTwo.definition.nameKey);
-            supportTitleTwo.setText(context.i18n.text("battle.support", supportTwoName));
         }
 
         private void updateMainAbilityStates(CharacterRuntime player) {
@@ -302,17 +269,6 @@ public final class BattleHud implements Disposable {
 
             setCooldownState(skillReady, player.skillReady(), player.skillCooldown(), "battle.skill_available", false);
             setUltimateState(ultimateReady, player.ultimatePoints(), "battle.ultimate_available");
-        }
-
-        private void updateSupportAbilityState(SupportCharacterRuntime support, Label skillState, Label ultimateState) {
-            if (support == null) {
-                skillState.setText("");
-                ultimateState.setText("");
-                return;
-            }
-
-            setCooldownState(skillState, false, support.skillCooldown(), "battle.support_skill_available", true);
-            setUltimateState(ultimateState, support.ultimatePoints(), "battle.support_ultimate_available");
         }
 
         private void setReady(Label label, boolean ready, String key) {
@@ -341,6 +297,88 @@ public final class BattleHud implements Disposable {
 
             label.setColor(Color.WHITE);
             label.setText(context.i18n.text("battle.percent", Math.round(points)));
+        }
+
+        /** 1体分の補助能力ゲージを所有し、他の補助枠と同じ幅で横並びにする。 */
+        private final class SupportHud {
+            private final Table panel = new Table();
+            private final ContinuousImageGauge skill = gauge("gauge-support-skill");
+            private final ContinuousImageGauge ultimate = gauge("gauge-support-ultimate");
+            private final Label title = label();
+            private final Label skillState = label();
+            private final Label ultimateState = label();
+
+            private SupportHud(float scale) {
+                panel.setBackground(context.skin.getDrawable("button-down"));
+                panel.pad(2);
+                title.setFontScale(scale * .9f);
+                skillState.setFontScale(scale * .68f);
+                ultimateState.setFontScale(scale * .68f);
+                title.setWrap(false);
+                skillState.setWrap(false);
+                ultimateState.setWrap(false);
+                title.setAlignment(com.badlogic.gdx.utils.Align.left);
+                skillState.setAlignment(com.badlogic.gdx.utils.Align.right);
+                ultimateState.setAlignment(com.badlogic.gdx.utils.Align.right);
+                panel.add(title).growX().left().row();
+                panel.add(supportMeter(
+                                "battle.support_ultimate_gauge",
+                                ultimate,
+                                ultimateState,
+                                scale))
+                        .growX()
+                        .padTop(1)
+                        .row();
+                panel.add(supportMeter(
+                                "battle.support_skill_gauge",
+                                skill,
+                                skillState,
+                                scale))
+                        .growX()
+                        .padTop(1);
+            }
+
+            private Table supportMeter(
+                    String captionKey,
+                    ContinuousImageGauge gauge,
+                    Label state,
+                    float scale) {
+                Table meter = new Table();
+                Label caption = new Label(context.i18n.text(captionKey), context.skin);
+                caption.setFontScale(scale * .68f);
+                meter.add(caption).width(34).left();
+                meter.add(gauge).growX().height(13).padLeft(2).padRight(2);
+                meter.add(state).width(54).right();
+                return meter;
+            }
+
+            private void update(SupportCharacterRuntime support) {
+                if (support == null) {
+                    title.setText(context.i18n.text("battle.no_support"));
+                    skill.setValue(0);
+                    ultimate.setValue(0);
+                    skillState.setText("");
+                    ultimateState.setText("");
+                    return;
+                }
+
+                String name = support.definition.displayName != null
+                        ? support.definition.displayName
+                        : context.i18n.text(support.definition.nameKey);
+                title.setText(context.i18n.text("battle.support", name));
+                skill.setValue(support.skillChargeRatio());
+                ultimate.setValue(support.ultimateChargeRatio());
+                setCooldownState(
+                        skillState,
+                        false,
+                        support.skillCooldown(),
+                        "battle.support_skill_available",
+                        false);
+                setUltimateState(
+                        ultimateState,
+                        support.ultimatePoints(),
+                        "battle.support_ultimate_available");
+            }
         }
     }
 

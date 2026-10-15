@@ -2,7 +2,7 @@ package jp.takoa.mojibattle.item.init;
 
 import jp.takoa.mojibattle.item.impl.registry.SupportImplementations;
 import jp.takoa.mojibattle.registry.BuiltInRegistries;
-import jp.takoa.mojibattle.registry.DeferredRegister;
+import jp.takoa.mojibattle.registry.CompatRegister;
 import jp.takoa.mojibattle.registry.RegistryHandle;
 import jp.takoa.mojibattle.registry.SupportAbilityImplementation;
 
@@ -10,7 +10,7 @@ import jp.takoa.mojibattle.registry.SupportAbilityImplementation;
  * 補助能力ハンドラのIDとFactoryだけを宣言する。
  */
 public final class SupportRegistryInit {
-    public static final DeferredRegister<SupportAbilityImplementation> REGISTER = DeferredRegister.create(BuiltInRegistries.SUPPORT_ABILITY_IMPLEMENTATIONS, "mojibattle");
+    public static final CompatRegister<SupportAbilityImplementation> REGISTER = CompatRegister.create(BuiltInRegistries.SUPPORT_ABILITY_IMPLEMENTATIONS, "mojibattle");
 
     public static final RegistryHandle<SupportAbilityImplementation> ALLY_ATTACK_UP = register("ally_attack_up", SupportImplementations::allyAttackUp);
     public static final RegistryHandle<SupportAbilityImplementation> ENEMY_DEFENSE_DOWN = register("enemy_defense_down", SupportImplementations::enemyDefenseDown);

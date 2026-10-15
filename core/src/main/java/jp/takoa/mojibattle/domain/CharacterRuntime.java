@@ -13,6 +13,7 @@ public final class CharacterRuntime {
     public final CharacterDefinition definition;
     public final Vector3 position = new Vector3();
     public final Vector3 facing = new Vector3(0, 0, 1);
+    private final float maxHp;
     private float hp;
     private float skillCooldown;
     private float skillCooldownDuration;
@@ -27,14 +28,26 @@ public final class CharacterRuntime {
     private float stockRechargeRemaining;
     private boolean awakened;
     private boolean zeroDefense;
+    private float normalAttackCooldown;
+    private float normalAttackIntervalMultiplier = 1f;
+    private String normalAttackGlyph;
+    private String normalAttackTexture;
     public final StatusEffectSystem statuses;
 
     public CharacterRuntime(PlayerId playerId, CharacterDefinition definition, Vector3 spawn) {
+        this(playerId, definition, spawn, 1f);
+    }
+
+    /**
+     * モード固有のHP倍率を反映した戦闘時状態を生成する。
+     */
+    public CharacterRuntime(PlayerId playerId, CharacterDefinition definition, Vector3 spawn, float healthMultiplier) {
         this.playerId = playerId;
         this.definition = definition;
         statuses = new StatusEffectSystem(playerId);
         position.set(spawn);
-        hp = definition.maxHp;
+        maxHp = definition.maxHp * Math.max(0.01f, healthMultiplier);
+        hp = maxHp;
         zeroDefense = definition.zeroDefense;
     }
 
@@ -46,6 +59,7 @@ public final class CharacterRuntime {
         skillCooldown = Math.max(0, skillCooldown - delta);
         stunRemaining = Math.max(0, stunRemaining - delta);
         bindRemaining = Math.max(0, bindRemaining - delta);
+        normalAttackCooldown = Math.max(0, normalAttackCooldown - delta);
 
         statuses.update(delta);
 
@@ -68,15 +82,19 @@ public final class CharacterRuntime {
         return hp;
     }
 
+    public float maxHp() {
+        return maxHp;
+    }
+
     public float hpRatio() {
-        return hp / definition.maxHp;
+        return hp / maxHp;
     }
 
     /**
      * @return 最大HPから現在HPを引いた非負の減少量
      */
     public float missingHp() {
-        return Math.max(0, definition.maxHp - hp);
+        return Math.max(0, maxHp - hp);
     }
 
     /**
@@ -184,7 +202,7 @@ public final class CharacterRuntime {
 
     public void heal(float amount) {
         if (isAlive() && Float.isFinite(amount) && amount > 0) {
-            hp = Math.min(definition.maxHp, hp + amount);
+            hp = Math.min(maxHp, hp + amount);
         }
     }
 
@@ -293,5 +311,32 @@ public final class CharacterRuntime {
         stunRemaining = 0;
         bindRemaining = 0;
         statuses.clearNegative();
+    }
+
+    public boolean normalAttackReady() {
+        return normalAttackCooldown <= 0;
+    }
+
+    /** 通常攻撃の次回発射までの時間を、現在の攻撃間隔倍率込みで設定する。 */
+    public void resetNormalAttack(float baseInterval) {
+        normalAttackCooldown = Math.max(0, baseInterval * normalAttackIntervalMultiplier);
+    }
+
+    /**
+     * 通常攻撃の表示と間隔を上書きする。必殺技などによる戦闘中の永続変化に使用する。
+     */
+    public void enhanceNormalAttack(String glyph, String texture, float intervalMultiplier) {
+        normalAttackGlyph = glyph;
+        normalAttackTexture = texture;
+        normalAttackIntervalMultiplier = Math.max(.1f, intervalMultiplier);
+        normalAttackCooldown = Math.min(normalAttackCooldown, normalAttackIntervalMultiplier);
+    }
+
+    public String normalAttackGlyph() {
+        return normalAttackGlyph == null ? definition.displayGlyph : normalAttackGlyph;
+    }
+
+    public String normalAttackTexture() {
+        return normalAttackTexture == null ? definition.glyphTexture : normalAttackTexture;
     }
 }

@@ -12,7 +12,7 @@ public interface RegistrationBus {
      * 指定したイベント型のリスナーを登録する。
      *
      * @param eventType 完全一致で受信するイベント型
-     * @param listener 同期的に呼び出されるリスナー
+     * @param listener  同期的に呼び出されるリスナー
      * @return 購読解除用ハンドル
      */
     <E> EventSubscription subscribe(Class<E> eventType, Consumer<? super E> listener);

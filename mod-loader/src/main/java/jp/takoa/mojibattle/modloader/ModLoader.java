@@ -10,7 +10,9 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
-/** 外部MODを検証し、共有の専用ClassLoaderから依存順に生成する初期ローダー。 */
+/**
+ * 外部MODを検証し、共有の専用ClassLoaderから依存順に生成する初期ローダー。
+ */
 public final class ModLoader implements AutoCloseable {
     private final Path modsDirectory;
     private URLClassLoader classLoader;
@@ -57,7 +59,9 @@ public final class ModLoader implements AutoCloseable {
         }
     }
 
-    /** {@link #load()} 成功後に、ホストと検出済みMODのリソース名前空間を返す。 */
+    /**
+     * {@link #load()} 成功後に、ホストと検出済みMODのリソース名前空間を返す。
+     */
     public ResourceManager resources() {
         if (resources == null) {
             throw new IllegalStateException("MOD resources are not available before load");

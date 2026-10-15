@@ -36,16 +36,6 @@ val prepareDevMods = tasks.register<Sync>("prepareDevMods") {
     into(layout.buildDirectory.dir("dev-mods"))
 }
 
-distributions {
-    named("main") {
-        contents {
-            from(standardModJar) {
-                into("mods")
-            }
-        }
-    }
-}
-
 tasks.named<Jar>("jar") {
     archiveFileName.set("MojiBattleEX.jar")
     manifest.attributes["Main-Class"] = application.mainClass.get()
@@ -63,13 +53,16 @@ val packageDescription = "A loud local two-player 3D character battle game"
 val packageVersion = project.version.toString()
 val packageIcon = rootProject.layout.projectDirectory.file("packaging/windows/MojiBattleEX.ico")
 val packageRoot = layout.buildDirectory.dir("jpackage")
+val bundledModsDirectory = packageRoot.map { it.dir("bundled-mods") }
 val installDistribution = tasks.named<Sync>("installDist")
+val prepareBundledMods = tasks.register<Sync>("prepareBundledMods") {
+    dependsOn(standardModJar)
+    from(standardModJar)
+    into(bundledModsDirectory)
+}
 val prepareJpackageInput = tasks.register<Sync>("prepareJpackageInput") {
     dependsOn(installDistribution)
     from(installDistribution.map { it.destinationDir.resolve("lib") })
-    from(installDistribution.map { it.destinationDir.resolve("mods") }) {
-        into("mods")
-    }
     into(packageRoot.map { it.dir("input") })
 }
 val javaToolchains = extensions.getByType<JavaToolchainService>()
@@ -80,31 +73,42 @@ val jpackageExecutable = javaToolchains.launcherFor {
     launcher.metadata.installationPath.file("bin/$executable").asFile
 }
 
-fun jpackageBaseArguments(destination: File): List<String> = listOf(
-    "--name", packageName,
-    "--app-version", packageVersion,
-    "--vendor", packageVendor,
-    "--description", packageDescription,
-    "--input", packageRoot.get().dir("input").asFile.absolutePath,
-    "--main-jar", "MojiBattleEX.jar",
-    "--main-class", application.mainClass.get(),
-    "--dest", destination.absolutePath,
-    "--icon", packageIcon.asFile.absolutePath,
-    "--java-options", "-Dfile.encoding=UTF-8",
-    "--java-options", "-Dmojibattle.modsDir=\$APPDIR/mods",
-    "--java-options", "-Xms256m",
-    "--java-options", "-Xmx2g"
-)
+fun jpackageBaseArguments(destination: File): List<String> {
+    val arguments = mutableListOf(
+        "--name", packageName,
+        "--app-version", packageVersion,
+        "--vendor", packageVendor,
+        "--description", packageDescription,
+        "--input", packageRoot.get().dir("input").asFile.absolutePath,
+        "--main-jar", "MojiBattleEX.jar",
+        "--main-class", application.mainClass.get(),
+        "--dest", destination.absolutePath,
+        "--java-options", "-Dfile.encoding=UTF-8",
+        "--java-options", "-Dmojibattle.modsDir=\$APPDIR/mods",
+        "--java-options", "-Xms256m",
+        "--java-options", "-Xmx2g"
+    )
+    if (packageIcon.asFile.isFile) {
+        arguments.addAll(listOf("--icon", packageIcon.asFile.absolutePath))
+    }
+    return arguments
+}
 
 val jpackageAppImage = tasks.register<Exec>("jpackageAppImage") {
     group = "distribution"
-    description = "Creates a self-contained Windows application image with a bundled Java runtime."
-    dependsOn(prepareJpackageInput)
+    description = "Creates a self-contained Windows application image with a bundled runtime and MODs."
+    dependsOn(prepareJpackageInput, prepareBundledMods)
     doFirst {
         val destination = packageRoot.get().dir("app-image").asFile
         delete(destination.resolve(packageName))
         destination.mkdirs()
         commandLine(listOf(jpackageExecutable.get().absolutePath, "--type", "app-image") + jpackageBaseArguments(destination))
+    }
+    doLast {
+        project.sync {
+            from(bundledModsDirectory)
+            into(packageRoot.get().dir("app-image/$packageName/app/mods"))
+        }
     }
 }
 
@@ -121,7 +125,7 @@ val jpackagePortableZip = tasks.register<Zip>("jpackagePortableZip") {
 val jpackageWindowsExe = tasks.register<Exec>("jpackageWindowsExe") {
     group = "distribution"
     description = "Creates the Windows EXE installer. WiX Toolset must be installed and available on PATH."
-    dependsOn(prepareJpackageInput)
+    dependsOn(jpackageAppImage)
     doFirst {
         if (!System.getProperty("os.name").lowercase().contains("windows"))
             throw GradleException("The EXE installer can only be built on Windows.")
@@ -129,7 +133,12 @@ val jpackageWindowsExe = tasks.register<Exec>("jpackageWindowsExe") {
         val temporary = packageRoot.get().dir("temp-exe").asFile
         delete(destination.resolve("$packageName-$packageVersion.exe"), temporary)
         destination.mkdirs()
-        commandLine(listOf(jpackageExecutable.get().absolutePath, "--type", "exe") + jpackageBaseArguments(destination) + listOf(
+        commandLine(listOf(
+            jpackageExecutable.get().absolutePath,
+            "--type", "exe",
+            "--name", packageName,
+            "--app-image", packageRoot.get().dir("app-image/$packageName").asFile.absolutePath,
+            "--dest", destination.absolutePath,
             "--temp", temporary.absolutePath,
             "--win-menu",
             "--win-menu-group", packageName,

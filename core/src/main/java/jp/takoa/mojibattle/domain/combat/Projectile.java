@@ -1,6 +1,7 @@
 package jp.takoa.mojibattle.domain.combat;
 
 import com.badlogic.gdx.math.Vector3;
+import jp.takoa.mojibattle.domain.CharacterRuntime;
 import jp.takoa.mojibattle.domain.PlayerId;
 
 /**
@@ -41,6 +42,7 @@ public final class Projectile extends PositionedCombatObject {
     private float followUpSpeed;
     private boolean ignoreDefense;
     private boolean ultimateAttack;
+    private CharacterRuntime source;
 
     public Projectile(long attackId, PlayerId owner, String glyph, String texturePath, String effectId, Vector3 start, Vector3 velocity, float radius, float baseDamage, float stunSeconds, float life) {
         this(attackId, owner, glyph, texturePath, effectId, start, velocity, radius, baseDamage, stunSeconds, 0, life, false, 0, 0);
@@ -188,6 +190,18 @@ public final class Projectile extends PositionedCombatObject {
         this.ultimateAttack = ultimateAttack;
         this.ignoreDefense = ignoreDefense;
         return this;
+    }
+
+    /**
+     * 同じプレイヤーに複数のメインがいる場合に、攻撃倍率とゲージ加算の所有者を指定する。
+     */
+    public Projectile source(CharacterRuntime source) {
+        this.source = source;
+        return this;
+    }
+
+    public CharacterRuntime source() {
+        return source;
     }
 
     public boolean ignoresDefense() {

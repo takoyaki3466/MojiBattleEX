@@ -2,7 +2,7 @@ package jp.takoa.mojibattle.item.init;
 
 import jp.takoa.mojibattle.item.impl.registry.PassiveImplementations;
 import jp.takoa.mojibattle.registry.BuiltInRegistries;
-import jp.takoa.mojibattle.registry.DeferredRegister;
+import jp.takoa.mojibattle.registry.CompatRegister;
 import jp.takoa.mojibattle.registry.PassiveImplementation;
 import jp.takoa.mojibattle.registry.RegistryHandle;
 
@@ -10,7 +10,7 @@ import jp.takoa.mojibattle.registry.RegistryHandle;
  * パッシブ実装のIDと遅延生成Factoryだけを宣言する。
  */
 public final class PassiveRegistryInit {
-    public static final DeferredRegister<PassiveImplementation> REGISTER = DeferredRegister.create(BuiltInRegistries.PASSIVE_IMPLEMENTATIONS, "mojibattle");
+    public static final CompatRegister<PassiveImplementation> REGISTER = CompatRegister.create(BuiltInRegistries.PASSIVE_IMPLEMENTATIONS, "mojibattle");
 
     public static final RegistryHandle<PassiveImplementation> COMPOUND_INTEREST = standard("compound_interest");
     public static final RegistryHandle<PassiveImplementation> HITBOX_BOOST = standard("hitbox_boost");

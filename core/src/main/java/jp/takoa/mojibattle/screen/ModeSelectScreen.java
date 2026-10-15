@@ -32,9 +32,9 @@ public final class ModeSelectScreen extends StageScreen {
         help.setColor(.62f, 1f, .76f, 1f);
         card.add(help).height(45).row();
 
-        addBattle(card, "menu.battle_two", 2);
-        addBattle(card, "menu.battle_three", 3);
-        addBattle(card, "menu.battle_four", 4);
+        addBattleRow(card, "menu.battle_two", "menu.battle_chaos_two", 2);
+        addBattleRow(card, "menu.battle_three", "menu.battle_chaos_three", 3);
+        addBattleRow(card, "menu.battle_four", "menu.battle_chaos_four", 4);
 
         TextButton training = new TextButton(context.i18n.text("menu.training"), context.skin);
         card.add(training).row();
@@ -64,13 +64,25 @@ public final class ModeSelectScreen extends StageScreen {
         addStandardMenu(root, card);
     }
 
-    private void addBattle(Table table, String key, int players) {
-        TextButton button = new TextButton(context.i18n.text(key), context.skin);
+    /** 通常対戦と同人数のカオス対戦を1行に並べ、人数ごとの入口を揃える。 */
+    private void addBattleRow(Table table, String versusKey, String chaosKey, int players) {
+        Table row = new Table();
+        row.defaults().growX().height(52).pad(2);
 
-        table.add(button).row();
-        button.addListener(new ChangeListener() {
+        TextButton versus = new TextButton(context.i18n.text(versusKey), context.skin);
+        TextButton chaos = new TextButton(context.i18n.text(chaosKey), context.skin);
+        row.add(versus);
+        row.add(chaos);
+        table.add(row).growX().height(60).row();
+
+        versus.addListener(new ChangeListener() {
             public void changed(ChangeEvent event, Actor actor) {
                 screens.show(new CharacterSelectScreen(context, screens, BattleMode.VERSUS, players));
+            }
+        });
+        chaos.addListener(new ChangeListener() {
+            public void changed(ChangeEvent event, Actor actor) {
+                screens.show(new CharacterSelectScreen(context, screens, BattleMode.CHAOS, players));
             }
         });
     }

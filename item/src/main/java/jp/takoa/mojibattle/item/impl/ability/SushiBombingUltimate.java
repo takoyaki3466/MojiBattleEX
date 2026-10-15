@@ -28,7 +28,7 @@ public final class SushiBombingUltimate implements IUltimate {
             return false;
         }
         battle.spawn(new SushiBarrage(
-                user.playerId,
+                user,
                 config.barrageCount,
                 config.barrageInterval,
                 config.baseDamage,
@@ -38,6 +38,7 @@ public final class SushiBombingUltimate implements IUltimate {
                 config.objectTexture,
                 config.impactEffectId,
                 config.ignoreDefense));
+        user.enhanceNormalAttack("寿司", config.objectTexture, .45f);
         battle.announceUltimate(user.playerId, config.nameKey);
         return true;
     }

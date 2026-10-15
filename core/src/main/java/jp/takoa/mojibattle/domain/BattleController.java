@@ -42,6 +42,7 @@ import jp.takoa.mojibattle.event.gameplay.UltimateActivatedEvent;
 
 import java.util.ArrayList;
 import java.util.EnumMap;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.HashSet;
 import java.util.Set;
@@ -53,6 +54,10 @@ import java.util.Set;
  */
 public final class BattleController {
     private static final float GLOBAL_ULTIMATE_DAMAGE_SCALE = .65f;
+    private static final float NORMAL_ATTACK_INTERVAL = 1.25f;
+    private static final float NORMAL_ATTACK_DAMAGE = 24f;
+    private static final float NORMAL_ATTACK_SPEED = 18f;
+    private static final float NORMAL_ATTACK_ULTIMATE_POINTS = 4f;
 
     /**
      * HUDへ表示する必殺技発動者、翻訳キーおよび表示時間。
@@ -72,7 +77,7 @@ public final class BattleController {
 
     private final EnumMap<PlayerId, CharacterRuntime> players = new EnumMap<>(PlayerId.class);
     private final EnumMap<PlayerId, PlayerTeam> teams = new EnumMap<>(PlayerId.class);
-    private final EnumMap<PlayerId, AbilityLoadout> abilityLoadouts = new EnumMap<>(PlayerId.class);
+    private final IdentityHashMap<CharacterRuntime, AbilityLoadout> abilityLoadouts = new IdentityHashMap<>();
 
     private final SupportController supportController;
     private final FieldEffectSystem fieldEffects = new FieldEffectSystem();
@@ -102,15 +107,15 @@ public final class BattleController {
 
     private final Set<PlayerId> matsudoOwners = new HashSet<>();
 
-    public BattleController(BattleConfig config, CriticalConfig criticalConfig, AwakeningConfig awakeningConfig, AbilityRegistry abilities, BattleMode mode, List<CharacterDefinition> characterDefinitions, List<List<SupportCharacterDefinition>> supportDefinitions, List<FieldEffectDefinition> availableFieldEffects, Registry<SupportAbilityImplementation> supportAbilityImplementations) {
-        this(config, criticalConfig, awakeningConfig, abilities, mode, characterDefinitions, supportDefinitions, availableFieldEffects, supportAbilityImplementations, new EventBus());
+    public BattleController(BattleConfig config, CriticalConfig criticalConfig, AwakeningConfig awakeningConfig, AbilityRegistry abilities, BattleMode mode, List<BattleTeamDefinition> teamDefinitions, List<FieldEffectDefinition> availableFieldEffects, Registry<SupportAbilityImplementation> supportAbilityImplementations) {
+        this(config, criticalConfig, awakeningConfig, abilities, mode, teamDefinitions, availableFieldEffects, supportAbilityImplementations, new EventBus());
     }
 
     /**
      * 戦闘状態を構築し、生成・攻撃・ダメージ等を指定ゲームイベントバスへ通知する。
      * 登録ライフサイクル用バスを渡してはならない。
      */
-    public BattleController(BattleConfig config, CriticalConfig criticalConfig, AwakeningConfig awakeningConfig, AbilityRegistry abilities, BattleMode mode, List<CharacterDefinition> characterDefinitions, List<List<SupportCharacterDefinition>> supportDefinitions, List<FieldEffectDefinition> availableFieldEffects, Registry<SupportAbilityImplementation> supportAbilityImplementations, EventBus gameplayEvents) {
+    public BattleController(BattleConfig config, CriticalConfig criticalConfig, AwakeningConfig awakeningConfig, AbilityRegistry abilities, BattleMode mode, List<BattleTeamDefinition> teamDefinitions, List<FieldEffectDefinition> availableFieldEffects, Registry<SupportAbilityImplementation> supportAbilityImplementations, EventBus gameplayEvents) {
         this.config = config;
         this.criticalConfig = criticalConfig;
         this.awakeningConfig = awakeningConfig;
@@ -124,27 +129,39 @@ public final class BattleController {
 
         timer = new BattleTimer(config.durationSeconds);
 
-        if (characterDefinitions.size() != supportDefinitions.size() || characterDefinitions.size() < 2 || characterDefinitions.size() > 4) {
+        if (teamDefinitions.size() < 2 || teamDefinitions.size() > 4) {
             throw new IllegalArgumentException("Battle requires 2-4 complete teams");
         }
 
         Vector3[] spawns = {new Vector3(-4, config.groundY, -4), new Vector3(4, config.groundY, 4), new Vector3(-4, config.groundY, 4), new Vector3(4, config.groundY, -4)};
 
-        for (int index = 0; index < characterDefinitions.size(); index++) {
+        for (int index = 0; index < teamDefinitions.size(); index++) {
             PlayerId id = PlayerId.values()[index];
-            CharacterDefinition definition = characterDefinitions.get(index);
-            List<SupportCharacterDefinition> playerSupports = supportDefinitions.get(index);
-            CharacterRuntime runtime = new CharacterRuntime(id, definition, spawns[index]);
+            BattleTeamDefinition teamDefinition = teamDefinitions.get(index);
+            CharacterDefinition definition = teamDefinition.main();
+            List<SupportCharacterDefinition> playerSupports = teamDefinition.supports();
+            float healthMultiplier = mode == BattleMode.CHAOS ? config.chaosHealthMultiplier : 1f;
+            CharacterRuntime runtime = new CharacterRuntime(id, definition, spawns[index], healthMultiplier);
 
             players.put(id, runtime);
 
             if (!definition.trainingDummy) {
-                abilityLoadouts.put(id, abilities.createLoadout(definition));
+                abilityLoadouts.put(runtime, abilities.createLoadout(definition));
             }
 
             gameplayEvents.post(new CharacterSpawnedEvent(runtime));
 
             List<SupportCharacterRuntime> supportRuntimes = new ArrayList<>();
+            List<CharacterRuntime> subMainRuntimes = new ArrayList<>();
+
+            for (int subIndex = 0; subIndex < teamDefinition.subMains().size(); subIndex++) {
+                CharacterDefinition subDefinition = teamDefinition.subMains().get(subIndex);
+                float side = subIndex == 0 ? -1.8f : 1.8f;
+                CharacterRuntime subMain = new CharacterRuntime(id, subDefinition, new Vector3(spawns[index]).add(side, 0, -1.8f), healthMultiplier);
+                subMainRuntimes.add(subMain);
+                abilityLoadouts.put(subMain, abilities.createLoadout(subDefinition));
+                gameplayEvents.post(new CharacterSpawnedEvent(subMain));
+            }
 
             for (int supportIndex = 0; supportIndex < playerSupports.size(); supportIndex++) {
                 SupportCharacterDefinition support = playerSupports.get(supportIndex);
@@ -172,10 +189,13 @@ public final class BattleController {
                     }
                 }
             }
-            teams.put(id, new PlayerTeam(runtime, supportRuntimes));
+            teams.put(id, new PlayerTeam(runtime, subMainRuntimes, supportRuntimes));
 
             if (!definition.trainingDummy) {
-                abilityLoadouts.get(id).primarySkill().initialize(runtime, config.skillCooldownMultiplier);
+                abilityLoadouts.get(runtime).primarySkill().initialize(runtime, config.skillCooldownMultiplier);
+            }
+            for (CharacterRuntime subMain : subMainRuntimes) {
+                abilityLoadouts.get(subMain).primarySkill().initialize(subMain, config.skillCooldownMultiplier);
             }
 
         }
@@ -223,7 +243,7 @@ public final class BattleController {
 
         trainingStatistics.update(delta);
 
-        for (CharacterRuntime current : players.values()) {
+        for (CharacterRuntime current : allMains()) {
             current.update(delta);
 
             for (IPassive passive : passives(current)) {
@@ -232,7 +252,7 @@ public final class BattleController {
         }
 
         for (CharacterRuntime current : players.values()) {
-            if (current.isAlive() && (mode == BattleMode.VERSUS || current.playerId == PlayerId.ONE)) {
+            if (current.isAlive() && (mode != BattleMode.TRAINING || current.playerId == PlayerId.ONE)) {
                 move(current, commands.getOrDefault(current.playerId, PlayerCommand.idle()), delta);
             }
         }
@@ -250,14 +270,16 @@ public final class BattleController {
 
                 if (target != null) {
                     aimAtOpponent(current, target);
+                    fireNormalAttack(current, target);
                 }
             }
         }
         for (CharacterRuntime current : players.values()) {
-            if (current.isAlive() && (mode == BattleMode.VERSUS || current.playerId == PlayerId.ONE)) {
+            if (current.isAlive() && (mode != BattleMode.TRAINING || current.playerId == PlayerId.ONE)) {
                 activate(current, commands.getOrDefault(current.playerId, PlayerCommand.idle()));
             }
         }
+        updateAutonomousMains(delta);
         for (CharacterRuntime current : players.values()) {
             if (current.isAlive() && !team(current.playerId).supports().isEmpty()) {
                 CharacterRuntime target = targetOf(current.playerId);
@@ -266,10 +288,12 @@ public final class BattleController {
                     List<SupportCharacterRuntime> supports = team(current.playerId).supports();
 
                     for (int supportIndex = 0; supportIndex < supports.size(); supportIndex++) {
-                        supportController.update(this, supports.get(supportIndex), current, target, supportIndex, delta);
+                        supportController.update(this, supports.get(supportIndex), current, target, supportIndex, supports.size(), delta);
                     }
                 }
             }
+        }
+        for (CharacterRuntime current : allMains()) {
             updateStatusDamage(current, delta);
         }
         updateFieldHealing(delta);
@@ -280,7 +304,7 @@ public final class BattleController {
         }
         updateObjects(delta);
 
-        if (mode == BattleMode.VERSUS) {
+        if (mode != BattleMode.TRAINING) {
             result = resultResolver.resolve(players.values(), timer.expired());
         }
 
@@ -352,6 +376,69 @@ public final class BattleController {
     }
 
     /**
+     * 追従メインを代表の後方へ移動させ、使用可能な通常攻撃・スキル・必殺技を自動発動する。
+     */
+    private void updateAutonomousMains(float delta) {
+        for (PlayerTeam team : teams.values()) {
+            CharacterRuntime target = targetOf(team.main().playerId);
+            if (target == null) {
+                continue;
+            }
+            for (int index = 0; index < team.subMains().size(); index++) {
+                CharacterRuntime subMain = team.subMains().get(index);
+                followRepresentative(subMain, team.main(), index, delta);
+                aimAtOpponent(subMain, target);
+                fireNormalAttack(subMain, target);
+
+                AbilityLoadout loadout = abilityLoadouts.get(subMain);
+                if (subMain.skillReady() && loadout.primarySkill().tryActivate(this, subMain)) {
+                    gameplayEvents.post(new AttackEvent(subMain, subMain.definition.skillId, false));
+                    gameplayEvents.post(new SkillActivatedEvent(subMain, subMain.definition.skillId));
+                }
+                if (loadout.ultimate().tryActivate(this, subMain)) {
+                    gameplayEvents.post(new AttackEvent(subMain, subMain.definition.ultimateId, true));
+                    gameplayEvents.post(new UltimateActivatedEvent(subMain, subMain.definition.ultimateId));
+                }
+            }
+        }
+    }
+
+    /**
+     * 追従メインを左右に分け、代表の背後へ滑らかに追従させる。
+     */
+    private void followRepresentative(CharacterRuntime follower, CharacterRuntime representative, int index, float delta) {
+        Vector3 right = new Vector3(-representative.facing.z, 0, representative.facing.x);
+        float side = index % 2 == 0 ? -1.8f : 1.8f;
+        float row = 2.2f + index / 2 * 1.5f;
+        Vector3 desired = new Vector3(representative.position).mulAdd(right, side).mulAdd(representative.facing, -row);
+        Vector3 movement = desired.sub(follower.position);
+        movement.y = 0;
+        float distance = movement.len();
+        if (distance > 10f) {
+            follower.position.set(desired.x, config.groundY, desired.z);
+        } else if (distance > .2f) {
+            float speed = follower.definition.moveSpeed * 1.5f * fieldMoveMultiplier();
+            follower.position.mulAdd(movement.nor(), Math.min(distance, speed * delta));
+        }
+        follower.position.y = config.groundY;
+    }
+
+    /**
+     * 攻撃対象へ自動追尾する、全メイン共通の低威力投射物を一定間隔で発射する。
+     */
+    private void fireNormalAttack(CharacterRuntime source, CharacterRuntime target) {
+        if (!source.isAlive() || source.definition.trainingDummy || source.isStunned() || !source.normalAttackReady()) {
+            return;
+        }
+        Vector3 start = new Vector3(source.position).add(0, 1.05f, 0);
+        Vector3 velocity = new Vector3(target.position).add(0, 1f, 0).sub(start).nor().scl(NORMAL_ATTACK_SPEED);
+        Projectile projectile = new Projectile(nextAttackId(), source.playerId, source.normalAttackGlyph(), source.normalAttackTexture(), EffectIds.IMPACT, start, velocity, .48f, NORMAL_ATTACK_DAMAGE * Math.max(.1f, source.definition.baseAttack), 0, 0, 2.5f, false, 0, NORMAL_ATTACK_ULTIMATE_POINTS).source(source);
+        spawn(projectile);
+        emitEffect(start, EffectIds.IMPACT, 2.6f, .3f);
+        source.resetNormalAttack(NORMAL_ATTACK_INTERVAL);
+    }
+
+    /**
      * 入力されたメインAbilityと補助必殺を発動し、成功したメインAbilityだけイベントを発火する。
      */
     private void activate(CharacterRuntime user, PlayerCommand command) {
@@ -359,7 +446,7 @@ public final class BattleController {
             return;
         }
 
-        AbilityLoadout loadout = abilityLoadouts.get(user.playerId);
+        AbilityLoadout loadout = abilityLoadouts.get(user);
 
         if (command.useSkill() && loadout.primarySkill().tryActivate(this, user)) {
             gameplayEvents.post(new AttackEvent(user, user.definition.skillId, false));
@@ -401,12 +488,12 @@ public final class BattleController {
                     }
                 }
 
-                case SkillBarrage barrage when barrage.takePulse() -> abilityLoadouts.get(barrage.owner)
-                        .skill(barrage.skillId)
-                        .activateFromUltimate(this, player(barrage.owner));
+                case SkillBarrage barrage when barrage.takePulse() ->
+                        abilityLoadouts.get(barrage.source).skill(barrage.skillId).activateFromUltimate(this, barrage.source);
                 case SushiBarrage barrage when barrage.takeShot() -> spawnSushi(barrage);
                 case AwakeningItem item -> resolveAwakening(item);
-                default -> {}
+                default -> {
+                }
             }
         }
 
@@ -487,7 +574,7 @@ public final class BattleController {
                     continue;
                 }
 
-                CharacterRuntime owner = player(projectile.owner);
+                CharacterRuntime owner = projectile.source() == null ? player(projectile.owner) : projectile.source();
                 float critical = criticalMultiplier(owner, projectile.attackId, projectile);
                 float attack = attackMultiplier(owner) * (projectile.ultimateAttack() ? ultimateDamageMultiplier(owner) : 1f);
                 float dealt = damageService.apply(owner, target, projectile.baseDamage, attack * critical, incomingDamageMultiplier(target), new DamageService.AttackTraits(projectile.ignoresDefense()));
@@ -528,12 +615,12 @@ public final class BattleController {
         Vector3 start = new Vector3(source.position()).add(0, 1.2f, 0);
         Vector3 velocity = new Vector3(target.position).add(0, 1, 0).sub(start).nor().scl(source.followUpSpeed());
 
-        spawn(new Projectile(nextAttackId(), source.owner, source.followUpGlyph(), source.followUpTexture(), source.effectId, start, velocity, source.followUpRadius(), source.followUpDamage(), 0, 2.8f));
+        spawn(new Projectile(nextAttackId(), source.owner, source.followUpGlyph(), source.followUpTexture(), source.effectId, start, velocity, source.followUpRadius(), source.followUpDamage(), 0, 2.8f).source(source.source()));
         emitImageEffect(start, source.followUpTexture(), source.effectId, 5.5f, .55f);
     }
 
     private void spawnSushi(SushiBarrage barrage) {
-        CharacterRuntime owner = player(barrage.owner);
+        CharacterRuntime owner = barrage.source;
 
         if (owner == null || !owner.isAlive()) {
             return;
@@ -554,7 +641,7 @@ public final class BattleController {
         Vector3 direction = aim.rotate(Vector3.Y, spread).nor();
         Vector3 start = new Vector3(owner.position).mulAdd(direction, 1.2f).add(0, 1.1f, 0);
 
-        spawn(new Projectile(nextAttackId(), owner.playerId, "寿司", barrage.texture, barrage.effectId, start, direction.scl(barrage.speed), barrage.radius, barrage.damage, 0, barrage.lifetime).attackTraits(true, barrage.ignoreDefense));
+        spawn(new Projectile(nextAttackId(), owner.playerId, "寿司", barrage.texture, barrage.effectId, start, direction.scl(barrage.speed), barrage.radius, barrage.damage, 0, barrage.lifetime).attackTraits(true, barrage.ignoreDefense).source(owner));
 
         emitImageEffect(start, barrage.texture, barrage.effectId, 5.5f, .35f);
     }
@@ -726,7 +813,7 @@ public final class BattleController {
             }
         }
         for (CharacterRuntime target : players.values()) {
-            if (target.playerId == one.owner && !target.isAlive()) {
+            if (target.playerId == one.owner || !target.isAlive()) {
                 continue;
             }
 
@@ -920,7 +1007,7 @@ public final class BattleController {
         float amount = fieldEffects.additive("periodic_heal");
 
         for (CharacterRuntime player : players.values()) {
-            player.heal(player.definition.maxHp * amount);
+            player.heal(player.maxHp() * amount);
         }
     }
 
@@ -1075,6 +1162,19 @@ public final class BattleController {
 
     public List<CharacterRuntime> players() {
         return List.copyOf(players.values());
+    }
+
+    public List<CharacterRuntime> subMains(PlayerId id) {
+        return team(id).subMains();
+    }
+
+    private List<CharacterRuntime> allMains() {
+        List<CharacterRuntime> result = new ArrayList<>();
+        for (PlayerTeam team : teams.values()) {
+            result.add(team.main());
+            result.addAll(team.subMains());
+        }
+        return result;
     }
 
     public CharacterRuntime targetOf(PlayerId owner) {
@@ -1269,7 +1369,7 @@ public final class BattleController {
         float criticalRate = MathUtils.clamp(criticalConfig.baseRate + value.definition.criticalRate + value.statuses.additive(StatusType.CRITICAL_RATE_UP) + fieldEffects.additive("critical_rate") + fieldEffects.additive("critical_enable"), 0, 1);
         float criticalDamage = Math.max(criticalConfig.baseDamageMultiplier, value.definition.criticalDamageMultiplier + fieldEffects.additive("critical_damage")) * value.statuses.multiplier(StatusType.CRITICAL_DAMAGE_UP);
 
-        return new CharacterDebugSnapshot(value.definition.id, value.hp(), value.definition.maxHp, value.missingHp(), value.definition.baseAttack, attackMultiplier(value), value.definition.moveSpeed, effectiveMoveSpeed, incomingDamageMultiplier(value), value.definition.collisionRadius, passiveHitboxMultiplier(id), value.skillCooldown(), value.skillChargeRatio(), value.skillStocks(), value.maximumSkillStocks(), value.ultimatePoints(), value.totalDamage(), value.stunRemaining(), value.movementLocked(), value.awakened(), value.isAlive(), value.zeroDefense(), value.position.x, value.position.y, value.position.z, value.facing.x, value.facing.z, cooldownMultiplier, ultimateGainMultiplier, passiveProduct(value, passive -> passive.stunMultiplier(value)), ultimateDamageMultiplier(value), criticalRate, criticalDamage, value.definition.criticalEnabled || fieldEffects.hasType("critical_enable") || value.statuses.has(StatusType.CRITICAL_RATE_UP));
+        return new CharacterDebugSnapshot(value.definition.id, value.hp(), value.maxHp(), value.missingHp(), value.definition.baseAttack, attackMultiplier(value), value.definition.moveSpeed, effectiveMoveSpeed, incomingDamageMultiplier(value), value.definition.collisionRadius, passiveHitboxMultiplier(id), value.skillCooldown(), value.skillChargeRatio(), value.skillStocks(), value.maximumSkillStocks(), value.ultimatePoints(), value.totalDamage(), value.stunRemaining(), value.movementLocked(), value.awakened(), value.isAlive(), value.zeroDefense(), value.position.x, value.position.y, value.position.z, value.facing.x, value.facing.z, cooldownMultiplier, ultimateGainMultiplier, passiveProduct(value, passive -> passive.stunMultiplier(value)), ultimateDamageMultiplier(value), criticalRate, criticalDamage, value.definition.criticalEnabled || fieldEffects.hasType("critical_enable") || value.statuses.has(StatusType.CRITICAL_RATE_UP));
     }
 
     public float fieldProjectileCurve() {
@@ -1293,7 +1393,7 @@ public final class BattleController {
      * 新たな基準クールタイムは変更せず、現在進行中の待ち時間だけを短縮する。
      */
     public void halveAllSkillCooldowns() {
-        for (CharacterRuntime value : players.values()) {
+        for (CharacterRuntime value : allMains()) {
             value.scaleSkillCooldown(.5f);
         }
 
@@ -1408,7 +1508,7 @@ public final class BattleController {
             return List.of();
         }
 
-        AbilityLoadout loadout = abilityLoadouts.get(owner.playerId);
+        AbilityLoadout loadout = abilityLoadouts.get(owner);
         return loadout == null ? List.of() : loadout.passives();
     }
 

@@ -28,7 +28,7 @@ public final class SkillBarrageUltimate implements IUltimate {
             return false;
         }
         battle.spawn(new SkillBarrage(
-                user.playerId,
+                user,
                 config.barrageSkillId,
                 config.barrageCount,
                 config.barrageInterval,

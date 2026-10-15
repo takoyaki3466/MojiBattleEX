@@ -2,7 +2,7 @@ package jp.takoa.mojibattle.item.init;
 
 import jp.takoa.mojibattle.item.impl.registry.FieldEffectImplementations;
 import jp.takoa.mojibattle.registry.BuiltInRegistries;
-import jp.takoa.mojibattle.registry.DeferredRegister;
+import jp.takoa.mojibattle.registry.CompatRegister;
 import jp.takoa.mojibattle.registry.FieldEffectImplementation;
 import jp.takoa.mojibattle.registry.RegistryHandle;
 
@@ -10,7 +10,7 @@ import jp.takoa.mojibattle.registry.RegistryHandle;
  * FieldEffectSystemが解決する計算方式のIDとFactoryだけを宣言する。
  */
 public final class FieldEffectRegistryInit {
-    public static final DeferredRegister<FieldEffectImplementation> REGISTER = DeferredRegister.create(BuiltInRegistries.FIELD_EFFECT_IMPLEMENTATIONS, "mojibattle");
+    public static final CompatRegister<FieldEffectImplementation> REGISTER = CompatRegister.create(BuiltInRegistries.FIELD_EFFECT_IMPLEMENTATIONS, "mojibattle");
 
     public static final RegistryHandle<FieldEffectImplementation> CRITICAL_ENABLE = register("critical_enable");
     public static final RegistryHandle<FieldEffectImplementation> COOLDOWN = register("cooldown");

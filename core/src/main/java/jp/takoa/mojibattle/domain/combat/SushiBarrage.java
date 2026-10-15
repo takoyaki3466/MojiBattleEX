@@ -1,6 +1,7 @@
 package jp.takoa.mojibattle.domain.combat;
 
 import com.badlogic.gdx.math.Vector3;
+import jp.takoa.mojibattle.domain.CharacterRuntime;
 import jp.takoa.mojibattle.domain.PlayerId;
 
 /**
@@ -17,11 +18,13 @@ public final class SushiBarrage implements CombatObject {
     public final String texture;
     public final String effectId;
     public final boolean ignoreDefense;
+    public final CharacterRuntime source;
     private int fired;
     private float timer;
 
-    public SushiBarrage(PlayerId owner, int count, float interval, float damage, float speed, float lifetime, float radius, String texture, String effectId, boolean ignoreDefense) {
-        this.owner = owner;
+    public SushiBarrage(CharacterRuntime source, int count, float interval, float damage, float speed, float lifetime, float radius, String texture, String effectId, boolean ignoreDefense) {
+        this.source = source;
+        this.owner = source.playerId;
         this.count = count;
         this.interval = interval;
         this.damage = damage;

@@ -7,7 +7,9 @@ import java.util.Map;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
-/** ID、型、登録順と凍結状態を管理するRegistry。 */
+/**
+ * ID、型、登録順と凍結状態を管理するRegistry。
+ */
 public final class Registry<T> {
     private final String kind;
     private final Function<T, String> idExtractor;
@@ -38,7 +40,9 @@ public final class Registry<T> {
         return value;
     }
 
-    /** 登録前検証用。Registryの内容は変更しない。 */
+    /**
+     * 登録前検証用。Registryの内容は変更しない。
+     */
     void validate(RegistryId id, T value) {
         if (id == null || value == null) {
             throw new IllegalArgumentException(kind + " ID and value are required");

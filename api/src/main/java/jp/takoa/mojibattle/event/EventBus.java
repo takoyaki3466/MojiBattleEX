@@ -21,13 +21,17 @@ public final class EventBus implements RegistrationBus, AutoCloseable {
         if (closed) {
             throw new IllegalStateException("Event bus is closed");
         }
+
         if (eventType == null || listener == null) {
             throw new IllegalArgumentException("Event type and listener are required");
         }
+
         List<Consumer<?>> typed = listeners.computeIfAbsent(eventType, ignored -> new ArrayList<>());
+
         if (typed.stream().anyMatch(existing -> existing == listener)) {
             throw new IllegalArgumentException("Duplicate event listener: " + eventType.getName());
         }
+
         typed.add(listener);
         return new EventSubscription() {
             private boolean removed;
@@ -52,10 +56,13 @@ public final class EventBus implements RegistrationBus, AutoCloseable {
         if (closed) {
             throw new IllegalStateException("Event bus is closed");
         }
+
         if (event == null) {
             throw new IllegalArgumentException("Event is required");
         }
+
         List<Consumer<?>> snapshot = List.copyOf(listeners.getOrDefault(event.getClass(), List.of()));
+
         for (Consumer<?> raw : snapshot) {
             try {
                 ((Consumer<E>) raw).accept(event);

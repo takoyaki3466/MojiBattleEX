@@ -21,6 +21,7 @@ import com.badlogic.gdx.utils.Disposable;
 import jp.takoa.mojibattle.config.BattleConfig;
 import jp.takoa.mojibattle.domain.combat.AwakeningItem;
 import jp.takoa.mojibattle.domain.BattleController;
+import jp.takoa.mojibattle.domain.BattleTeamDefinition;
 import jp.takoa.mojibattle.domain.combat.CarHazard;
 import jp.takoa.mojibattle.domain.combat.CashBundle;
 import jp.takoa.mojibattle.domain.CharacterDefinition;
@@ -72,6 +73,7 @@ public final class ArenaRenderer implements Disposable {
 
     private final ModelInstance ground;
     private final EnumMap<PlayerId, ModelInstance> playerModels = new EnumMap<>(PlayerId.class);
+    private final EnumMap<PlayerId, List<ModelInstance>> subMainModels = new EnumMap<>(PlayerId.class);
     private final EnumMap<PlayerId, List<ModelInstance>> supportModels = new EnumMap<>(PlayerId.class);
 
     private final ModelInstance familyHealthBack, familyHealthFill;
@@ -80,8 +82,7 @@ public final class ArenaRenderer implements Disposable {
 
     private float animationTime;
 
-    public ArenaRenderer(BattleConfig config, List<CharacterDefinition> characterDefinitions,
-                         List<List<SupportCharacterDefinition>> supportDefinitions,
+    public ArenaRenderer(BattleConfig config, List<BattleTeamDefinition> teamDefinitions,
                          List<AbilityConfigs.ProjectileSkill> skills,
                          List<AbilityConfigs.AreaUltimate> ultimates,
                          String awakeningTexturePath, Iterable<CombatEffectDefinition> effects,
@@ -137,11 +138,17 @@ public final class ArenaRenderer implements Disposable {
         matsudoScenery[3].transform.setToTranslation(backdropDistance, 7.5f, 0).rotate(Vector3.Y, 90);
 
         Color[] playerColors = {new Color(.2f, .65f, 1, 1), new Color(1, .35f, .28f, 1), new Color(.45f, 1, .35f, 1), new Color(1, .45f, 1, 1)};
-        for (int index = 0; index < characterDefinitions.size(); index++) {
+        for (int index = 0; index < teamDefinitions.size(); index++) {
             PlayerId id = PlayerId.values()[index];
-            playerModels.put(id, texturedRect(modelBuilder, texture(characterDefinitions.get(index).glyphTexture), 1.8f, 2.8f, playerColors[index]));
+            BattleTeamDefinition team = teamDefinitions.get(index);
+            playerModels.put(id, texturedRect(modelBuilder, texture(team.main().glyphTexture), 1.8f, 2.8f, playerColors[index]));
+            List<ModelInstance> subModelsForPlayer = new ArrayList<>();
+            for (CharacterDefinition subMain : team.subMains()) {
+                subModelsForPlayer.add(texturedRect(modelBuilder, texture(subMain.glyphTexture), 1.55f, 2.35f, playerColors[index]));
+            }
+            subMainModels.put(id, subModelsForPlayer);
             List<ModelInstance> modelsForPlayer = new ArrayList<>();
-            for (SupportCharacterDefinition support : supportDefinitions.get(index)) {
+            for (SupportCharacterDefinition support : team.supports()) {
                 if (support != null) {
                     modelsForPlayer.add(texturedRect(modelBuilder, texture(support.glyphTexture), 1.2f, 1.8f, playerColors[index]));
                 }
@@ -164,8 +171,8 @@ public final class ArenaRenderer implements Disposable {
                 }
             }
         }
-        for (List<SupportCharacterDefinition> playerSupportDefinitions : supportDefinitions) {
-            for (SupportCharacterDefinition supportDefinition : playerSupportDefinitions) {
+        for (BattleTeamDefinition team : teamDefinitions) {
+            for (SupportCharacterDefinition supportDefinition : team.supports()) {
                 if (supportDefinition == null) {
                     continue;
                 }
@@ -190,6 +197,12 @@ public final class ArenaRenderer implements Disposable {
             addObjectModel(modelBuilder, skill.activationTexture);
             addObjectModel(modelBuilder, skill.fallingObjectTexture);
         }
+        for (BattleTeamDefinition team : teamDefinitions) {
+            addProjectileModel(modelBuilder, team.main().glyphTexture, Color.WHITE);
+            for (CharacterDefinition subMain : team.subMains()) {
+                addProjectileModel(modelBuilder, subMain.glyphTexture, Color.WHITE);
+            }
+        }
         addObjectModel(modelBuilder, "objects/commuter-train.png");
 
         Texture awakening = texture(awakeningTexturePath);
@@ -207,6 +220,15 @@ public final class ArenaRenderer implements Disposable {
         }
         Texture objectTexture = texture(texturePath);
         objectModels.put(texturePath, texturedRect(builder, objectTexture, Math.max(.5f, (float) objectTexture.getWidth() / objectTexture.getHeight()), 1f, Color.WHITE));
+    }
+
+    private void addProjectileModel(ModelBuilder builder, String texturePath, Color tint) {
+        if (texturePath == null || projectileGlyphs.containsKey(texturePath)) {
+            return;
+        }
+        Texture glyphTexture = texture(texturePath);
+        projectileGlyphs.put(texturePath, texturedRect(builder, glyphTexture, .8f, .8f, tint));
+        projectileOutlines.put(texturePath, texturedRect(builder, glyphTexture, .8f, .8f, Color.BLACK));
     }
 
     private static Material material(Color color) {
@@ -263,6 +285,11 @@ public final class ArenaRenderer implements Disposable {
         for (PlayerId id : battle.playerIds()) {
             if (battle.player(id).isAlive()) {
                 renderCharacter(playerModels.get(id), battle.player(id), camera);
+                List<CharacterRuntime> subMains = battle.subMains(id);
+                List<ModelInstance> mainModels = subMainModels.get(id);
+                for (int subIndex = 0; subIndex < subMains.size(); subIndex++) {
+                    renderCharacter(mainModels.get(subIndex), subMains.get(subIndex), camera);
+                }
                 List<SupportCharacterRuntime> supports = battle.supports(id);
                 List<ModelInstance> models = supportModels.get(id);
                 for (int supportIndex = 0; supportIndex < supports.size(); supportIndex++) {
