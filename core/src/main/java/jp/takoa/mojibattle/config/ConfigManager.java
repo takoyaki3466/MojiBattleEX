@@ -1,12 +1,17 @@
 package jp.takoa.mojibattle.config;
 
+import jp.takoa.mojibattle.content.CharacterDataRegistration;
 import jp.takoa.mojibattle.data.loader.JsonDataLoader;
 import jp.takoa.mojibattle.data.validator.GameDataValidator;
 import jp.takoa.mojibattle.domain.CharacterDefinition;
 import jp.takoa.mojibattle.domain.ability.AbilityConfigs;
 import jp.takoa.mojibattle.domain.support.SupportCharacterDefinition;
 import jp.takoa.mojibattle.registry.BuiltInRegistries;
+import jp.takoa.mojibattle.registry.RegistryId;
+import jp.takoa.mojibattle.resource.ClasspathResourceManager;
+import jp.takoa.mojibattle.resource.ResourceManager;
 
+import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -15,7 +20,7 @@ import java.util.Map;
  * JSON定義を読み込み、登録済み実装Factoryへ固有検証を委譲する設定ローダー。
  */
 public final class ConfigManager {
-    private final JsonDataLoader loader = new JsonDataLoader();
+    private final JsonDataLoader loader;
     private final BuiltInRegistries registries;
     public final GameConfig game;
     public final BattleConfig battle;
@@ -30,13 +35,25 @@ public final class ConfigManager {
 
     /**
      * 必須JSONを宣言順に読み、旧形式を正規化してDefinition Registryへ登録した後、全体を検証する。
-     * libGDX内部ファイルAPIと、実装・演出レジストリの登録完了が前提となる。
+     * ResourceManagerと、実装・演出レジストリの登録完了が前提となる。
      *
      * @param registries 実装Factoryと演出定義が登録済みの組込みレジストリ
      * @throws RuntimeException ファイル欠落、構文不正、ID重複、参照不整合がある場合
      */
     public ConfigManager(BuiltInRegistries registries) {
+        this(registries, new ClasspathResourceManager(ConfigManager.class.getClassLoader()), List.of());
+    }
+
+    /** 指定リソース層から設定を読み、実装Registryに対して検証する。 */
+    public ConfigManager(BuiltInRegistries registries, ResourceManager resources) {
+        this(registries, resources, List.of());
+    }
+
+    /** 標準設定に加えて、MODが公開APIから宣言したキャラクターデータを読み込む。 */
+    public ConfigManager(BuiltInRegistries registries, ResourceManager resources,
+                         Collection<CharacterDataRegistration> additionalCharacters) {
         this.registries = registries;
+        loader = new JsonDataLoader(resources);
         game = read("config/game.json", GameConfig.class);
         battle = read("config/battle.json", BattleConfig.class);
         graphics = read("config/graphics.json", GraphicsConfig.class);
@@ -61,7 +78,8 @@ public final class ConfigManager {
             require(id.equals(effect.id), "Field-effect filename ID does not match: " + id);
             require(fieldEffects.putIfAbsent(id, effect) == null, "Duplicate field effect: " + id);
         }
-        new GameDataValidator(registries).validate(this);
+        additionalCharacters.forEach(this::loadRegisteredCharacter);
+        new GameDataValidator(registries, resources).validate(this);
     }
 
     /** 旧データで省略可能だった補助キャラクターの表示キーだけを補完する。 */
@@ -90,6 +108,39 @@ public final class ConfigManager {
         registries.skillDefinitions.register(skill);
         registries.ultimateDefinitions.register(ultimate);
         registries.passiveDefinitions.register(passive);
+    }
+
+    /** 公開APIで宣言された4つのJSONを検証後に一括して標準Definition Registryへ追加する。 */
+    private void loadRegisteredCharacter(CharacterDataRegistration registration) {
+        CharacterDefinition character = loader.read(registration.character(), CharacterDefinition.class);
+        AbilityConfigs.ProjectileSkill skill = loader.read(registration.skill(), AbilityConfigs.ProjectileSkill.class);
+        AbilityConfigs.AreaUltimate ultimate = loader.read(registration.ultimate(), AbilityConfigs.AreaUltimate.class);
+        AbilityConfigs.TimedPassive passive = loader.read(registration.passive(), AbilityConfigs.TimedPassive.class);
+
+        requireOwnedId(registration.namespace(), character.id, "character");
+        requireOwnedId(registration.namespace(), skill.id, "skill");
+        requireOwnedId(registration.namespace(), ultimate.id, "ultimate");
+        requireOwnedId(registration.namespace(), passive.id, "passive");
+        require(skill.id.equals(character.skillId), "Registered character skill ID mismatch: " + character.id);
+        require(ultimate.id.equals(character.ultimateId), "Registered character ultimate ID mismatch: " + character.id);
+        require(passive.id.equals(character.passiveId), "Registered character passive ID mismatch: " + character.id);
+        require(!characters.containsKey(character.id), "Duplicate character ID: " + character.id);
+        require(!registries.skillDefinitions.contains(skill.id), "Duplicate skill definition: " + skill.id);
+        require(!registries.ultimateDefinitions.contains(ultimate.id), "Duplicate ultimate definition: " + ultimate.id);
+        require(!registries.passiveDefinitions.contains(passive.id), "Duplicate passive definition: " + passive.id);
+
+        normalize(character.id, skill, ultimate, passive);
+        character.maxHp *= battle.healthMultiplier;
+        characters.put(character.id, character);
+        registries.skillDefinitions.register(skill);
+        registries.ultimateDefinitions.register(ultimate);
+        registries.passiveDefinitions.register(passive);
+    }
+
+    private static void requireOwnedId(String namespace, String value, String kind) {
+        RegistryId id = RegistryId.parse(value);
+        require(value.contains(":"), "External " + kind + " ID must be namespaced: " + value);
+        require(namespace.equals(id.namespace()), "External " + kind + " ID uses another namespace: " + value);
     }
 
     /**

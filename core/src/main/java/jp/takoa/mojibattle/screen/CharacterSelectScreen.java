@@ -1,6 +1,5 @@
 package jp.takoa.mojibattle.screen;
 
-import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.scenes.scene2d.Actor;
@@ -21,6 +20,7 @@ import jp.takoa.mojibattle.domain.CharacterDefinition;
 import jp.takoa.mojibattle.domain.support.SupportCharacterDefinition;
 import jp.takoa.mojibattle.domain.ability.AbilityConfigs;
 import jp.takoa.mojibattle.registry.AbilityPresentationFormatter;
+import jp.takoa.mojibattle.resource.GdxTextureLoader;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -38,6 +38,7 @@ public final class CharacterSelectScreen extends StageScreen {
 
     private final BattleMode mode;
     private final int playerCount;
+    private final GdxTextureLoader textureLoader;
     private final Label prompt;
     private final Label chosen;
     private final Label details;
@@ -65,6 +66,7 @@ public final class CharacterSelectScreen extends StageScreen {
     public CharacterSelectScreen(GameContext context, ScreenManager screens, BattleMode mode, int playerCount) {
         super(context, screens);
         this.mode = mode;
+        textureLoader = new GdxTextureLoader(context.resources);
         this.playerCount = mode == BattleMode.TRAINING ? 1 : Math.max(2, Math.min(4, playerCount));
 
         Table root = new Table();
@@ -288,7 +290,7 @@ public final class CharacterSelectScreen extends StageScreen {
 
     private TextureRegionDrawable drawable(String path) {
         Texture texture = previewTextures.computeIfAbsent(path, key -> {
-            Texture created = new Texture(Gdx.files.internal(key), true);
+            Texture created = textureLoader.load(key, true);
             created.setFilter(Texture.TextureFilter.MipMapLinearLinear, Texture.TextureFilter.Linear);
             return created;
         });

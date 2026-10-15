@@ -1,0 +1,17 @@
+{
+  "id": "examplemod:example",
+  "type": "MAIN",
+  "displayGlyph": "例",
+  "nameKey": "character.examplemod.example.name",
+  "maxHp": 900.0,
+  "baseAttack": 1.0,
+  "moveSpeed": 6.0,
+  "collisionRadius": 0.6,
+  "skillId": "examplemod:example_skill",
+  "ultimateId": "examplemod:example_ultimate",
+  "passiveId": "examplemod:example_passive",
+  "glyphTexture": "mojibattle:glyphs/a.png",
+  "criticalRate": 0.0,
+  "criticalDamageMultiplier": 1.5,
+  "criticalEnabled": false
+}

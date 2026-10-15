@@ -17,6 +17,7 @@ import jp.takoa.mojibattle.event.EventChannels;
 import jp.takoa.mojibattle.registry.BuiltInRegistries;
 import jp.takoa.mojibattle.registry.RegistrySnapshot;
 import jp.takoa.mojibattle.ui.UiFactory;
+import jp.takoa.mojibattle.resource.ResourceManager;
 
 /**
  * 画面間で共有する設定、レジストリ、ローカライズおよびUIリソースを構築して保持する。
@@ -37,13 +38,24 @@ public final class GameContext implements AutoCloseable {
     public final BattleAudio audio;
     public final BuiltInRegistries registries;
     public final EventChannels events;
+    public final ResourceManager resources;
+    private final AutoCloseable modRuntime;
 
     /**
      * 共有サービスを設定データから構築し、相互参照可能な状態へ初期化する。
      */
     public GameContext(RegistrySnapshot bootstrap) {
+        this(bootstrap, null);
+    }
+
+    /**
+     * MOD ClassLoader等、ゲーム終了時に閉じる外部ランタイムを伴って共有サービスを構築する。
+     */
+    public GameContext(RegistrySnapshot bootstrap, AutoCloseable modRuntime) {
+        this.modRuntime = modRuntime;
         registries = bootstrap.registries();
         events = bootstrap.events();
+        resources = bootstrap.resources();
         config = bootstrap.config();
 
         GameLog.info("Config", "Configuration loaded and validated");
@@ -85,8 +97,37 @@ public final class GameContext implements AutoCloseable {
      */
     @Override
     public void close() {
-        audio.dispose();
-        skin.dispose();
-        events.close();
+        RuntimeException failure = null;
+        failure = closeStep(failure, audio::dispose);
+        failure = closeStep(failure, skin::dispose);
+        failure = closeStep(failure, events::close);
+        if (modRuntime != null) {
+            failure = closeStep(failure, modRuntime::close);
+        }
+        if (failure != null) {
+            throw failure;
+        }
+    }
+
+    /** 一つの解放失敗で後続リソースの解放を省略せず、追加失敗をsuppressedへ保持する。 */
+    private static RuntimeException closeStep(RuntimeException failure, CloseStep step) {
+        try {
+            step.close();
+            return failure;
+        } catch (Exception error) {
+            RuntimeException wrapped = error instanceof RuntimeException runtime
+                    ? runtime
+                    : new IllegalStateException("Cannot close game resource", error);
+            if (failure == null) {
+                return wrapped;
+            }
+            failure.addSuppressed(wrapped);
+            return failure;
+        }
+    }
+
+    @FunctionalInterface
+    private interface CloseStep {
+        void close() throws Exception;
     }
 }

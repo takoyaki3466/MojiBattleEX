@@ -1,0 +1,18 @@
+{
+  "id": "examplemod:example_skill",
+  "implementationId": "mojibattle:projectile",
+  "nameKey": "ability.examplemod.example.skill.name",
+  "descriptionKey": "guide.character.examplemod:example",
+  "cooldownSeconds": 7.0,
+  "baseDamage": 32.0,
+  "projectileSpeed": 11.0,
+  "projectileLifetimeSeconds": 2.0,
+  "projectileRadius": 0.45,
+  "ultimatePointsPerHit": 12.0,
+  "glyphs": ["例"],
+  "textures": ["mojibattle:glyphs/a.png"],
+  "offsets": [[0.0, 0.0]],
+  "activationEffectId": "mojibattle:stock",
+  "projectileEffectId": "mojibattle:stock",
+  "hitEffectId": "mojibattle:stock"
+}

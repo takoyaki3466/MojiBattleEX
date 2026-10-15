@@ -30,9 +30,12 @@ public final class GameApplication extends Game {
 
     @Override
     public void dispose() {
-        super.dispose();
-        if (context != null) {
-            context.close();
+        try {
+            super.dispose();
+        } finally {
+            if (context != null) {
+                context.close();
+            }
         }
     }
 }

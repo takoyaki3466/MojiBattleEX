@@ -43,7 +43,7 @@ public final class SupportRegistry {
      */
     public void replaceCustom(SupportCharacterDefinition definition) {
         values.removeIf(value -> value.custom && value.customSlot == definition.customSlot);
-        values.replace(definition.id, definition);
+        values.register(definition);
     }
 
     /**

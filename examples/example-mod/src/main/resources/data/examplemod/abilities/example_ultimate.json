@@ -1,0 +1,16 @@
+{
+  "id": "examplemod:example_ultimate",
+  "implementationId": "mojibattle:self_heal",
+  "nameKey": "ability.examplemod.example.ultimate.name",
+  "descriptionKey": "guide.character.examplemod:example",
+  "type": "self_heal",
+  "objectTexture": "mojibattle:objects/awakening-crystal.png",
+  "pointCost": 100.0,
+  "healAmount": 180.0,
+  "warningSeconds": 0.2,
+  "effectSeconds": 0.8,
+  "radius": 1.0,
+  "warningEffectId": "mojibattle:neutral",
+  "impactEffectId": "mojibattle:neutral",
+  "renderEffectId": "mojibattle:neutral"
+}

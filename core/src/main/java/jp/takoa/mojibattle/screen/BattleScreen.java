@@ -70,7 +70,9 @@ public final class BattleScreen extends ScreenAdapter {
 
         battle = new BattleController(context.config.battle, context.config.critical, context.config.awakening, context.abilities, mode, characters, supports, context.config.fieldEffects(), context.registries.supportAbilityImplementations, context.events.gameplay());
         input = new InputBindingManager(context.config.controls);
-        renderer = new SplitScreenRenderer(context.config.battle, context.config.graphics, characters, supports, context.config.skills(), context.config.ultimates(), context.config.awakening.texturePath, context.registries.effects.values());
+        renderer = new SplitScreenRenderer(context.config.battle, context.config.graphics, characters, supports,
+                context.config.skills(), context.config.ultimates(), context.config.awakening.texturePath,
+                context.registries.effects.values(), context.resources);
         hud = new BattleHud(context, battle);
         pauseMenu = createPauseMenu();
     }

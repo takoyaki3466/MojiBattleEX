@@ -13,6 +13,7 @@ import jp.takoa.mojibattle.domain.PlayerId;
 import jp.takoa.mojibattle.domain.support.SupportCharacterDefinition;
 import jp.takoa.mojibattle.domain.ability.AbilityConfigs;
 import jp.takoa.mojibattle.registry.CombatEffectDefinition;
+import jp.takoa.mojibattle.resource.ResourceManager;
 
 import java.util.List;
 import java.util.EnumMap;
@@ -24,8 +25,13 @@ public final class SplitScreenRenderer implements Disposable {
     private final ArenaRenderer arena;
     private final EnumMap<PlayerId, PlayerCameraController> cameras = new EnumMap<>(PlayerId.class);
 
-    public SplitScreenRenderer(BattleConfig battle, GraphicsConfig graphics, List<CharacterDefinition> characters, List<List<SupportCharacterDefinition>> supports, List<AbilityConfigs.ProjectileSkill> skills, List<AbilityConfigs.AreaUltimate> ultimates, String awakeningTexturePath, Iterable<CombatEffectDefinition> effects) {
-        arena = new ArenaRenderer(battle, characters, supports, skills, ultimates, awakeningTexturePath, effects);
+    public SplitScreenRenderer(BattleConfig battle, GraphicsConfig graphics, List<CharacterDefinition> characters,
+                               List<List<SupportCharacterDefinition>> supports,
+                               List<AbilityConfigs.ProjectileSkill> skills,
+                               List<AbilityConfigs.AreaUltimate> ultimates, String awakeningTexturePath,
+                               Iterable<CombatEffectDefinition> effects, ResourceManager resources) {
+        arena = new ArenaRenderer(battle, characters, supports, skills, ultimates, awakeningTexturePath, effects,
+                resources);
 
         for (int index = 0; index < characters.size(); index++) {
             cameras.put(PlayerId.values()[index], new PlayerCameraController(graphics));

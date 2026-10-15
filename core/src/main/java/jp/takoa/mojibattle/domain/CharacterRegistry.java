@@ -48,7 +48,7 @@ public final class CharacterRegistry {
      */
     public void replaceCustom(CharacterDefinition definition) {
         definitions.removeIf(value -> value.custom && value.customSlot == definition.customSlot);
-        definitions.replace(definition.id, definition);
+        definitions.register(definition);
     }
 
     /**

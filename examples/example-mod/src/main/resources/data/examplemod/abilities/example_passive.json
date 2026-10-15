@@ -1,0 +1,18 @@
+{
+  "id": "examplemod:example_passive",
+  "implementationId": "mojibattle:compound_interest",
+  "nameKey": "ability.examplemod.example.passive.name",
+  "descriptionKey": "guide.passive_effect.examplemod:example",
+  "type": "compound_interest",
+  "intervalSeconds": 30.0,
+  "attackIncreasePerInterval": 0.02,
+  "maximumMultiplier": 1.2,
+  "moveSpeedMultiplier": 1.0,
+  "skillCooldownMultiplier": 1.0,
+  "ultimateGainMultiplier": 1.0,
+  "incomingDamageMultiplier": 1.0,
+  "hitboxMultiplier": 1.0,
+  "stunMultiplier": 1.0,
+  "ultimateDamageMultiplier": 1.0,
+  "ultimatePointsPerSecond": 0.0
+}

@@ -1,2 +1,2 @@
 rootProject.name = "MojiBattleEX"
-include("core", "item", "lwjgl3")
+include("api", "core", "mod-loader", "item", "lwjgl3")

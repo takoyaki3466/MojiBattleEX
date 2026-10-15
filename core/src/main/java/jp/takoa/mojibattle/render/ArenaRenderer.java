@@ -1,6 +1,5 @@
 package jp.takoa.mojibattle.render;
 
-import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Camera;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
@@ -39,6 +38,8 @@ import jp.takoa.mojibattle.domain.support.SupportCharacterRuntime;
 import jp.takoa.mojibattle.domain.ability.AbilityConfigs;
 import jp.takoa.mojibattle.registry.CombatEffectDefinition;
 import jp.takoa.mojibattle.registry.EffectIds;
+import jp.takoa.mojibattle.resource.GdxTextureLoader;
+import jp.takoa.mojibattle.resource.ResourceManager;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -55,6 +56,7 @@ public final class ArenaRenderer implements Disposable {
 
     private final ModelBatch batch = new ModelBatch();
     private final Environment environment = new Environment();
+    private final GdxTextureLoader textureLoader;
 
     private final List<Model> models = new ArrayList<>();
     private final List<Texture> textures = new ArrayList<>();
@@ -78,7 +80,13 @@ public final class ArenaRenderer implements Disposable {
 
     private float animationTime;
 
-    public ArenaRenderer(BattleConfig config, List<CharacterDefinition> characterDefinitions, List<List<SupportCharacterDefinition>> supportDefinitions, List<AbilityConfigs.ProjectileSkill> skills, List<AbilityConfigs.AreaUltimate> ultimates, String awakeningTexturePath, Iterable<CombatEffectDefinition> effects) {
+    public ArenaRenderer(BattleConfig config, List<CharacterDefinition> characterDefinitions,
+                         List<List<SupportCharacterDefinition>> supportDefinitions,
+                         List<AbilityConfigs.ProjectileSkill> skills,
+                         List<AbilityConfigs.AreaUltimate> ultimates,
+                         String awakeningTexturePath, Iterable<CombatEffectDefinition> effects,
+                         ResourceManager resources) {
+        textureLoader = new GdxTextureLoader(resources);
         environment.set(new ColorAttribute(ColorAttribute.AmbientLight, 0.95f, 0.97f, 1f, 1));
 
         ModelBuilder modelBuilder = new ModelBuilder();
@@ -206,7 +214,7 @@ public final class ArenaRenderer implements Disposable {
     }
 
     private Texture texture(String path) {
-        Texture value = new Texture(Gdx.files.internal(path), true);
+        Texture value = textureLoader.load(path, true);
         value.setFilter(Texture.TextureFilter.MipMapLinearLinear, Texture.TextureFilter.Linear);
         textures.add(value);
 

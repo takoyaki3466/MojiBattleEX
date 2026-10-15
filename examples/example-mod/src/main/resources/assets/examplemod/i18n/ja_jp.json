@@ -1,0 +1,8 @@
+{
+  "character.examplemod.example.name": "例",
+  "ability.examplemod.example.skill.name": "例示弾",
+  "ability.examplemod.example.ultimate.name": "例示回復",
+  "ability.examplemod.example.passive.name": "例示成長",
+  "guide.character.examplemod:example": "公開APIから登録されたデータ駆動キャラクター。",
+  "guide.passive_effect.examplemod:example": "30秒ごとに攻撃力が少し上昇する。"
+}

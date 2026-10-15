@@ -9,6 +9,7 @@ import jp.takoa.mojibattle.config.FieldEffectDefinition;
 import jp.takoa.mojibattle.config.CriticalConfig;
 import jp.takoa.mojibattle.config.AwakeningConfig;
 import jp.takoa.mojibattle.domain.ability.AbilityRegistry;
+import jp.takoa.mojibattle.domain.ability.AbilityLoadout;
 import jp.takoa.mojibattle.domain.ability.IPassive;
 import jp.takoa.mojibattle.domain.combat.AwakeningItem;
 import jp.takoa.mojibattle.domain.combat.CarHazard;
@@ -71,6 +72,7 @@ public final class BattleController {
 
     private final EnumMap<PlayerId, CharacterRuntime> players = new EnumMap<>(PlayerId.class);
     private final EnumMap<PlayerId, PlayerTeam> teams = new EnumMap<>(PlayerId.class);
+    private final EnumMap<PlayerId, AbilityLoadout> abilityLoadouts = new EnumMap<>(PlayerId.class);
 
     private final SupportController supportController;
     private final FieldEffectSystem fieldEffects = new FieldEffectSystem();
@@ -136,6 +138,10 @@ public final class BattleController {
 
             players.put(id, runtime);
 
+            if (!definition.trainingDummy) {
+                abilityLoadouts.put(id, abilities.createLoadout(definition));
+            }
+
             gameplayEvents.post(new CharacterSpawnedEvent(runtime));
 
             List<SupportCharacterRuntime> supportRuntimes = new ArrayList<>();
@@ -169,7 +175,7 @@ public final class BattleController {
             teams.put(id, new PlayerTeam(runtime, supportRuntimes));
 
             if (!definition.trainingDummy) {
-                abilities.skill(definition.skillId).initialize(runtime, config.skillCooldownMultiplier);
+                abilityLoadouts.get(id).primarySkill().initialize(runtime, config.skillCooldownMultiplier);
             }
 
         }
@@ -353,12 +359,14 @@ public final class BattleController {
             return;
         }
 
-        if (command.useSkill() && abilities.skill(user.definition.skillId).tryActivate(this, user)) {
+        AbilityLoadout loadout = abilityLoadouts.get(user.playerId);
+
+        if (command.useSkill() && loadout.primarySkill().tryActivate(this, user)) {
             gameplayEvents.post(new AttackEvent(user, user.definition.skillId, false));
             gameplayEvents.post(new SkillActivatedEvent(user, user.definition.skillId));
         }
 
-        if (command.useUltimate() && abilities.ultimate(user.definition.ultimateId).tryActivate(this, user)) {
+        if (command.useUltimate() && loadout.ultimate().tryActivate(this, user)) {
             gameplayEvents.post(new AttackEvent(user, user.definition.ultimateId, true));
             gameplayEvents.post(new UltimateActivatedEvent(user, user.definition.ultimateId));
         }
@@ -393,7 +401,9 @@ public final class BattleController {
                     }
                 }
 
-                case SkillBarrage barrage when barrage.takePulse() -> abilities.skill(barrage.skillId).activateFromUltimate(this, player(barrage.owner));
+                case SkillBarrage barrage when barrage.takePulse() -> abilityLoadouts.get(barrage.owner)
+                        .skill(barrage.skillId)
+                        .activateFromUltimate(this, player(barrage.owner));
                 case SushiBarrage barrage when barrage.takeShot() -> spawnSushi(barrage);
                 case AwakeningItem item -> resolveAwakening(item);
                 default -> {}
@@ -1398,7 +1408,8 @@ public final class BattleController {
             return List.of();
         }
 
-        return java.util.Arrays.stream(owner.definition.equippedPassiveIds()).map(abilities::passive).toList();
+        AbilityLoadout loadout = abilityLoadouts.get(owner.playerId);
+        return loadout == null ? List.of() : loadout.passives();
     }
 
     private float passiveProduct(CharacterRuntime owner, java.util.function.Function<IPassive, Float> value) {

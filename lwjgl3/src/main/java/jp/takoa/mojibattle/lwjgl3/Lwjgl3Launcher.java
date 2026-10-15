@@ -5,13 +5,20 @@ import com.badlogic.gdx.backends.lwjgl3.Lwjgl3ApplicationConfiguration;
 import com.badlogic.gdx.utils.Json;
 import jp.takoa.mojibattle.GameApplication;
 import jp.takoa.mojibattle.GameContext;
+import jp.takoa.mojibattle.bootstrap.GameBootstrap;
 import jp.takoa.mojibattle.config.GraphicsConfig;
-import jp.takoa.mojibattle.item.bootstrap.GameBootstrap;
+import jp.takoa.mojibattle.mod.GameMod;
+import jp.takoa.mojibattle.modloader.LoadedMod;
+import jp.takoa.mojibattle.modloader.ModLoader;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.ServiceLoader;
 
 /** デスクトップ向けLWJGL3設定を構築し、ゲームアプリケーションを起動するエントリーポイント。 */
 public final class Lwjgl3Launcher {
@@ -34,10 +41,27 @@ public final class Lwjgl3Launcher {
         }
         configuration.useVsync(true);
         configuration.setForegroundFPS(120);
+        ModLoader modLoader = new ModLoader(Path.of(System.getProperty("mojibattle.modsDir", "mods")));
+        List<GameMod> mods = discoverMods(modLoader);
         new Lwjgl3Application(
-                new GameApplication(() -> new GameContext(
-                        GameBootstrap.bootstrap())),
+                new GameApplication(() -> createContext(modLoader, mods)),
                 configuration);
+    }
+
+    private static List<GameMod> discoverMods(ModLoader modLoader) {
+        List<GameMod> mods = new ArrayList<>();
+        ServiceLoader.load(GameMod.class).forEach(mods::add);
+        modLoader.load().stream().map(LoadedMod::instance).forEach(mods::add);
+        return List.copyOf(mods);
+    }
+
+    private static GameContext createContext(ModLoader modLoader, List<GameMod> mods) {
+        try {
+            return new GameContext(GameBootstrap.bootstrap(mods, modLoader.resources()), modLoader);
+        } catch (RuntimeException error) {
+            modLoader.close();
+            throw error;
+        }
     }
 
     private static GraphicsConfig readGraphicsConfig() {
