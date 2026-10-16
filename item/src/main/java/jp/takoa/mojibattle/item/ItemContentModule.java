@@ -8,6 +8,7 @@ import jp.takoa.mojibattle.item.init.PassiveRegistryInit;
 import jp.takoa.mojibattle.item.init.SkillRegistryInit;
 import jp.takoa.mojibattle.item.init.SupportRegistryInit;
 import jp.takoa.mojibattle.item.init.UltimateRegistryInit;
+import jp.takoa.mojibattle.item.init.ApiAbilityRegistryInit;
 
 /**
  * 組み込みコンテンツMODの入口。Bootstrapから個別実装を隠し、各DeferredRegisterを
@@ -23,6 +24,7 @@ public final class ItemContentModule implements GameMod {
 
     @Override
     public void register(ModContext context) {
+        ApiAbilityRegistryInit.register(context.abilities());
         attach(context.registrationBus());
     }
 

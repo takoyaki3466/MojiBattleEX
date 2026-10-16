@@ -1,0 +1,1 @@
+{"id":"crab","type":"MAIN","displayGlyph":"🦀","nameKey":"character.crab.name","maxHp":1320.0,"baseAttack":0.95,"moveSpeed":6.4,"collisionRadius":0.76,"skillId":"crab_sideways_raid","ultimateId":"crab_shell_critical","passiveId":"crab_molting","glyphTexture":"glyphs/crab.png","criticalRate":0.15,"criticalDamageMultiplier":1.8,"criticalEnabled":true}

@@ -74,4 +74,39 @@ public interface CombatActions {
     default void knockbackAwayFrom(CombatantView source, CombatantView target, float distance) {
         throw new UnsupportedOperationException("Knockback is not supported by this combat host");
     }
+
+    /** 視覚領域を追加する。同時発動中の別領域や同一領域を解除しない。 */
+    default void activateDomain(CombatantView source, DomainSpec spec) {
+        throw new UnsupportedOperationException("Domains are not supported by this combat host");
+    }
+
+    /** 指定した使用者が発動した領域が一つ以上残っているかを返す。 */
+    default boolean isDomainActive(CombatantView source, ResourceId domainId) {
+        return false;
+    }
+
+    /** 優先度付きの全画面カットインを要求する。 */
+    default void showCutIn(CombatantView source, CutInSpec spec) {
+        throw new UnsupportedOperationException("Cut-ins are not supported by this combat host");
+    }
+
+    /** 一定時間続く中央吸引と周期攻撃を開始する。 */
+    default void startBattlefieldPulse(CombatantView source, BattlefieldPulseSpec spec) {
+        throw new UnsupportedOperationException("Battlefield pulses are not supported by this combat host");
+    }
+
+    /** 2体の現在位置を戦場境界内で交換する。 */
+    default void swapPositions(CombatantView first, CombatantView second) {
+        throw new UnsupportedOperationException("Position swapping is not supported by this combat host");
+    }
+
+    /** 対象を戦場中央に対して点対称の位置へ移す。 */
+    default void mirrorAcrossArenaCenter(CombatantView target) {
+        throw new UnsupportedOperationException("Arena mirroring is not supported by this combat host");
+    }
+
+    /** 対象へ付与されている負の状態と行動不能を解除する。 */
+    default void cleanseNegativeStatuses(CombatantView target) {
+        throw new UnsupportedOperationException("Status cleansing is not supported by this combat host");
+    }
 }

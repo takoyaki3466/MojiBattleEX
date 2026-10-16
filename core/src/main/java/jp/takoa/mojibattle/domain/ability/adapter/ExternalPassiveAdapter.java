@@ -60,6 +60,11 @@ public final class ExternalPassiveAdapter implements IPassive {
     }
 
     @Override
+    public boolean ignoresDefense(CharacterRuntime owner) {
+        return runtime.ignoresDefense(new CoreCombatantView(owner));
+    }
+
+    @Override
     public void update(BattleController battle, CharacterRuntime owner, float delta) {
         runtime.update(new PassiveUpdateContext(
                 new CoreCombatantView(owner),

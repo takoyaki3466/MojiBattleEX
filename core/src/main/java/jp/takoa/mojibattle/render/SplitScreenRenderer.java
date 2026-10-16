@@ -76,13 +76,19 @@ public final class SplitScreenRenderer implements Disposable {
 
     private void renderPlayer(PlayerId id, int x, int y, int width, int height, float delta, BattleController battle) {
         PlayerCameraController controller = cameras.get(id);
+        CharacterRuntime cameraOwner = battle.player(id);
         CharacterRuntime target = battle.targetOf(id);
 
-        if (target == null) {
-            target = battle.player(id);
+        if (battle.cutIn() != null) {
+            cameraOwner = battle.cutIn().source();
+            target = battle.targetOf(battle.cutIn().player());
         }
 
-        controller.update(battle.player(id), target, delta, width, height, battle.visualPulse());
+        if (target == null) {
+            target = cameraOwner;
+        }
+
+        controller.update(cameraOwner, target, delta, width, height, battle.visualPulse(), battle.cutIn());
         renderHalf(x, y, width, height, controller, battle);
     }
 

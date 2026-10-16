@@ -17,9 +17,14 @@ import jp.takoa.mojibattle.battle.DamageResult;
 import jp.takoa.mojibattle.battle.DelayedStrikeSpec;
 import jp.takoa.mojibattle.battle.ProjectileSpec;
 import jp.takoa.mojibattle.battle.AreaAttackSpec;
+import jp.takoa.mojibattle.battle.BattlefieldPulseSpec;
+import jp.takoa.mojibattle.battle.CutInSpec;
+import jp.takoa.mojibattle.battle.DomainSpec;
 import jp.takoa.mojibattle.battle.NormalAttackModifier;
 import jp.takoa.mojibattle.ability.AbilityStateLine;
 import jp.takoa.mojibattle.domain.combat.AwakeningItem;
+import jp.takoa.mojibattle.domain.combat.ActiveDomain;
+import jp.takoa.mojibattle.domain.combat.BattlefieldPulse;
 import jp.takoa.mojibattle.domain.combat.CarHazard;
 import jp.takoa.mojibattle.domain.combat.CashBundle;
 import jp.takoa.mojibattle.domain.combat.CombatObject;
@@ -100,6 +105,7 @@ public final class BattleController {
 
     private final List<CombatObject> objects = new ArrayList<>();
     private final List<CombatObject> pendingObjects = new ArrayList<>();
+    private final List<ActiveDomain> domains = new ArrayList<>();
     private final List<BattleSoundCue> soundEvents = new ArrayList<>();
 
     private final BattleTimer timer;
@@ -113,6 +119,7 @@ public final class BattleController {
     private boolean paused;
     private boolean finalMinuteStarted;
     private Announcement announcement;
+    private CutInState cutIn;
     private float visualPulse;
     private float criticalPulse;
     private boolean awakeningSpawned;
@@ -260,6 +267,7 @@ public final class BattleController {
         visualPulse = Math.max(0, visualPulse - delta * 3.2f);
         criticalPulse = Math.max(0, criticalPulse - delta * 2.5f);
         timer.update(delta);
+        updatePresentationStates(delta);
 
         if (!finalMinuteStarted && timer.remaining() <= config.finalMinuteSeconds) {
             finalMinuteStarted = true;
@@ -541,6 +549,7 @@ public final class BattleController {
             object.update(delta);
             switch (object) {
                 case FamilySummon family -> updateFamily(family, delta);
+                case BattlefieldPulse pulse -> resolveBattlefieldPulse(pulse, delta);
                 case Projectile projectile -> resolveProjectile(projectile);
                 case UltimateStrike strike when strike.takeDamagePending() -> resolveStrike(strike);
                 case LineStrike line when line.takeDamagePending() -> resolveLineStrike(line);
@@ -566,6 +575,51 @@ public final class BattleController {
         objects.addAll(pendingObjects);
 
         pendingObjects.clear();
+    }
+
+    /** 領域とカットインの表示寿命を、戦闘の固定時間と同じ時計で進める。 */
+    private void updatePresentationStates(float delta) {
+        for (ActiveDomain domain : domains) {
+            domain.update(delta);
+        }
+        domains.removeIf(ActiveDomain::expired);
+        if (cutIn != null) {
+            cutIn.update(delta);
+            if (cutIn.expired()) {
+                cutIn = null;
+            }
+        }
+    }
+
+    /** 中央吸引を毎フレーム、範囲ダメージを宣言周期ごとに全敵へ適用する。 */
+    private void resolveBattlefieldPulse(BattlefieldPulse pulse, float delta) {
+        CharacterRuntime owner = pulse.owner();
+        if (!owner.isAlive()) {
+            return;
+        }
+        boolean damageTick = pulse.takeDamageTick();
+        for (CharacterRuntime target : enemiesOf(owner)) {
+            Vector3 towardCenter = new Vector3(-target.position.x, 0, -target.position.z);
+            float distance = towardCenter.len();
+            if (distance > .001f) {
+                float movement = Math.min(distance, pulse.spec().pullUnitsPerSecond() * delta);
+                target.position.mulAdd(towardCenter.scl(1f / distance), movement);
+                clampToArena(target);
+            }
+            if (damageTick) {
+                applyAbilityDamage(owner, target, pulse.spec().damagePerTick());
+            }
+        }
+        if (damageTick) {
+            emitEffect(pulse.position(), pulse.spec().effectId().toString(), pulse.spec().effectScale(),
+                    Math.min(.25f, pulse.spec().tickIntervalSeconds()));
+        }
+    }
+
+    private void clampToArena(CharacterRuntime target) {
+        target.position.x = MathUtils.clamp(target.position.x, -config.arenaHalfExtent, config.arenaHalfExtent);
+        target.position.z = MathUtils.clamp(target.position.z, -config.arenaHalfExtent, config.arenaHalfExtent);
+        target.position.y = config.groundY;
     }
 
     /**
@@ -597,7 +651,7 @@ public final class BattleController {
         float hitboxMultiplier = passiveHitboxMultiplier(projectile.owner);
         CharacterRuntime contactTarget = null;
 
-        for (CharacterRuntime candidate : players.values()) {
+        for (CharacterRuntime candidate : allMains()) {
             if (candidate.playerId != projectile.owner && candidate.isAlive()) {
 
                 float combined = projectile.radius * 3f * hitboxMultiplier + candidate.definition.collisionRadius * 1.5f;
@@ -631,7 +685,7 @@ public final class BattleController {
                 damageFamily(projectile.owner, family, projectile.baseDamage, projectile.effectId);
             }
         }
-        for (CharacterRuntime target : players.values()) {
+        for (CharacterRuntime target : allMains()) {
             if (target.playerId != projectile.owner && target.isAlive()) {
                 Vector3 targetCenter = new Vector3(target.position).add(0, 1, 0);
 
@@ -643,7 +697,8 @@ public final class BattleController {
                 float critical = criticalMultiplier(owner, projectile.attackId, projectile);
                 float attack = attackMultiplier(owner) * (projectile.ultimateAttack() ? ultimateDamageMultiplier(owner) : 1f);
                 boolean ignoreDefense = projectile.ignoresDefense()
-                        || projectile.ignoresDefenseOnCritical() && critical > 1f;
+                        || projectile.ignoresDefenseOnCritical() && critical > 1f
+                        || passiveIgnoresDefense(owner);
                 float dealt = damageService.apply(owner, target, projectile.baseDamage, attack * critical,
                         defenseMultiplier(target), incomingEffectMultiplier(target),
                         new DamageService.AttackTraits(ignoreDefense));
@@ -745,7 +800,8 @@ public final class BattleController {
                     CharacterRuntime owner = player(strike.owner);
 
                     float critical = criticalMultiplier(owner, System.identityHashCode(strike));
-                    float dealt = damageService.apply(owner, target, strike.baseDamage * GLOBAL_ULTIMATE_DAMAGE_SCALE, attackMultiplier(owner) * (strike.isMainUltimate() ? ultimateDamageMultiplier(owner) : 1f) * critical, incomingDamageMultiplier(target));
+                    float dealt = applyLegacyDamage(owner, target, strike.baseDamage * GLOBAL_ULTIMATE_DAMAGE_SCALE,
+                            attackMultiplier(owner) * (strike.isMainUltimate() ? ultimateDamageMultiplier(owner) : 1f) * critical);
 
                     if (dealt > 0) {
                         hit = true;
@@ -796,7 +852,8 @@ public final class BattleController {
                     float critical = criticalMultiplier(owner, System.identityHashCode(strike));
                     float ultimateMultiplier = strike.isMainUltimate() ? ultimateDamageMultiplier(owner) : 1f;
 
-                    float dealt = damageService.apply(owner, target, strike.baseDamage * sourceScale, attackMultiplier(owner) * ultimateMultiplier * critical, incomingDamageMultiplier(target));
+                    float dealt = applyLegacyDamage(owner, target, strike.baseDamage * sourceScale,
+                            attackMultiplier(owner) * ultimateMultiplier * critical);
 
                     if (dealt > 0) {
                         visualPulse = 1f;
@@ -845,7 +902,9 @@ public final class BattleController {
 
                 if (car.position().dst2(target.position) <= combined * combined) {
                     CharacterRuntime owner = player(car.owner);
-                    float dealt = damageService.apply(owner, target, car.baseDamage * GLOBAL_ULTIMATE_DAMAGE_SCALE, attackMultiplier(owner) * (car.isMainUltimate() ? ultimateDamageMultiplier(owner) : 1f) * criticalMultiplier(owner, System.identityHashCode(car)), incomingDamageMultiplier(target));
+                    float dealt = applyLegacyDamage(owner, target, car.baseDamage * GLOBAL_ULTIMATE_DAMAGE_SCALE,
+                            attackMultiplier(owner) * (car.isMainUltimate() ? ultimateDamageMultiplier(owner) : 1f)
+                                    * criticalMultiplier(owner, System.identityHashCode(car)));
 
                     if (dealt > 0) {
                         target.applyStun(car.stunSeconds);
@@ -890,7 +949,7 @@ public final class BattleController {
                 CharacterRuntime owner = player(one.owner);
 
                 float normalDamage = one.baseDamage * GLOBAL_ULTIMATE_DAMAGE_SCALE * attackMultiplier(owner) * ultimateDamageMultiplier(owner) * criticalMultiplier(owner, System.identityHashCode(one));
-                float dealt = damageService.apply(owner, target, normalDamage + one.missingHealthBonusPerPulse(), 1f, incomingDamageMultiplier(target));
+                float dealt = applyLegacyDamage(owner, target, normalDamage + one.missingHealthBonusPerPulse(), 1f);
 
                 if (dealt > 0) {
                     if (mode == BattleMode.TRAINING) {
@@ -936,6 +995,14 @@ public final class BattleController {
 
     private float incomingDamageMultiplier(CharacterRuntime target) {
         return defenseMultiplier(target) * incomingEffectMultiplier(target);
+    }
+
+    /** 既存戦闘オブジェクトにも、APIパッシブの防御無視を同一規則で適用する。 */
+    private float applyLegacyDamage(CharacterRuntime owner, CharacterRuntime target, float baseDamage,
+                                    float attack) {
+        return damageService.apply(owner, target, baseDamage, attack, defenseMultiplier(target),
+                incomingEffectMultiplier(target),
+                new DamageService.AttackTraits(passiveIgnoresDefense(owner)));
     }
 
     private float incomingEffectMultiplier(CharacterRuntime target) {
@@ -1061,7 +1128,7 @@ public final class BattleController {
             if (effect.type != StatusType.HEAL_OVER_TIME) {
                 CharacterRuntime source = player(effect.source);
 
-                float dealt = damageService.apply(source, target, effect.magnitude * effect.stacks, 1, incomingDamageMultiplier(target));
+                float dealt = applyLegacyDamage(source, target, effect.magnitude * effect.stacks, 1f);
 
                 if (effect.ultimatePointsPerTick > 0) {
                     addSkillUltimatePoints(source, effect.ultimatePointsPerTick);
@@ -1303,7 +1370,8 @@ public final class BattleController {
         float critical = criticalMultiplier(source, nextAttackId());
         boolean criticalHit = critical > 1f;
         boolean ignoreDefense = request.ignoreDefense()
-                || request.ignoreDefenseOnCritical() && criticalHit;
+                || request.ignoreDefenseOnCritical() && criticalHit
+                || passiveIgnoresDefense(source);
         float dealt = damageService.apply(source, target, request.baseDamage() * typeScale,
                 attackMultiplier(source) * ultimate * critical, defenseMultiplier(target),
                 incomingEffectMultiplier(target), new DamageService.AttackTraits(ignoreDefense));
@@ -1315,6 +1383,72 @@ public final class BattleController {
             trainingStatistics.record(dealt);
         }
         return new DamageResult(dealt, criticalHit, ignoreDefense);
+    }
+
+    /** 視覚だけを担う領域を追加する。同時発動中の領域は解除しない。 */
+    public void activateDomain(CharacterRuntime source, DomainSpec spec) {
+        if (!containsCombatant(source) || spec == null) {
+            throw new IllegalArgumentException("Domain source and specification must belong to this battle");
+        }
+        domains.add(new ActiveDomain(source, spec));
+        if (spec.ambientEffectId() != null) {
+            emitEffect(source.position, spec.ambientEffectId().toString(), 12f * spec.intensity(), .8f);
+        }
+    }
+
+    /** 指定キャラクター自身が発動した領域だけを照会する。 */
+    public boolean isDomainActive(CharacterRuntime source, ResourceId domainId) {
+        if (!containsCombatant(source) || domainId == null) {
+            return false;
+        }
+        return domains.stream().anyMatch(domain -> domain.owner() == source && domain.spec().id().equals(domainId));
+    }
+
+    /** 高優先度のカットインを現在表示へ採用する。 */
+    public void showCutIn(CharacterRuntime source, CutInSpec spec) {
+        if (!containsCombatant(source) || spec == null) {
+            throw new IllegalArgumentException("Cut-in source and specification must belong to this battle");
+        }
+        if (cutIn == null || spec.priority() >= cutIn.spec().priority()) {
+            cutIn = new CutInState(source, spec);
+        }
+    }
+
+    /** 中央吸引と周期攻撃を、通常の戦場オブジェクトとして開始する。 */
+    public void startBattlefieldPulse(CharacterRuntime source, BattlefieldPulseSpec spec) {
+        if (!containsCombatant(source) || spec == null) {
+            throw new IllegalArgumentException("Battlefield pulse source and specification must belong to this battle");
+        }
+        spawn(new BattlefieldPulse(source, spec));
+    }
+
+    /** 2体の位置を交換し、戦場外や高さのずれを補正する。 */
+    public void swapPositions(CharacterRuntime first, CharacterRuntime second) {
+        if (!containsCombatant(first) || !containsCombatant(second)) {
+            throw new IllegalArgumentException("Position swap combatants must belong to this battle");
+        }
+        Vector3 previous = new Vector3(first.position);
+        first.position.set(second.position);
+        second.position.set(previous);
+        clampToArena(first);
+        clampToArena(second);
+    }
+
+    /** 対象を戦場中央に対して点対称の位置へ移動する。 */
+    public void mirrorAcrossArenaCenter(CharacterRuntime target) {
+        if (!containsCombatant(target)) {
+            throw new IllegalArgumentException("Mirrored combatant must belong to this battle");
+        }
+        target.position.set(-target.position.x, config.groundY, -target.position.z);
+        clampToArena(target);
+    }
+
+    public List<ActiveDomain> domains() {
+        return List.copyOf(domains);
+    }
+
+    public CutInState cutIn() {
+        return cutIn;
     }
 
     /** 獲得倍率を適用する通常の必殺ポイント加算。 */
@@ -1381,6 +1515,11 @@ public final class BattleController {
             throw new IllegalArgumentException("Area attack combatants must belong to this battle");
         }
         Vector3 center = new Vector3(target.position);
+        if (spec.objectTexture() != null) {
+            String effectId = spec.warningEffectId() == null ? EffectIds.IMPACT : spec.warningEffectId().toString();
+            emitImageEffect(center, spec.objectTexture().toString(), effectId, spec.effectScale(),
+                    Math.max(.25f, spec.delaySeconds() + .5f));
+        }
         if (spec.warningEffectId() != null) {
             emitEffect(center, spec.warningEffectId().toString(), spec.effectScale(),
                     Math.max(.05f, spec.delaySeconds()));
@@ -1869,6 +2008,10 @@ public final class BattleController {
         }
 
         return result;
+    }
+
+    private boolean passiveIgnoresDefense(CharacterRuntime owner) {
+        return passives(owner).stream().anyMatch(passive -> passive.ignoresDefense(owner));
     }
 
     private record NormalAttackProfile(float intervalMultiplier, int projectileCount,

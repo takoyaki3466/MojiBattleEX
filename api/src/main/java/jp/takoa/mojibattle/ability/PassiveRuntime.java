@@ -30,6 +30,11 @@ public interface PassiveRuntime {
         return 0f;
     }
 
+    /** trueの間、所有者が発生させる全攻撃は防御倍率を無視する。 */
+    default boolean ignoresDefense(CombatantView owner) {
+        return false;
+    }
+
     /** 通常攻撃を行うたびに再評価される補正。 */
     default List<NormalAttackModifier> normalAttackModifiers(CombatantView owner) {
         return List.of();

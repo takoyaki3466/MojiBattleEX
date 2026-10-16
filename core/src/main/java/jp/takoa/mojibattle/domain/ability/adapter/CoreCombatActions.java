@@ -10,6 +10,9 @@ import jp.takoa.mojibattle.battle.ProjectileSpec;
 import jp.takoa.mojibattle.battle.AreaAttackSpec;
 import jp.takoa.mojibattle.battle.StatusEffectType;
 import jp.takoa.mojibattle.battle.StatusSpec;
+import jp.takoa.mojibattle.battle.BattlefieldPulseSpec;
+import jp.takoa.mojibattle.battle.CutInSpec;
+import jp.takoa.mojibattle.battle.DomainSpec;
 import jp.takoa.mojibattle.domain.status.StatusEffect;
 import jp.takoa.mojibattle.domain.status.StatusStackRule;
 import jp.takoa.mojibattle.domain.status.StatusType;
@@ -140,6 +143,41 @@ public final class CoreCombatActions implements CombatActions {
     @Override
     public void knockbackAwayFrom(CombatantView source, CombatantView target, float distance) {
         battle.knockbackAwayFrom(runtime(source), runtime(target), distance);
+    }
+
+    @Override
+    public void activateDomain(CombatantView source, DomainSpec spec) {
+        battle.activateDomain(runtime(source), spec);
+    }
+
+    @Override
+    public boolean isDomainActive(CombatantView source, ResourceId domainId) {
+        return battle.isDomainActive(runtime(source), domainId);
+    }
+
+    @Override
+    public void showCutIn(CombatantView source, CutInSpec spec) {
+        battle.showCutIn(runtime(source), spec);
+    }
+
+    @Override
+    public void startBattlefieldPulse(CombatantView source, BattlefieldPulseSpec spec) {
+        battle.startBattlefieldPulse(runtime(source), spec);
+    }
+
+    @Override
+    public void swapPositions(CombatantView first, CombatantView second) {
+        battle.swapPositions(runtime(first), runtime(second));
+    }
+
+    @Override
+    public void mirrorAcrossArenaCenter(CombatantView target) {
+        battle.mirrorAcrossArenaCenter(runtime(target));
+    }
+
+    @Override
+    public void cleanseNegativeStatuses(CombatantView target) {
+        runtime(target).clearNegativeStatuses();
     }
 
     private CharacterRuntime runtime(CombatantView view) {

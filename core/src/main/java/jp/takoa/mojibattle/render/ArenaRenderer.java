@@ -224,6 +224,18 @@ public final class ArenaRenderer implements Disposable {
         return new ModelInstance(model);
     }
 
+    /** 名前空間付きAPI参照と、旧来の相対パスキーを同じ描画モデルへ解決する。 */
+    private static ModelInstance modelForResource(Map<String, ModelInstance> models, String reference) {
+        ModelInstance value = models.get(reference);
+        if (value == null && reference != null) {
+            int separator = reference.indexOf(':');
+            if (separator >= 0 && separator + 1 < reference.length()) {
+                value = models.get(reference.substring(separator + 1));
+            }
+        }
+        return value;
+    }
+
     private void addObjectModel(ModelBuilder builder, String texturePath) {
         if (texturePath == null || objectModels.containsKey(texturePath)) {
             return;
@@ -278,6 +290,17 @@ public final class ArenaRenderer implements Disposable {
     }
 
     public void render(Camera camera, BattleController battle) {
+        Color ambient = new Color(.95f, .97f, 1f, 1f);
+        if (!battle.domains().isEmpty()) {
+            var domain = battle.domains().get(battle.domains().size() - 1);
+            ambient = switch (domain.spec().visualStyle()) {
+                case MONOCHROME -> new Color(.62f, .62f, .62f, 1f);
+                case SUNRISE -> new Color(1f, .72f, .48f, 1f);
+                case BLOOM -> new Color(1f, .68f, .82f, 1f);
+                case ABYSS -> new Color(.42f, .28f, .58f, 1f);
+            };
+        }
+        environment.set(new ColorAttribute(ColorAttribute.AmbientLight, ambient));
         batch.begin(camera);
         ModelInstance[] activeScenery = battle.fieldEffectIds().contains("matsudo") ? matsudoScenery : scenery;
 
@@ -321,11 +344,11 @@ public final class ArenaRenderer implements Disposable {
                 aura.transform.rotate(Vector3.Z, -animationTime * 390f - p.attackId * 11f);
                 batch.render(aura, environment);
 
-                ModelInstance glyph = projectileGlyphs.get(p.texturePath);
+                ModelInstance glyph = modelForResource(projectileGlyphs, p.texturePath);
                 if (glyph != null) {
                     tempPosition.set(p.position()).add(0, MathUtils.sin(phase * .7f) * .16f, 0);
 
-                    ModelInstance outline = projectileOutlines.get(p.texturePath);
+                    ModelInstance outline = modelForResource(projectileOutlines, p.texturePath);
                     tempDirection.set(camera.position).sub(tempPosition).nor();
                     tempOutline.set(tempPosition).mulAdd(tempDirection, -.035f);
 
@@ -383,7 +406,8 @@ public final class ArenaRenderer implements Disposable {
                     batch.render(impact, environment);
                 }
             } else if (object instanceof VisualEffect effect) {
-                ModelInstance visual = effect.texturePath == null ? effectModels.get(effect.effectId) : objectModels.get(effect.texturePath);
+                ModelInstance visual = effect.texturePath == null ? effectModels.get(effect.effectId)
+                        : modelForResource(objectModels, effect.texturePath);
 
                 if (visual == null) {
                     visual = effectModels.get(effect.effectId);
