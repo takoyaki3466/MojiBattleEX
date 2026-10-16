@@ -9,6 +9,7 @@ import jp.takoa.mojibattle.domain.ability.AbilityConfigs;
 import jp.takoa.mojibattle.domain.support.SupportCharacterDefinition;
 import jp.takoa.mojibattle.registry.BuiltInRegistries;
 import jp.takoa.mojibattle.registry.CombatEffectDefinition;
+import jp.takoa.mojibattle.registry.RegistryId;
 import jp.takoa.mojibattle.resource.ResourceId;
 import jp.takoa.mojibattle.resource.ResourceKind;
 import jp.takoa.mojibattle.resource.ResourceManager;
@@ -71,6 +72,9 @@ public final class GameDataValidator {
         AbilityConfigs.ProjectileSkill skill = registries.skillDefinitions.require(character.skillId);
         AbilityConfigs.AreaUltimate ultimate = registries.ultimateDefinitions.require(character.ultimateId);
         AbilityConfigs.TimedPassive passive = registries.passiveDefinitions.require(character.passiveId);
+        boolean externalSkill = externalImplementation(skill.implementationId);
+        boolean externalUltimate = externalImplementation(ultimate.implementationId);
+        boolean externalPassive = externalImplementation(passive.implementationId);
         require(character.maxHp > 0 && character.moveSpeed > 0 && character.collisionRadius > 0, "Character stats must be positive: " + character.id);
         require(character.type == CharacterType.MAIN, "Playable character must be MAIN: " + character.id);
         require(assetExists(character.glyphTexture), "Character glyph texture is missing: " + character.id);
@@ -78,26 +82,27 @@ public final class GameDataValidator {
         registries.ultimateImplementations.require(ultimate.implementationId).validator().accept(ultimate);
         registries.passiveImplementations.require(passive.implementationId).validator().accept(passive);
         require(skill.nameKey != null && ultimate.nameKey != null && passive.nameKey != null, "Ability translation key is missing: " + character.id);
-        requireEffect(skill.activationEffectId, CombatEffectDefinition.Usage.SKILL);
-        requireEffect(skill.projectileEffectId, CombatEffectDefinition.Usage.PROJECTILE);
-        requireEffect(skill.hitEffectId, CombatEffectDefinition.Usage.HIT);
-        requireEffect(ultimate.warningEffectId, CombatEffectDefinition.Usage.ULTIMATE_WARNING);
-        requireEffect(ultimate.impactEffectId, CombatEffectDefinition.Usage.ULTIMATE_IMPACT);
-        requireEffect(ultimate.renderEffectId, CombatEffectDefinition.Usage.GENERAL);
-        for (String texture : skill.textures) {
+        requireOptionalEffect(skill.activationEffectId, CombatEffectDefinition.Usage.SKILL, externalSkill);
+        requireOptionalEffect(skill.projectileEffectId, CombatEffectDefinition.Usage.PROJECTILE, externalSkill);
+        requireOptionalEffect(skill.hitEffectId, CombatEffectDefinition.Usage.HIT, externalSkill);
+        requireOptionalEffect(ultimate.warningEffectId, CombatEffectDefinition.Usage.ULTIMATE_WARNING, externalUltimate);
+        requireOptionalEffect(ultimate.impactEffectId, CombatEffectDefinition.Usage.ULTIMATE_IMPACT, externalUltimate);
+        requireOptionalEffect(ultimate.renderEffectId, CombatEffectDefinition.Usage.GENERAL, externalUltimate);
+        for (String texture : skill.textures == null ? new String[0] : skill.textures) {
             require(assetExists(texture), "Skill texture is missing: " + character.id);
         }
         require(skill.followUpTexture == null || assetExists(skill.followUpTexture), "Follow-up texture is missing: " + character.id);
         require(skill.activationTexture == null || assetExists(skill.activationTexture), "Skill activation texture is missing: " + character.id);
         require(skill.fallingObjectTexture == null || assetExists(skill.fallingObjectTexture), "Falling object texture is missing: " + character.id);
-        require(ultimate.pointCost > 0 && ultimate.warningSeconds >= 0 && assetExists(ultimate.objectTexture), "Ultimate common config is invalid: " + character.id);
+        require(ultimate.pointCost > 0 && ultimate.warningSeconds >= 0
+                && (externalUltimate || assetExists(ultimate.objectTexture)), "Ultimate common config is invalid: " + character.id);
         if (ultimate.burnDuration > 0) {
             require(ultimate.burnDamage > 0 && ultimate.burnTickInterval > 0 && ultimate.burnUltimatePointsPerTick >= 0, "Burn config is invalid: " + character.id);
         }
         if (ultimate.barrageSkillId != null) {
             registries.skillDefinitions.require(ultimate.barrageSkillId);
         }
-        require(passive.intervalSeconds > 0 && passive.maximumMultiplier >= 1 && passive.moveSpeedMultiplier > 0 && passive.skillCooldownMultiplier > 0 && passive.ultimateGainMultiplier > 0 && passive.incomingDamageMultiplier > 0 && passive.hitboxMultiplier > 0 && passive.stunMultiplier > 0 && passive.ultimatePointsPerSecond >= 0, "Passive common config is invalid: " + character.id);
+        require(externalPassive || (passive.intervalSeconds > 0 && passive.maximumMultiplier >= 1 && passive.moveSpeedMultiplier > 0 && passive.skillCooldownMultiplier > 0 && passive.ultimateGainMultiplier > 0 && passive.incomingDamageMultiplier > 0 && passive.hitboxMultiplier > 0 && passive.stunMultiplier > 0 && passive.ultimatePointsPerSecond >= 0), "Passive common config is invalid: " + character.id);
         require(passive.spawnObjectTexture == null || assetExists(passive.spawnObjectTexture), "Passive object texture is missing: " + character.id);
     }
 
@@ -119,8 +124,20 @@ public final class GameDataValidator {
         require(effect.usages().contains(usage) || effect.usages().contains(CombatEffectDefinition.Usage.GENERAL), "Combat effect " + id + " cannot be used as " + usage);
     }
 
+    private void requireOptionalEffect(String id, CombatEffectDefinition.Usage usage, boolean optional) {
+        if (id == null && optional) {
+            return;
+        }
+        requireEffect(id, usage);
+    }
+
     private void validateFieldEffect(FieldEffectDefinition effect) {
         require(effect.id != null && effect.type != null && effect.target != null, "Field effect fields are required");
+        String target = effect.target.toUpperCase(java.util.Locale.ROOT);
+        require(java.util.Set.of("ALL", "ALLIES", "ENEMIES", "MAIN", "SUPPORT").contains(target),
+                "Unknown field effect target: " + effect.target);
+        require(effect.includeCharacterIds != null && effect.excludeCharacterIds != null,
+                "Field effect include/exclude filters are required");
         registries.fieldEffectImplementations.require(effect.type).validator().accept(effect);
     }
 
@@ -156,5 +173,9 @@ public final class GameDataValidator {
         if (!condition) {
             throw new IllegalArgumentException(message);
         }
+    }
+
+    private static boolean externalImplementation(String id) {
+        return !RegistryId.DEFAULT_NAMESPACE.equals(RegistryId.parse(id).namespace());
     }
 }

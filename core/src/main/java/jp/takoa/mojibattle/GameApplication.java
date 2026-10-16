@@ -4,6 +4,7 @@ import com.badlogic.gdx.Game;
 import jp.takoa.mojibattle.screen.ScreenManager;
 import jp.takoa.mojibattle.screen.TitleScreen;
 
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 /**
@@ -14,18 +15,39 @@ import java.util.function.Supplier;
  */
 public final class GameApplication extends Game {
     private final Supplier<GameContext> contextFactory;
+    private final Consumer<String> startupLog;
     private GameContext context;
 
     public GameApplication(Supplier<GameContext> contextFactory) {
+        this(contextFactory, ignored -> { });
+    }
+
+    public GameApplication(Supplier<GameContext> contextFactory, Consumer<String> startupLog) {
         this.contextFactory = contextFactory;
+        this.startupLog = startupLog;
     }
 
     @Override
     public void create() {
-        context = contextFactory.get();
+        startupLog.accept("GameApplication.create() started");
+        try {
+            context = contextFactory.get();
 
-        ScreenManager screens = new ScreenManager(this);
-        screens.show(new TitleScreen(context, screens));
+            ScreenManager screens = new ScreenManager(this);
+            screens.show(new TitleScreen(context, screens));
+            startupLog.accept("Title screen displayed");
+        } catch (RuntimeException | Error error) {
+            if (context != null) {
+                try {
+                    context.close();
+                } catch (RuntimeException closeError) {
+                    error.addSuppressed(closeError);
+                } finally {
+                    context = null;
+                }
+            }
+            throw error;
+        }
     }
 
     @Override

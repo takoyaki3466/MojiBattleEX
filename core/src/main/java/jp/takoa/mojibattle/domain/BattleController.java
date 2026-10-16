@@ -11,6 +11,14 @@ import jp.takoa.mojibattle.config.AwakeningConfig;
 import jp.takoa.mojibattle.domain.ability.AbilityRegistry;
 import jp.takoa.mojibattle.domain.ability.AbilityLoadout;
 import jp.takoa.mojibattle.domain.ability.IPassive;
+import jp.takoa.mojibattle.battle.DamageType;
+import jp.takoa.mojibattle.battle.DamageRequest;
+import jp.takoa.mojibattle.battle.DamageResult;
+import jp.takoa.mojibattle.battle.DelayedStrikeSpec;
+import jp.takoa.mojibattle.battle.ProjectileSpec;
+import jp.takoa.mojibattle.battle.AreaAttackSpec;
+import jp.takoa.mojibattle.battle.NormalAttackModifier;
+import jp.takoa.mojibattle.ability.AbilityStateLine;
 import jp.takoa.mojibattle.domain.combat.AwakeningItem;
 import jp.takoa.mojibattle.domain.combat.CarHazard;
 import jp.takoa.mojibattle.domain.combat.CashBundle;
@@ -18,6 +26,7 @@ import jp.takoa.mojibattle.domain.combat.CombatObject;
 import jp.takoa.mojibattle.domain.combat.FamilySummon;
 import jp.takoa.mojibattle.domain.combat.LineStrike;
 import jp.takoa.mojibattle.domain.combat.Projectile;
+import jp.takoa.mojibattle.domain.combat.ScheduledCombatAction;
 import jp.takoa.mojibattle.domain.combat.SkillBarrage;
 import jp.takoa.mojibattle.domain.combat.SpinningOne;
 import jp.takoa.mojibattle.domain.combat.SushiBarrage;
@@ -39,6 +48,7 @@ import jp.takoa.mojibattle.event.gameplay.AttackEvent;
 import jp.takoa.mojibattle.event.gameplay.CharacterSpawnedEvent;
 import jp.takoa.mojibattle.event.gameplay.SkillActivatedEvent;
 import jp.takoa.mojibattle.event.gameplay.UltimateActivatedEvent;
+import jp.takoa.mojibattle.event.gameplay.DamageEvent;
 
 import java.util.ArrayList;
 import java.util.EnumMap;
@@ -46,6 +56,7 @@ import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.Comparator;
 
 /**
  * 固定時間ステップごとに入力、キャラクター、攻撃判定、状態効果、勝敗を更新する戦闘ドメインの中核。
@@ -105,7 +116,6 @@ public final class BattleController {
     private float trafficTimer = 7f;
     private int trafficWave;
 
-    private final Set<PlayerId> matsudoOwners = new HashSet<>();
 
     public BattleController(BattleConfig config, CriticalConfig criticalConfig, AwakeningConfig awakeningConfig, AbilityRegistry abilities, BattleMode mode, List<BattleTeamDefinition> teamDefinitions, List<FieldEffectDefinition> availableFieldEffects, Registry<SupportAbilityImplementation> supportAbilityImplementations) {
         this(config, criticalConfig, awakeningConfig, abilities, mode, teamDefinitions, availableFieldEffects, supportAbilityImplementations, new EventBus());
@@ -180,11 +190,7 @@ public final class BattleController {
 
                 for (FieldEffectDefinition effect : availableFieldEffects) {
                     if (contains(support.fieldPassiveIds, effect.id)) {
-                        fieldEffects.activate(effect);
-
-                        if ("matsudo".equals(effect.id)) {
-                            matsudoOwners.add(id);
-                        }
+                        fieldEffects.activate(effect, id);
 
                     }
                 }
@@ -201,6 +207,7 @@ public final class BattleController {
         }
         fieldHealTimer = fieldEffects.interval("periodic_heal", 10f);
         trafficTimer = fieldEffects.interval("traffic", 7f);
+        gameplayEvents.subscribe(DamageEvent.class, this::notifyDamagePassives);
 
         if (mode == BattleMode.TRAINING) {
             players.get(PlayerId.TWO).setImmortal(true);
@@ -229,7 +236,8 @@ public final class BattleController {
                 }
             }
 
-            objects.removeIf(CombatObject::expired);
+            objects.removeIf(object -> !(object instanceof VisualEffect) || object.expired());
+            pendingObjects.clear();
             return;
         }
 
@@ -338,7 +346,7 @@ public final class BattleController {
         Vector3 right = new Vector3(-forward.z, 0, forward.x);
 
         float passiveSpeed = passiveProduct(player, passive -> passive.moveSpeedMultiplier(player, timer.elapsed()));
-        float fieldSpeed = fieldMoveMultiplier();
+        float fieldSpeed = fieldMoveMultiplier(player);
         float statusSpeed = player.statuses.multiplier(StatusType.MOVE_UP) * player.statuses.multiplier(StatusType.MOVE_DOWN);
 
         Vector3 movement = forward.scl(input.y).mulAdd(right, input.x).nor().scl(player.definition.moveSpeed * 1.2f * passiveSpeed * fieldSpeed * statusSpeed * (player.awakened() ? awakeningConfig.moveSpeedMultiplier : 1f) * delta);
@@ -392,10 +400,12 @@ public final class BattleController {
 
                 AbilityLoadout loadout = abilityLoadouts.get(subMain);
                 if (subMain.skillReady() && loadout.primarySkill().tryActivate(this, subMain)) {
+                    notifySkillActivated(subMain);
                     gameplayEvents.post(new AttackEvent(subMain, subMain.definition.skillId, false));
                     gameplayEvents.post(new SkillActivatedEvent(subMain, subMain.definition.skillId));
                 }
                 if (loadout.ultimate().tryActivate(this, subMain)) {
+                    notifyUltimateActivated(subMain);
                     gameplayEvents.post(new AttackEvent(subMain, subMain.definition.ultimateId, true));
                     gameplayEvents.post(new UltimateActivatedEvent(subMain, subMain.definition.ultimateId));
                 }
@@ -417,7 +427,7 @@ public final class BattleController {
         if (distance > 10f) {
             follower.position.set(desired.x, config.groundY, desired.z);
         } else if (distance > .2f) {
-            float speed = follower.definition.moveSpeed * 1.5f * fieldMoveMultiplier();
+            float speed = follower.definition.moveSpeed * 1.5f * fieldMoveMultiplier(follower);
             follower.position.mulAdd(movement.nor(), Math.min(distance, speed * delta));
         }
         follower.position.y = config.groundY;
@@ -430,12 +440,24 @@ public final class BattleController {
         if (!source.isAlive() || source.definition.trainingDummy || source.isStunned() || !source.normalAttackReady()) {
             return;
         }
+        NormalAttackProfile profile = normalAttackProfile(source);
         Vector3 start = new Vector3(source.position).add(0, 1.05f, 0);
-        Vector3 velocity = new Vector3(target.position).add(0, 1f, 0).sub(start).nor().scl(NORMAL_ATTACK_SPEED);
-        Projectile projectile = new Projectile(nextAttackId(), source.playerId, source.normalAttackGlyph(), source.normalAttackTexture(), EffectIds.IMPACT, start, velocity, .48f, NORMAL_ATTACK_DAMAGE * Math.max(.1f, source.definition.baseAttack), 0, 0, 2.5f, false, 0, NORMAL_ATTACK_ULTIMATE_POINTS).source(source);
-        spawn(projectile);
-        emitEffect(start, EffectIds.IMPACT, 2.6f, .3f);
-        source.resetNormalAttack(NORMAL_ATTACK_INTERVAL);
+        Vector3 baseVelocity = new Vector3(target.position).add(0, 1f, 0).sub(start).nor().scl(NORMAL_ATTACK_SPEED);
+        for (int projectileIndex = 0; projectileIndex < profile.projectileCount; projectileIndex++) {
+            float offset = profile.projectileCount == 1 ? 0f
+                    : -profile.spreadDegrees * .5f + profile.spreadDegrees * projectileIndex / (profile.projectileCount - 1f);
+            for (int hit = 0; hit < profile.hitsPerAttack; hit++) {
+                Vector3 velocity = new Vector3(baseVelocity).rotate(Vector3.Y, offset);
+                Projectile projectile = new Projectile(nextAttackId(), source.playerId, source.normalAttackGlyph(),
+                        profile.texture, profile.effectId, start, velocity, .48f,
+                        NORMAL_ATTACK_DAMAGE * Math.max(.1f, source.definition.baseAttack) * profile.damageMultiplier,
+                        0, 0, 2.5f, false, 0,
+                        NORMAL_ATTACK_ULTIMATE_POINTS / (profile.projectileCount * profile.hitsPerAttack)).source(source);
+                spawn(projectile);
+            }
+        }
+        emitEffect(start, profile.effectId, 2.6f, .3f);
+        source.resetNormalAttack(NORMAL_ATTACK_INTERVAL * profile.intervalMultiplier);
     }
 
     /**
@@ -449,11 +471,13 @@ public final class BattleController {
         AbilityLoadout loadout = abilityLoadouts.get(user);
 
         if (command.useSkill() && loadout.primarySkill().tryActivate(this, user)) {
+            notifySkillActivated(user);
             gameplayEvents.post(new AttackEvent(user, user.definition.skillId, false));
             gameplayEvents.post(new SkillActivatedEvent(user, user.definition.skillId));
         }
 
         if (command.useUltimate() && loadout.ultimate().tryActivate(this, user)) {
+            notifyUltimateActivated(user);
             gameplayEvents.post(new AttackEvent(user, user.definition.ultimateId, true));
             gameplayEvents.post(new UltimateActivatedEvent(user, user.definition.ultimateId));
         }
@@ -577,7 +601,11 @@ public final class BattleController {
                 CharacterRuntime owner = projectile.source() == null ? player(projectile.owner) : projectile.source();
                 float critical = criticalMultiplier(owner, projectile.attackId, projectile);
                 float attack = attackMultiplier(owner) * (projectile.ultimateAttack() ? ultimateDamageMultiplier(owner) : 1f);
-                float dealt = damageService.apply(owner, target, projectile.baseDamage, attack * critical, incomingDamageMultiplier(target), new DamageService.AttackTraits(projectile.ignoresDefense()));
+                boolean ignoreDefense = projectile.ignoresDefense()
+                        || projectile.ignoresDefenseOnCritical() && critical > 1f;
+                float dealt = damageService.apply(owner, target, projectile.baseDamage, attack * critical,
+                        defenseMultiplier(target), incomingEffectMultiplier(target),
+                        new DamageService.AttackTraits(ignoreDefense));
 
                 if (dealt > 0) {
                     target.applyStun(projectile.stunSeconds * passiveProduct(owner, passive -> passive.stunMultiplier(owner)));
@@ -854,7 +882,9 @@ public final class BattleController {
         float finale = finalMinuteStarted ? config.finalMinuteAttackMultiplier : 1;
         float status = owner.statuses.multiplier(StatusType.ATTACK_UP) * owner.statuses.multiplier(StatusType.ATTACK_DOWN) * owner.statuses.multiplier(StatusType.BONUS_DAMAGE);
 
-        return passive * finale * status * fieldEffects.multiplier("attack_growth", timer.elapsed()) * (owner.awakened() ? awakeningConfig.attackMultiplier : 1f);
+        return passive * finale * status * fieldEffects.multiplier("attack_growth", timer.elapsed(), owner)
+                * fieldEffects.multiplier("attack_multiplier", timer.elapsed(), owner)
+                * (owner.awakened() ? awakeningConfig.attackMultiplier : 1f);
     }
 
     private float passiveHitboxMultiplier(PlayerId ownerId) {
@@ -864,15 +894,23 @@ public final class BattleController {
     }
 
     private float incomingDamageMultiplier(CharacterRuntime target) {
-        float vulnerability = target.statuses.multiplier(StatusType.DAMAGE_TAKEN_UP) * target.statuses.multiplier(StatusType.DAMAGE_TAKEN_DOWN) * fieldEffects.multiplier("damage_taken", timer.elapsed());
+        return defenseMultiplier(target) * incomingEffectMultiplier(target);
+    }
 
+    private float incomingEffectMultiplier(CharacterRuntime target) {
+        return target.statuses.multiplier(StatusType.DAMAGE_TAKEN_UP) * target.statuses.multiplier(StatusType.DAMAGE_TAKEN_DOWN)
+                * fieldEffects.multiplier("damage_taken", timer.elapsed(), target)
+                * fieldEffects.multiplier("incoming_damage_multiplier", timer.elapsed(), target);
+    }
+
+    private float defenseMultiplier(CharacterRuntime target) {
         if (target.zeroDefense()) {
-            return vulnerability;
+            return 1f;
         }
 
         float defense = passiveProduct(target, value -> value.incomingDamageMultiplier(target));
 
-        return defense * vulnerability * (target.awakened() ? 1f / awakeningConfig.defenseMultiplier : 1f);
+        return defense * (target.awakened() ? 1f / awakeningConfig.defenseMultiplier : 1f);
     }
 
     private final Vector3 tempCenter = new Vector3();
@@ -925,20 +963,25 @@ public final class BattleController {
     }
 
     private float criticalMultiplier(CharacterRuntime owner, long attackId) {
-        boolean enabled = owner.definition.criticalEnabled || fieldEffects.hasType("critical_enable") || owner.statuses.has(StatusType.CRITICAL_RATE_UP);
+        float passiveRate = passiveCriticalRateModifier(owner);
+        boolean enabled = owner.definition.criticalEnabled || fieldEffects.hasType("critical_enable")
+                || owner.statuses.has(StatusType.CRITICAL_RATE_UP) || passiveRate != 0f;
 
         if (!enabled) {
             return 1f;
         }
 
-        float rate = MathUtils.clamp(criticalConfig.baseRate + owner.definition.criticalRate + owner.statuses.additive(StatusType.CRITICAL_RATE_UP) + fieldEffects.additive("critical_rate") + fieldEffects.additive("critical_enable"), 0, 1);
+        float rate = MathUtils.clamp(criticalConfig.baseRate + owner.definition.criticalRate
+                + owner.statuses.additive(StatusType.CRITICAL_RATE_UP)
+                + fieldEffects.additive("critical_rate", owner) + fieldEffects.additive("critical_enable", owner)
+                + passiveRate, 0, 1);
         long roll = Math.floorMod(attackId * 1103515245L + owner.playerId.ordinal() * 12345L, 10000L);
 
         if (roll >= rate * 10000f) {
             return 1f;
         }
 
-        return Math.max(criticalConfig.baseDamageMultiplier, owner.definition.criticalDamageMultiplier + fieldEffects.additive("critical_damage")) * owner.statuses.multiplier(StatusType.CRITICAL_DAMAGE_UP);
+        return Math.max(criticalConfig.baseDamageMultiplier, owner.definition.criticalDamageMultiplier + fieldEffects.additive("critical_damage", owner)) * owner.statuses.multiplier(StatusType.CRITICAL_DAMAGE_UP);
     }
 
     private float criticalMultiplier(CharacterRuntime owner, long attackId, Projectile projectile) {
@@ -946,16 +989,21 @@ public final class BattleController {
             return criticalMultiplier(owner, attackId);
         }
 
-        boolean enabled = projectile.criticalEnabled() || fieldEffects.hasType("critical_enable") || owner.statuses.has(StatusType.CRITICAL_RATE_UP);
+        float passiveRate = passiveCriticalRateModifier(owner);
+        boolean enabled = projectile.criticalEnabled() || fieldEffects.hasType("critical_enable")
+                || owner.statuses.has(StatusType.CRITICAL_RATE_UP) || passiveRate != 0f;
 
         if (!enabled) {
             return 1f;
         }
 
-        float rate = MathUtils.clamp(criticalConfig.baseRate + projectile.criticalRate() + owner.statuses.additive(StatusType.CRITICAL_RATE_UP) + fieldEffects.additive("critical_rate") + fieldEffects.additive("critical_enable"), 0, 1);
+        float rate = MathUtils.clamp(criticalConfig.baseRate + projectile.criticalRate()
+                + owner.statuses.additive(StatusType.CRITICAL_RATE_UP)
+                + fieldEffects.additive("critical_rate", owner) + fieldEffects.additive("critical_enable", owner)
+                + passiveRate, 0, 1);
         long roll = Math.floorMod(attackId * 1103515245L + owner.playerId.ordinal() * 12345L, 10000L);
 
-        return roll < rate * 10000f ? Math.max(criticalConfig.baseDamageMultiplier, projectile.criticalDamageMultiplier() + fieldEffects.additive("critical_damage")) * owner.statuses.multiplier(StatusType.CRITICAL_DAMAGE_UP) : 1f;
+        return roll < rate * 10000f ? Math.max(criticalConfig.baseDamageMultiplier, projectile.criticalDamageMultiplier() + fieldEffects.additive("critical_damage", owner)) * owner.statuses.multiplier(StatusType.CRITICAL_DAMAGE_UP) : 1f;
     }
 
     private void updateStatusDamage(CharacterRuntime target, float delta) {
@@ -1012,7 +1060,8 @@ public final class BattleController {
     }
 
     private void updateMatsudoTraffic(float delta) {
-        if (matsudoOwners.isEmpty()) {
+        Set<PlayerId> trafficOwners = fieldEffects.ownersOfType("traffic");
+        if (trafficOwners.isEmpty()) {
             return;
         }
 
@@ -1024,7 +1073,7 @@ public final class BattleController {
         trafficTimer += fieldEffects.interval("traffic", 7f);
         int lane = 0;
 
-        for (PlayerId owner : matsudoOwners) {
+        for (PlayerId owner : trafficOwners) {
             for (int index = 0; index < 2; index++) {
                 int laneIndex = Math.floorMod(trafficWave + lane++, 4);
                 float z = -config.arenaHalfExtent * .65f + laneIndex * config.arenaHalfExtent * .43f;
@@ -1162,6 +1211,225 @@ public final class BattleController {
 
     public List<CharacterRuntime> players() {
         return List.copyOf(players.values());
+    }
+
+    /** 公開Abilityビューがこの試合に属するメインキャラクターかを同一性で確認する。 */
+    public boolean containsCombatant(CharacterRuntime runtime) {
+        return runtime != null && allMains().stream().anyMatch(candidate -> candidate == runtime);
+    }
+
+    /** 同じPlayerTeamを除外し、生存中の代表・追従メインを登録順で返す。 */
+    public List<CharacterRuntime> enemiesOf(CharacterRuntime source) {
+        if (!containsCombatant(source)) {
+            throw new IllegalArgumentException("Source combatant does not belong to this battle");
+        }
+        return allMains().stream()
+                .filter(candidate -> candidate.playerId != source.playerId && candidate.isAlive())
+                .toList();
+    }
+
+    /** 使用者自身を含む同じプレイヤーチームの生存メインを登録順で返す。 */
+    public List<CharacterRuntime> alliesOf(CharacterRuntime source) {
+        if (!containsCombatant(source)) {
+            throw new IllegalArgumentException("Source combatant does not belong to this battle");
+        }
+        return allMains().stream()
+                .filter(candidate -> candidate.playerId == source.playerId && candidate.isAlive())
+                .toList();
+    }
+
+    /**
+     * 外部Abilityの基礎ダメージを既存攻撃と同じ倍率・防御・会心・統計・イベント経路へ流す。
+     */
+    public float applyAbilityDamage(CharacterRuntime source, CharacterRuntime target, float baseDamage, DamageType type) {
+        return applyAbilityDamage(source, target, DamageRequest.of(baseDamage, type)).dealtDamage();
+    }
+
+    /** 構造化ダメージを倍率、会心、防御、統計、イベントの共通経路へ流す。 */
+    public DamageResult applyAbilityDamage(CharacterRuntime source, CharacterRuntime target, DamageRequest request) {
+        if (!containsCombatant(source) || !containsCombatant(target)) {
+            throw new IllegalArgumentException("Ability combatants must belong to this battle");
+        }
+        if (request == null) {
+            throw new IllegalArgumentException("Damage request is required");
+        }
+        float typeScale = switch (request.type()) {
+            case NORMAL -> 1f;
+            case SKILL -> .55f;
+            case ULTIMATE -> GLOBAL_ULTIMATE_DAMAGE_SCALE;
+        };
+        float ultimate = request.type() == DamageType.ULTIMATE ? ultimateDamageMultiplier(source) : 1f;
+        float critical = criticalMultiplier(source, nextAttackId());
+        boolean criticalHit = critical > 1f;
+        boolean ignoreDefense = request.ignoreDefense()
+                || request.ignoreDefenseOnCritical() && criticalHit;
+        float dealt = damageService.apply(source, target, request.baseDamage() * typeScale,
+                attackMultiplier(source) * ultimate * critical, defenseMultiplier(target),
+                incomingEffectMultiplier(target), new DamageService.AttackTraits(ignoreDefense));
+        if (critical > 1f && dealt > 0) {
+            criticalPulse = 1f;
+            emitEffect(target.position, EffectIds.CRITICAL, 7f, .8f);
+        }
+        if (mode == BattleMode.TRAINING) {
+            trainingStatistics.record(dealt);
+        }
+        return new DamageResult(dealt, criticalHit, ignoreDefense);
+    }
+
+    /** 獲得倍率を適用する通常の必殺ポイント加算。 */
+    public void addExternalUltimatePoints(CharacterRuntime target, float points) {
+        requireOwnedFiniteAmount(target, points, "Ultimate points");
+        addSkillUltimatePoints(target, points);
+    }
+
+    /** 消費取り消し用。獲得倍率を再適用せずゲージ上限へクランプする。 */
+    public void refundUltimatePoints(CharacterRuntime target, float points) {
+        requireOwnedFiniteAmount(target, points, "Ultimate point refund");
+        target.addUltimatePoints(points);
+    }
+
+    /** 対象を追跡する固定ステップ遅延攻撃を生成する。 */
+    public void spawnDelayedStrike(CharacterRuntime source, CharacterRuntime target, DelayedStrikeSpec spec) {
+        if (!containsCombatant(source) || !containsCombatant(target)) {
+            throw new IllegalArgumentException("Delayed strike combatants must belong to this battle");
+        }
+        if (spec == null) {
+            throw new IllegalArgumentException("Delayed strike specification is required");
+        }
+        if (spec.objectTexture() != null) {
+            emitImageEffect(target.position, spec.objectTexture().toString(),
+                    spec.effectId() == null ? EffectIds.IMPACT : spec.effectId().toString(),
+                    Math.max(.01f, spec.effectScale()), Math.max(.01f, spec.delaySeconds()));
+        }
+        spawn(new ScheduledCombatAction(target.position, spec.delaySeconds(), () -> {
+            if (!acceptsActions() || !source.isAlive() || !target.isAlive()) {
+                return;
+            }
+            applyAbilityDamage(source, target, spec.damage());
+            if (spec.effectId() != null) {
+                emitEffect(target.position, spec.effectId().toString(), spec.effectScale(), .35f);
+            }
+        }));
+    }
+
+    public void spawnExternalProjectile(CharacterRuntime source, CharacterRuntime target, ProjectileSpec spec) {
+        if (!containsCombatant(source) || !containsCombatant(target)) {
+            throw new IllegalArgumentException("Projectile combatants must belong to this battle");
+        }
+        Vector3 start = new Vector3(source.position).add(0, 1.05f, 0);
+        Vector3 baseVelocity = new Vector3(target.position).add(0, 1f, 0).sub(start).nor().scl(spec.speed());
+        float typeScale = damageTypeScale(spec.damage().type());
+        for (int index = 0; index < spec.projectileCount(); index++) {
+            float offset = spec.projectileCount() == 1 ? 0f
+                    : -spec.spreadDegrees() * .5f + spec.spreadDegrees() * index / (spec.projectileCount() - 1f);
+            for (int hit = 0; hit < spec.hitsPerProjectile(); hit++) {
+                Projectile projectile = new Projectile(nextAttackId(), source.playerId, source.normalAttackGlyph(),
+                        spec.textureId() == null ? source.normalAttackTexture() : spec.textureId().toString(),
+                        spec.effectId() == null ? EffectIds.IMPACT : spec.effectId().toString(), start,
+                        new Vector3(baseVelocity).rotate(Vector3.Y, offset), spec.radius(),
+                        spec.damage().baseDamage() * typeScale, 0, 0, spec.lifetimeSeconds(), false, 0, 0)
+                        .source(source).attackTraits(spec.damage().type() == DamageType.ULTIMATE,
+                                spec.damage().ignoreDefense(), spec.damage().ignoreDefenseOnCritical());
+                spawn(projectile);
+            }
+        }
+    }
+
+    public void spawnAreaAttack(CharacterRuntime source, CharacterRuntime target, AreaAttackSpec spec) {
+        if (!containsCombatant(source) || !containsCombatant(target)) {
+            throw new IllegalArgumentException("Area attack combatants must belong to this battle");
+        }
+        Vector3 center = new Vector3(target.position);
+        if (spec.warningEffectId() != null) {
+            emitEffect(center, spec.warningEffectId().toString(), spec.effectScale(),
+                    Math.max(.05f, spec.delaySeconds()));
+        }
+        spawn(new ScheduledCombatAction(center, spec.delaySeconds(), () -> {
+            float radiusSquared = spec.radius() * spec.radius();
+            for (CharacterRuntime enemy : enemiesOf(source)) {
+                if (enemy.position.dst2(center) <= radiusSquared) {
+                    applyAbilityDamage(source, enemy, spec.damage());
+                }
+            }
+            if (spec.impactEffectId() != null) {
+                emitEffect(center, spec.impactEffectId().toString(), spec.effectScale(), .5f);
+            }
+        }));
+    }
+
+    private static float damageTypeScale(DamageType type) {
+        return switch (type) {
+            case NORMAL -> 1f;
+            case SKILL -> .55f;
+            case ULTIMATE -> GLOBAL_ULTIMATE_DAMAGE_SCALE;
+        };
+    }
+
+    private void requireOwnedFiniteAmount(CharacterRuntime target, float amount, String name) {
+        if (!containsCombatant(target)) {
+            throw new IllegalArgumentException("Combatant does not belong to this battle");
+        }
+        if (!Float.isFinite(amount) || amount < 0) {
+            throw new IllegalArgumentException(name + " must be finite and non-negative");
+        }
+    }
+
+    /**
+     * 対象をsourceから離す候補を境界内で探し、他の生存メインと重ならない最遠点へ移動する。
+     */
+    public void knockbackAwayFrom(CharacterRuntime source, CharacterRuntime target, float distance) {
+        if (!containsCombatant(source) || !containsCombatant(target)) {
+            throw new IllegalArgumentException("Knockback combatants must belong to this battle");
+        }
+        if (!Float.isFinite(distance) || distance < 0) {
+            throw new IllegalArgumentException("Knockback distance must be finite and non-negative");
+        }
+        if (distance == 0 || !target.isAlive()) {
+            return;
+        }
+        Vector3 direction = new Vector3(target.position).sub(source.position);
+        direction.y = 0;
+        if (direction.isZero()) {
+            direction.set(target.facing.x, 0, target.facing.z);
+        }
+        if (direction.isZero() || !Float.isFinite(direction.x) || !Float.isFinite(direction.z)) {
+            direction.set(1, 0, 0);
+        }
+        direction.nor();
+        float margin = Math.min(config.arenaHalfExtent, Math.max(0, target.definition.collisionRadius));
+        float limit = Math.max(0, config.arenaHalfExtent - margin);
+        Vector3 candidate = new Vector3();
+        for (int step = 20; step >= 0; step--) {
+            float travel = distance * step / 20f;
+            candidate.set(target.position).mulAdd(direction, travel);
+            candidate.x = MathUtils.clamp(candidate.x, -limit, limit);
+            candidate.z = MathUtils.clamp(candidate.z, -limit, limit);
+            candidate.y = config.groundY;
+            if (collisionFree(target, candidate)) {
+                target.position.set(candidate);
+                return;
+            }
+        }
+        // 呼出し前の位置が不正でも、少なくとも有限な戦場内座標へ復旧する。
+        target.position.set(
+                MathUtils.clamp(target.position.x, -limit, limit),
+                config.groundY,
+                MathUtils.clamp(target.position.z, -limit, limit));
+    }
+
+    private boolean collisionFree(CharacterRuntime moving, Vector3 candidate) {
+        for (CharacterRuntime other : allMains()) {
+            if (other == moving || !other.isAlive()) {
+                continue;
+            }
+            float minimum = moving.definition.collisionRadius + other.definition.collisionRadius;
+            float dx = candidate.x - other.position.x;
+            float dz = candidate.z - other.position.z;
+            if (dx * dx + dz * dz < minimum * minimum) {
+                return false;
+            }
+        }
+        return true;
     }
 
     public List<CharacterRuntime> subMains(PlayerId id) {
@@ -1362,14 +1630,17 @@ public final class BattleController {
 
         float passiveMove = passiveProduct(value, passive -> passive.moveSpeedMultiplier(value, timer.elapsed()));
         float statusMove = value.statuses.multiplier(StatusType.MOVE_UP) * value.statuses.multiplier(StatusType.MOVE_DOWN);
-        float effectiveMoveSpeed = value.definition.moveSpeed * 1.2f * passiveMove * fieldMoveMultiplier() * statusMove * (value.awakened() ? awakeningConfig.moveSpeedMultiplier : 1f);
+        float effectiveMoveSpeed = value.definition.moveSpeed * 1.2f * passiveMove * fieldMoveMultiplier(value) * statusMove * (value.awakened() ? awakeningConfig.moveSpeedMultiplier : 1f);
 
-        float cooldownMultiplier = config.skillCooldownMultiplier * passiveProduct(value, passive -> passive.skillCooldownMultiplier(value)) * value.statuses.multiplier(StatusType.COOLDOWN_REDUCTION) * fieldEffects.multiplier("cooldown", timer.elapsed());
+        float cooldownMultiplier = config.skillCooldownMultiplier * passiveProduct(value, passive -> passive.skillCooldownMultiplier(value)) * value.statuses.multiplier(StatusType.COOLDOWN_REDUCTION) * fieldEffects.multiplier("cooldown", timer.elapsed(), value);
         float ultimateGainMultiplier = passiveProduct(value, passive -> passive.ultimateGainMultiplier(value)) * value.statuses.multiplier(StatusType.ULTIMATE_GAIN_UP) * (value.awakened() ? awakeningConfig.ultimateGainMultiplier : 1f);
-        float criticalRate = MathUtils.clamp(criticalConfig.baseRate + value.definition.criticalRate + value.statuses.additive(StatusType.CRITICAL_RATE_UP) + fieldEffects.additive("critical_rate") + fieldEffects.additive("critical_enable"), 0, 1);
-        float criticalDamage = Math.max(criticalConfig.baseDamageMultiplier, value.definition.criticalDamageMultiplier + fieldEffects.additive("critical_damage")) * value.statuses.multiplier(StatusType.CRITICAL_DAMAGE_UP);
+        float criticalRate = MathUtils.clamp(criticalConfig.baseRate + value.definition.criticalRate
+                + value.statuses.additive(StatusType.CRITICAL_RATE_UP)
+                + fieldEffects.additive("critical_rate", value) + fieldEffects.additive("critical_enable", value)
+                + passiveCriticalRateModifier(value), 0, 1);
+        float criticalDamage = Math.max(criticalConfig.baseDamageMultiplier, value.definition.criticalDamageMultiplier + fieldEffects.additive("critical_damage", value)) * value.statuses.multiplier(StatusType.CRITICAL_DAMAGE_UP);
 
-        return new CharacterDebugSnapshot(value.definition.id, value.hp(), value.maxHp(), value.missingHp(), value.definition.baseAttack, attackMultiplier(value), value.definition.moveSpeed, effectiveMoveSpeed, incomingDamageMultiplier(value), value.definition.collisionRadius, passiveHitboxMultiplier(id), value.skillCooldown(), value.skillChargeRatio(), value.skillStocks(), value.maximumSkillStocks(), value.ultimatePoints(), value.totalDamage(), value.stunRemaining(), value.movementLocked(), value.awakened(), value.isAlive(), value.zeroDefense(), value.position.x, value.position.y, value.position.z, value.facing.x, value.facing.z, cooldownMultiplier, ultimateGainMultiplier, passiveProduct(value, passive -> passive.stunMultiplier(value)), ultimateDamageMultiplier(value), criticalRate, criticalDamage, value.definition.criticalEnabled || fieldEffects.hasType("critical_enable") || value.statuses.has(StatusType.CRITICAL_RATE_UP));
+        return new CharacterDebugSnapshot(value.definition.id, value.hp(), value.maxHp(), value.missingHp(), value.definition.baseAttack, attackMultiplier(value), value.definition.moveSpeed, effectiveMoveSpeed, incomingDamageMultiplier(value), value.definition.collisionRadius, passiveHitboxMultiplier(id), value.skillCooldown(), value.skillChargeRatio(), value.skillStocks(), value.maximumSkillStocks(), value.ultimatePoints(), value.totalDamage(), value.stunRemaining(), value.movementLocked(), value.awakened(), value.isAlive(), value.zeroDefense(), value.position.x, value.position.y, value.position.z, value.facing.x, value.facing.z, cooldownMultiplier, ultimateGainMultiplier, passiveProduct(value, passive -> passive.stunMultiplier(value)), ultimateDamageMultiplier(value), criticalRate, criticalDamage, value.definition.criticalEnabled || fieldEffects.hasType("critical_enable") || value.statuses.has(StatusType.CRITICAL_RATE_UP) || passiveCriticalRateModifier(value) != 0f);
     }
 
     public float fieldProjectileCurve() {
@@ -1378,6 +1649,18 @@ public final class BattleController {
 
     public float fieldMoveMultiplier() {
         return fieldEffects.multiplier("move_multiplier", timer.elapsed()) * fieldEffects.timedMultiplier("speed_pulse", timer.elapsed()) * fieldEffects.multiplier("express_maki", timer.elapsed());
+    }
+
+    public float fieldMoveMultiplier(CharacterRuntime target) {
+        return fieldEffects.multiplier("move_multiplier", timer.elapsed(), target)
+                * fieldEffects.multiplier("express_maki", timer.elapsed(), target)
+                * fieldEffects.timedMultiplier("speed_pulse", timer.elapsed());
+    }
+
+    public float fieldMoveMultiplier(SupportCharacterRuntime target) {
+        return fieldEffects.multiplier("move_multiplier", timer.elapsed(), target)
+                * fieldEffects.multiplier("express_maki", timer.elapsed(), target)
+                * fieldEffects.timedMultiplier("speed_pulse", timer.elapsed());
     }
 
     public float supportUltimateChargeMultiplier() {
@@ -1418,7 +1701,7 @@ public final class BattleController {
      * @return 現在の戦闘状態を反映した待ち時間
      */
     public float skillCooldown(CharacterRuntime owner, float baseSeconds) {
-        return baseSeconds * config.skillCooldownMultiplier * passiveProduct(owner, value -> value.skillCooldownMultiplier(owner)) * owner.statuses.multiplier(StatusType.COOLDOWN_REDUCTION) * fieldEffects.multiplier("cooldown", timer.elapsed());
+        return baseSeconds * config.skillCooldownMultiplier * passiveProduct(owner, value -> value.skillCooldownMultiplier(owner)) * owner.statuses.multiplier(StatusType.COOLDOWN_REDUCTION) * fieldEffects.multiplier("cooldown", timer.elapsed(), owner);
     }
 
     public void addSkillUltimatePoints(CharacterRuntime owner, float basePoints) {
@@ -1512,6 +1795,31 @@ public final class BattleController {
         return loadout == null ? List.of() : loadout.passives();
     }
 
+    private void notifySkillActivated(CharacterRuntime owner) {
+        for (IPassive passive : passives(owner)) {
+            passive.onSkillActivated(this, owner);
+        }
+    }
+
+    private void notifyUltimateActivated(CharacterRuntime owner) {
+        for (IPassive passive : passives(owner)) {
+            passive.onUltimateActivated(this, owner);
+        }
+    }
+
+    private void notifyDamagePassives(DamageEvent event) {
+        if (event.amount() <= 0) {
+            return;
+        }
+        for (IPassive passive : passives(event.attacker())) {
+            passive.onDamageDealt(this, event.attacker(), event.target(), event.amount());
+        }
+        for (IPassive passive : passives(event.target())) {
+            passive.onDamageReceived(this, event.attacker(), event.target(), event.amount());
+        }
+        event.target().statuses.consumeDamageReceived();
+    }
+
     private float passiveProduct(CharacterRuntime owner, java.util.function.Function<IPassive, Float> value) {
         float result = 1f;
 
@@ -1520,6 +1828,74 @@ public final class BattleController {
         }
 
         return result;
+    }
+
+    private record NormalAttackProfile(float intervalMultiplier, int projectileCount,
+                                       float spreadDegrees, int hitsPerAttack,
+                                       float damageMultiplier, String texture, String effectId) {
+    }
+
+    /** 全パッシブの通常攻撃補正を毎攻撃時に決定的な順序で合成する。 */
+    private NormalAttackProfile normalAttackProfile(CharacterRuntime owner) {
+        List<NormalAttackModifier> modifiers = passives(owner).stream()
+                .flatMap(passive -> passive.normalAttackModifiers(owner).stream())
+                .sorted(Comparator.comparingInt(NormalAttackModifier::priority)
+                        .thenComparing(value -> value.id().toString()))
+                .toList();
+        float interval = fieldEffects.multiplier("normal_attack_interval", timer.elapsed(), owner)
+                * owner.statuses.multiplier(StatusType.NORMAL_ATTACK_INTERVAL);
+        int projectileCount = 1;
+        float spread = 0f;
+        int hits = 1;
+        float damage = 1f;
+        String texture = owner.normalAttackTexture();
+        String effect = EffectIds.IMPACT;
+        for (NormalAttackModifier modifier : modifiers) {
+            interval *= modifier.attackIntervalMultiplier();
+            projectileCount += modifier.projectileCountDelta();
+            spread += modifier.spreadDegrees();
+            hits += modifier.hitsPerAttackDelta();
+            damage *= modifier.damageMultiplier();
+            if (modifier.projectileTexture() != null) {
+                texture = modifier.projectileTexture().toString();
+            }
+            if (modifier.effectId() != null) {
+                effect = modifier.effectId().toString();
+            }
+        }
+        return new NormalAttackProfile(MathUtils.clamp(interval, .05f, 10f),
+                MathUtils.clamp(projectileCount, 1, 32), MathUtils.clamp(spread, 0f, 360f),
+                MathUtils.clamp(hits, 1, 16), MathUtils.clamp(damage, 0f, 100f), texture, effect);
+    }
+
+    /** HUD向け状態行をpriority降順で最大8件返す。 */
+    public List<AbilityStateLine> abilityStateLines(CharacterRuntime owner) {
+        if (!containsCombatant(owner)) {
+            throw new IllegalArgumentException("Combatant does not belong to this battle");
+        }
+        return passives(owner).stream()
+                .flatMap(passive -> passive.stateLines(owner).stream())
+                .sorted(Comparator.comparingInt(AbilityStateLine::priority).reversed()
+                        .thenComparing(AbilityStateLine::translationKey))
+                .limit(8)
+                .toList();
+    }
+
+    private float passiveCriticalRateModifier(CharacterRuntime owner) {
+        float result = 0f;
+        for (IPassive passive : passives(owner)) {
+            float modifier = passive.criticalRateModifier(owner);
+            if (!Float.isFinite(modifier)) {
+                throw new IllegalArgumentException("Passive critical rate modifier must be finite: " + passive.id());
+            }
+            result += modifier;
+        }
+        return result;
+    }
+
+    /** 現在の固定ステップ基準戦闘経過秒。 */
+    public float elapsedSeconds() {
+        return timer.elapsed();
     }
 
     private float ultimateDamageMultiplier(CharacterRuntime owner) {

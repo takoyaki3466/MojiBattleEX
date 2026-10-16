@@ -162,7 +162,8 @@ public final class ArenaRenderer implements Disposable {
         int colorIndex = 0;
 
         for (AbilityConfigs.ProjectileSkill skill : skills) {
-            for (String texturePath : skill.textures) {
+            String[] textures = skill.textures == null ? new String[0] : skill.textures;
+            for (String texturePath : textures) {
                 if (!projectileGlyphs.containsKey(texturePath)) {
                     Texture glyphTexture = texture(texturePath);
                     projectileGlyphs.put(texturePath, texturedRect(modelBuilder, glyphTexture, .8f, .8f, projectileColors[colorIndex++ % projectileColors.length]));

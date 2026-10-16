@@ -9,4 +9,9 @@ public final class FieldEffectDefinition {
     public float intervalSeconds;
     public float durationSeconds;
     public float maximum;
+    /** 対象に含めるキャラクターID。空配列は制限なし。 */
+    public String[] includeCharacterIds = new String[0];
+    /** 対象から除外するキャラクターID。includeより優先する。 */
+    public String[] excludeCharacterIds = new String[0];
+    public int priority;
 }

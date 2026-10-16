@@ -1,5 +1,7 @@
 package jp.takoa.mojibattle.domain.ability;
 
+import java.util.Map;
+
 /**
  * 設定可能なキャラクター能力が共有する型付き設定スキーマ群。
  */
@@ -59,6 +61,7 @@ public final class AbilityConfigs {
         public String activationEffectId;
         public String projectileEffectId;
         public String hitEffectId;
+        public Map<String, Object> parameters;
     }
 
     /**
@@ -110,6 +113,7 @@ public final class AbilityConfigs {
         public String warningEffectId;
         public String impactEffectId;
         public String renderEffectId;
+        public Map<String, Object> parameters;
     }
 
     /**
@@ -139,5 +143,6 @@ public final class AbilityConfigs {
         public float ultimateDamageMultiplier;
         public String spawnObjectTexture;
         public int maximumSpawnedObjects;
+        public Map<String, Object> parameters;
     }
 }

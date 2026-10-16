@@ -27,11 +27,44 @@ public final class Lwjgl3Launcher {
     private Lwjgl3Launcher() {
     }
 
-    public static void main(String[] args) {
-        if (StartupHelper.startNewJvmIfRequired()) {
-            return;
+    public static void main(String[] args) throws Throwable {
+        Thread.setDefaultUncaughtExceptionHandler(
+                (thread, error) -> StartupLog.error("Uncaught exception in thread " + thread.getName(), error));
+        StartupLog.info("Lwjgl3Launcher.main started; log=" + StartupLog.file());
+        ModLoader modLoader = null;
+        try {
+            if (StartupHelper.startNewJvmIfRequired()) {
+                StartupLog.info("StartupHelper requested a replacement JVM; current JVM is exiting");
+                return;
+            }
+            StartupLog.info("Loading graphics configuration " + GRAPHICS_CONFIG_RESOURCE);
+            GraphicsConfig graphics = readGraphicsConfig();
+            StartupLog.info("Graphics configuration loaded");
+
+            Lwjgl3ApplicationConfiguration configuration = createConfiguration(graphics);
+            Path modsDirectory = Path.of(System.getProperty("mojibattle.modsDir", "mods"))
+                    .toAbsolutePath()
+                    .normalize();
+            StartupLog.info("MOD directory=" + modsDirectory);
+            modLoader = new ModLoader(modsDirectory);
+            List<GameMod> mods = discoverMods(modLoader);
+
+            ModLoader activeModLoader = modLoader;
+            StartupLog.info("Starting LWJGL application");
+            new Lwjgl3Application(
+                    new GameApplication(
+                            () -> createContext(activeModLoader, mods),
+                            StartupLog::info),
+                    configuration);
+            StartupLog.info("LWJGL application exited normally");
+        } catch (Throwable error) {
+            closeAfterFailure(modLoader, error);
+            StartupLog.error("Startup failed", error);
+            throw error;
         }
-        GraphicsConfig graphics = readGraphicsConfig();
+    }
+
+    private static Lwjgl3ApplicationConfiguration createConfiguration(GraphicsConfig graphics) {
         Lwjgl3ApplicationConfiguration configuration = new Lwjgl3ApplicationConfiguration();
         configuration.setTitle("MojiBattleEX");
         if (graphics.fullscreen) {
@@ -41,26 +74,51 @@ public final class Lwjgl3Launcher {
         }
         configuration.useVsync(true);
         configuration.setForegroundFPS(120);
-        ModLoader modLoader = new ModLoader(Path.of(System.getProperty("mojibattle.modsDir", "mods")));
-        List<GameMod> mods = discoverMods(modLoader);
-        new Lwjgl3Application(
-                new GameApplication(() -> createContext(modLoader, mods)),
-                configuration);
+        return configuration;
     }
 
     private static List<GameMod> discoverMods(ModLoader modLoader) {
         List<GameMod> mods = new ArrayList<>();
+        StartupLog.info("Discovering built-in MODs from the application classpath");
         ServiceLoader.load(GameMod.class).forEach(mods::add);
-        modLoader.load().stream().map(LoadedMod::instance).forEach(mods::add);
+        StartupLog.info("Built-in MOD discovery complete; count=" + mods.size()
+                + ", ids=" + mods.stream().map(GameMod::id).toList());
+        StartupLog.info("Calling ModLoader.load() for external MODs");
+        List<LoadedMod> externalMods = modLoader.load();
+        externalMods.stream().map(LoadedMod::instance).forEach(mods::add);
+        StartupLog.info("ModLoader.load() complete; external count=" + externalMods.size()
+                + ", external ids=" + externalMods.stream().map(mod -> mod.metadata().id).toList()
+                + ", total count=" + mods.size());
         return List.copyOf(mods);
     }
 
     private static GameContext createContext(ModLoader modLoader, List<GameMod> mods) {
+        StartupLog.info("GameBootstrap.bootstrap() started");
         try {
-            return new GameContext(GameBootstrap.bootstrap(mods, modLoader.resources()), modLoader);
-        } catch (RuntimeException error) {
-            modLoader.close();
+            var bootstrap = GameBootstrap.bootstrap(mods, modLoader.resources());
+            StartupLog.info("GameBootstrap.bootstrap() completed");
+            StartupLog.info("GameContext initialization started");
+            GameContext context = new GameContext(bootstrap, modLoader);
+            StartupLog.info("GameContext initialization completed");
+            return context;
+        } catch (Throwable error) {
+            closeAfterFailure(modLoader, error);
             throw error;
+        }
+    }
+
+    private static void closeAfterFailure(ModLoader modLoader, Throwable failure) {
+        if (modLoader == null) {
+            return;
+        }
+        try {
+            modLoader.close();
+        } catch (Throwable closeError) {
+            try {
+                failure.addSuppressed(closeError);
+            } catch (RuntimeException ignored) {
+                StartupLog.error("Unable to attach MOD loader cleanup failure", closeError);
+            }
         }
     }
 

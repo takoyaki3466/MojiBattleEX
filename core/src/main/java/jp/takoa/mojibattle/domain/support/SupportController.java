@@ -49,7 +49,7 @@ public final class SupportController {
         float distance = movement.len();
 
         if (distance > ARRIVAL_TOLERANCE) {
-            float travelDistance = Math.min(support.definition.moveSpeed * battle.fieldMoveMultiplier() * delta, distance);
+            float travelDistance = Math.min(support.definition.moveSpeed * battle.fieldMoveMultiplier(support) * delta, distance);
             support.position.mulAdd(movement.nor(), travelDistance);
         }
 

@@ -12,5 +12,10 @@ public interface CombatantView {
 
     float ultimatePoints();
 
+    /** 必殺ゲージ上限。旧ホストでは100を既定値とする。 */
+    default float maximumUltimatePoints() {
+        return 100f;
+    }
+
     boolean alive();
 }

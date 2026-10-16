@@ -289,8 +289,9 @@ flowchart LR
 - 通常スキルの設定ダメージには実行時に全体係数 `0.55` が掛かります。
 - メイン必殺の設定ダメージには原則として全体係数 `0.65` が掛かります。
 - 最終ダメージは、攻撃倍率、終盤倍率、パッシブ、状態効果、フィールド効果、覚醒、会心、防御倍率、防御無視特性を組み合わせて計算します。
-- 状態効果は `REFRESH` / `STACK` / `REPLACE` の重複規則を持ちます。
-- 実装済み分類は攻撃上下、防御相当の被ダメージ上下、移動上下、会心率 / 会心倍率、必殺獲得、クールダウン、追加ダメージ、スタン、拘束、炎上、継続回復です。
+- 状態効果は `REFRESH` / `STACK` / `REPLACE` の重複規則と、明示的な永続期間、一度だけの被ダメージ消費を持ちます。
+- 公開分類は攻撃、防御相当の被ダメージ、移動、会心率 / 会心倍率、必殺獲得、クールダウン、通常攻撃間隔、継続ダメージ／回復、次回被ダメージです。
+- 防御無視は防御倍率だけを迂回し、状態・フィールド由来の被ダメージ補正は引き続き適用します。
 - 攻撃生成 (`AttackEvent`) とダメージ確定 (`DamageEvent`) は別イベントです。死亡時は `CharacterDiedEvent` を発行します。
 
 ### 戦場オブジェクト
@@ -312,7 +313,7 @@ flowchart LR
 | `event` | `RegistrationBus`, `EventBus`, `EventSubscription` | 同期・登録順・完全一致型のイベント配送 |
 | `event.lifecycle` | `RegisterEvent<T>` | Registry ごとの登録タイミング |
 | `resource` | `ResourceManager`, `ResourceId`, `ResourceKind` | JAR / クラスパスを隠したストリーム読込み |
-| `battle` | `CombatantView`, `CombatActions`, `AbilityContext` | core 型を公開せず戦闘操作を依頼する境界 |
+| `ability` / `battle` | `SkillRuntime`, `UltimateRuntime`, `PassiveRuntime`, `ConfigView`, `CombatantView`, `CombatActions` | core 型を公開せず独自Abilityを登録・実行する境界 |
 
 設計上のポイント:
 
@@ -321,7 +322,8 @@ flowchart LR
 - 配送中に購読を変更しても、現在の配送はスナップショットを使うため次回から反映されます。
 - リスナー例外は `EventDispatchException` でイベント型情報を付けて上位へ送ります。
 - `ResourceId` は小文字へ正規化され、絶対パス、末尾 `/`、`//`、`.`、`..` を拒否します。
-- `CombatActions` は damage / heal / effect の最小形を定義済みですが、外部 Ability を公開 API だけで Registry へ接続する完成経路はまだありません。
+- `ModContext#abilities()`へ登録したFactoryは装備プレイヤーごとに評価され、実行インスタンスの可変状態を共有しません。
+- `CombatActions#damage(..., DamageType)`はHPを直接変更せず、攻撃・パッシブ・状態・終盤・防御・会心・統計・`DamageEvent`を含む既存計算を通します。
 
 ## `core` — ゲーム本体
 
@@ -521,7 +523,7 @@ glyphs/kabushiki.png
 | メインキャラクター | ✅ | 12体、共通自動通常攻撃、個別スキル / 必殺 / パッシブ |
 | 補助キャラクター | ✅ | 6体、通常時1～2体・カオス時4体編成、横並びHUD、追従・自動攻撃・自動スキル・手動必殺 |
 | カオスモード | ✅ | 2～4チーム、各チームは操作メイン1体・自動追従メイン2体・補助4体。メインの最大HPは `battle.json` の `chaosHealthMultiplier` 倍 |
-| 状態効果 | ✅ | 15 分類、3 重複規則、解除対象の区別 |
+| 状態効果 | ✅ | 公開11分類、3重複規則、永続期間、期限切れ復元、一度だけの消費 |
 | フィールド効果 | ✅ | 10 種、ID 重複排除、周期 / 時間成長 |
 | 覚醒 | ✅ | 残り 30 秒で出現、攻撃 1.5 / 防御 1.5 / 移動 1.3 / 必殺獲得 1.5 倍 |
 | 戦闘演出 | ✅ | 16 VFX、板ポリゴン、回転 / 脈動、命中フラッシュ、カメラシェイク |
@@ -533,13 +535,13 @@ glyphs/kabushiki.png
 | MOD JAR 検出 | ✅ | metadata、版、依存、循環、API 同梱を検証 |
 | MOD リソース | ✅ | stream / exists / JAR list、外部Texture変換、標準互換フォールバック |
 | MOD lifecycle | ✅ | `register`、Registry event、`initialize` |
-| 外部 MOD の独自 Java 処理 | 🟡 | エントリーポイント実行は可能。安定した公開 gameplay hook は未完成 |
+| 外部 MOD の独自 Java 処理 | ✅ | メイン／補助Ability、固定更新、ダメージhook、汎用攻撃・状態・HUDを公開APIで実装可能 |
 | 外部データパック | ✅ | ContentRegistrarからcharacter / skill / ultimate / passive / 翻訳を統合 |
 | 外部画像 / 音声の実ゲーム利用 | 🟡 | キャラクター・攻撃・VFX画像は対応。外部音声とUIテーマは未公開 |
 | 公開 API だけのキャラクター追加 | ✅ | 既存Ability実装をJSONから再利用する方式に対応 |
 | MOD ごとの ClassLoader 隔離 | ⛔ | 全外部 MOD が 1 個の共有 ClassLoader |
 | MOD サンドボックス / 署名 | ⛔ | 信頼済み JAR 前提 |
-| 自動テスト | ⛔ | 現在 `src/test` テストスイートなし |
+| 自動テスト | ✅ | API入力、core戦闘、外部MOD bootstrap、API 0.6バイナリ互換fixtureを`check`で実行 |
 
 ### 画面と UX
 
@@ -630,16 +632,18 @@ glyphs/kabushiki.png
 - `RegisterEvent` の購読と、既知 `RegistryKey<T>` に対する `DeferredRegister`
 - `assets/<modid>` / `data/<modid>` の open / exists / list
 - `ContentRegistrar`によるメインキャラクターと3種類のAbility JSONの登録
+- `ContentRegistrar`による補助キャラクターと対象条件付きフィールド効果JSONの登録
+- `AbilityImplementationRegistrar`によるメイン／補助の独自Ability実装登録
+- 状態、動的会心、通常攻撃modifier、Projectile、範囲・遅延攻撃、HUD状態行
 - 外部翻訳とキャラクター／攻撃／VFX Textureの読込み
 
-公開`api`だけで、既存Ability実装を再利用する新しいメインキャラクターを選択画面と戦闘へ追加できます。
+公開`api`だけで、メイン・補助キャラクターと独自Java Abilityの双方を追加できます。
 一方、次の範囲はまだ未公開です。
 
-1. 独自Javaスキル・必殺技・パッシブ実装用SPI
-2. 外部補助キャラクター、フィールド効果、音声、UIテーマの登録
-3. MOD単位の依存ライブラリ隔離
+1. 外部音声とUIテーマの登録
+2. MOD単位の依存ライブラリ隔離
 
-以下はデータ駆動キャラクターMODの作り方です。完成例は`examples/example-mod`にあります。
+以下はデータ駆動キャラクターMODの作り方です。APIだけへ`compileOnly`依存する完成例と結合テストは`external-api-test-mod`にあります。
 
 ### 1. API をローカル Maven へ発行する
 
@@ -650,7 +654,7 @@ glyphs/kabushiki.png
 現在の座標は次のとおりです。
 
 ```text
-jp.takoa.mojibattle:mojibattle-api:0.1.0
+jp.takoa.mojibattle:mojibattle-api:0.7.0
 ```
 
 ### 2. MOD プロジェクトを作る
@@ -675,7 +679,7 @@ java {
 }
 
 dependencies {
-    compileOnly("jp.takoa.mojibattle:mojibattle-api:0.1.0")
+    compileOnly("jp.takoa.mojibattle:mojibattle-api:0.7.0")
 }
 ```
 
@@ -757,6 +761,37 @@ public final class ExampleMod implements GameMod {
     private ResourceId resource(String path) {
         return new ResourceId(id(), path);
     }
+}
+```
+
+独自Abilityは同じ`register`内で実装IDへFactoryを登録します。JSONの`parameters`は
+`ConfigView`として渡され、JSONライブラリなどホスト内部実装への依存は不要です。数値、真偽値、文字列、配列、ネストしたオブジェクトを読み取れます。
+
+```java
+context.abilities().registerSkillImplementation("examplemod:return_to_forest", parameters -> {
+    float damage = parameters.floatValue("damage", 40f);
+    float distance = parameters.floatValue("knockbackDistance", 1.25f);
+    return activation -> {
+        var target = activation.target();
+        if (target == null) return false;
+        activation.actions().damage(activation.user(), target, damage, DamageType.SKILL);
+        activation.actions().knockbackAwayFrom(activation.user(), target, distance);
+        return true;
+    };
+});
+```
+
+スキルJSON側では登録した実装IDと固有パラメータを指定します。
+
+```json
+{
+  "id": "examplemod:return_to_forest",
+  "implementationId": "examplemod:return_to_forest",
+  "cooldownSeconds": 3.0,
+  "parameters": {
+    "damage": 40,
+    "knockbackDistance": 1.25
+  }
 }
 ```
 
@@ -913,14 +948,12 @@ Java 21 の `jpackage` を使い、Java runtime 同梱の配布物を生成し�
 
 優先度の高い未完了事項は以下です。
 
-1. `SkillImplementation`、Ability DTO、実行契約を `api` へ移し、`item -> core` 依存をなくす。
-2. 外部補助キャラクター、フィールド効果、音声、UIテーマの公開登録契約を追加する。
-3. gameplay event / `CombatActions` を外部 Java Ability が利用する接続点を完成させる。
-4. MOD 単位の依存ライブラリ隔離方針を決める。
-5. API compatibility、loader、Registry、データ検証、固定ステップ戦闘、起動統合の自動テストを追加する。
-6. launcher 起動時に保存済み graphics Preferences を適用し、UI scale を実表示へ反映する。
+1. 標準コンテンツ内部のAbility DTOも公開設定境界へ移し、`item -> core`依存をなくす。
+2. 外部音声とUIテーマの公開登録契約を追加する。
+3. MOD 単位の依存ライブラリ隔離方針を決める。
+4. launcher 起動時に保存済み graphics Preferences を適用し、UI scale を実表示へ反映する。
 
-現時点では、公開APIとJSONだけで既存Abilityを使うメインキャラクターを追加できます。独自Java Abilityや補助キャラクターなど、上記の未公開範囲は安定契約として扱わないでください。
+現時点では、公開APIとJSONだけでメイン／補助キャラクター、Ability、状態、フィールド効果、通常攻撃変化、HUD状態表示を追加できます。外部音声とUIテーマは安定契約として扱わないでください。
 
 ---
 

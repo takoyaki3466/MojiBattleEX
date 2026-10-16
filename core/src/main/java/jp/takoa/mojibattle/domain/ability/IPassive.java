@@ -2,6 +2,10 @@ package jp.takoa.mojibattle.domain.ability;
 
 import jp.takoa.mojibattle.domain.CharacterRuntime;
 import jp.takoa.mojibattle.domain.BattleController;
+import jp.takoa.mojibattle.ability.AbilityStateLine;
+import jp.takoa.mojibattle.battle.NormalAttackModifier;
+
+import java.util.List;
 
 /**
  * 戦闘計算の各段階へ倍率または継続効果を提供するメインキャラクターのパッシブ契約。
@@ -35,6 +39,35 @@ public interface IPassive extends IAbility {
 
     default float ultimateDamageMultiplier(CharacterRuntime owner) {
         return 1f;
+    }
+
+    /** 会心率へ加算する割合。0.05は5パーセントポイント。 */
+    default float criticalRateModifier(CharacterRuntime owner) {
+        return 0f;
+    }
+
+    default List<NormalAttackModifier> normalAttackModifiers(CharacterRuntime owner) {
+        return List.of();
+    }
+
+    default List<AbilityStateLine> stateLines(CharacterRuntime owner) {
+        return List.of();
+    }
+
+    default void onDamageDealt(BattleController battle, CharacterRuntime source,
+                               CharacterRuntime target, float amount) {
+    }
+
+    default void onDamageReceived(BattleController battle, CharacterRuntime source,
+                                  CharacterRuntime target, float amount) {
+    }
+
+    /** 所有者のスキルが成功した直後に1回だけ呼ばれる。 */
+    default void onSkillActivated(BattleController battle, CharacterRuntime owner) {
+    }
+
+    /** 所有者の必殺技が成功した直後に1回だけ呼ばれる。 */
+    default void onUltimateActivated(BattleController battle, CharacterRuntime owner) {
     }
 
     /**

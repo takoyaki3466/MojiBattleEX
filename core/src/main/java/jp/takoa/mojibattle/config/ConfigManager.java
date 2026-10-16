@@ -1,6 +1,8 @@
 package jp.takoa.mojibattle.config;
 
 import jp.takoa.mojibattle.content.CharacterDataRegistration;
+import jp.takoa.mojibattle.content.SupportCharacterDataRegistration;
+import jp.takoa.mojibattle.content.FieldEffectDataRegistration;
 import jp.takoa.mojibattle.data.loader.JsonDataLoader;
 import jp.takoa.mojibattle.data.validator.GameDataValidator;
 import jp.takoa.mojibattle.domain.CharacterDefinition;
@@ -52,6 +54,14 @@ public final class ConfigManager {
     /** 標準設定に加えて、MODが公開APIから宣言したキャラクターデータを読み込む。 */
     public ConfigManager(BuiltInRegistries registries, ResourceManager resources,
                          Collection<CharacterDataRegistration> additionalCharacters) {
+        this(registries, resources, additionalCharacters, List.of(), List.of());
+    }
+
+    /** 標準コンテンツに加え、MODが宣言したメイン・補助・フィールド定義を読み込む。 */
+    public ConfigManager(BuiltInRegistries registries, ResourceManager resources,
+                         Collection<CharacterDataRegistration> additionalCharacters,
+                         Collection<SupportCharacterDataRegistration> additionalSupports,
+                         Collection<FieldEffectDataRegistration> additionalFieldEffects) {
         this.registries = registries;
         loader = new JsonDataLoader(resources);
         game = read("config/game.json", GameConfig.class);
@@ -79,7 +89,24 @@ public final class ConfigManager {
             require(fieldEffects.putIfAbsent(id, effect) == null, "Duplicate field effect: " + id);
         }
         additionalCharacters.forEach(this::loadRegisteredCharacter);
+        additionalFieldEffects.forEach(this::loadRegisteredFieldEffect);
+        additionalSupports.forEach(this::loadRegisteredSupport);
         new GameDataValidator(registries, resources).validate(this);
+    }
+
+    private void loadRegisteredSupport(SupportCharacterDataRegistration registration) {
+        SupportCharacterDefinition support = loader.read(registration.support(), SupportCharacterDefinition.class);
+        requireOwnedId(registration.namespace(), support.id, "support");
+        require(!supports.containsKey(support.id), "Duplicate support: " + support.id);
+        normalizeSupport(support);
+        supports.put(support.id, support);
+    }
+
+    private void loadRegisteredFieldEffect(FieldEffectDataRegistration registration) {
+        FieldEffectDefinition effect = loader.read(registration.fieldEffect(), FieldEffectDefinition.class);
+        requireOwnedId(registration.namespace(), effect.id, "field effect");
+        require(!fieldEffects.containsKey(effect.id), "Duplicate field effect: " + effect.id);
+        fieldEffects.put(effect.id, effect);
     }
 
     /** 旧データで省略可能だった補助キャラクターの表示キーだけを補完する。 */
@@ -183,28 +210,34 @@ public final class ConfigManager {
         if (ultimate.descriptionKey == null) {
             ultimate.descriptionKey = "guide.character." + characterId;
         }
-        if (skill.activationEffectId == null) {
+        boolean externalSkill = externalImplementation(skill.implementationId);
+        boolean externalUltimate = externalImplementation(ultimate.implementationId);
+        if (skill.activationEffectId == null && !externalSkill) {
             skill.activationEffectId = effectId(skill.effectIndex);
         }
-        if (skill.projectileEffectId == null) {
+        if (skill.projectileEffectId == null && !externalSkill) {
             skill.projectileEffectId = effectId(skill.effectIndex);
         }
-        if (skill.hitEffectId == null) {
+        if (skill.hitEffectId == null && !externalSkill) {
             skill.hitEffectId = effectId(skill.effectIndex);
         }
-        if (ultimate.warningEffectId == null) {
+        if (ultimate.warningEffectId == null && !externalUltimate) {
             ultimate.warningEffectId = effectId(ultimate.warningEffectIndex);
         }
-        if (ultimate.impactEffectId == null) {
+        if (ultimate.impactEffectId == null && !externalUltimate) {
             ultimate.impactEffectId = effectId(ultimate.impactEffectIndex);
         }
-        if (ultimate.renderEffectId == null) {
+        if (ultimate.renderEffectId == null && !externalUltimate) {
             ultimate.renderEffectId = ultimate.impactEffectId;
         }
     }
 
     private String effectId(int legacyIndex) {
         return registries.effectFromLegacyIndex(legacyIndex).id();
+    }
+
+    private static boolean externalImplementation(String id) {
+        return !RegistryId.DEFAULT_NAMESPACE.equals(RegistryId.parse(id).namespace());
     }
 
     /** 読込処理を共通ローダーへ委譲し、呼び出し元が同じ失敗形式を受け取れるようにする。 */

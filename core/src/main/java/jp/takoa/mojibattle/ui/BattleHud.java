@@ -24,6 +24,7 @@ import jp.takoa.mojibattle.domain.TrainingStatistics;
 import jp.takoa.mojibattle.domain.debug.CharacterDebugSnapshot;
 import jp.takoa.mojibattle.domain.status.StatusEffect;
 import jp.takoa.mojibattle.domain.support.SupportCharacterRuntime;
+import jp.takoa.mojibattle.ability.AbilityStateLine;
 
 import java.util.ArrayList;
 import java.util.EnumMap;
@@ -238,7 +239,15 @@ public final class BattleHud implements Disposable {
             }
 
             String fields = String.join(" / ", battle.fieldEffectIds().stream().map(key -> context.i18n.text("field." + key)).toList());
-            details.setText(statusBadges(player) + "  " + context.i18n.text("battle.field_effects", fields));
+            String abilityLines = battle.abilityStateLines(player).stream()
+                    .map(this::formatAbilityState)
+                    .collect(java.util.stream.Collectors.joining("\n"));
+            String base = statusBadges(player) + "  " + context.i18n.text("battle.field_effects", fields);
+            details.setText(abilityLines.isEmpty() ? base : base + "\n" + abilityLines);
+        }
+
+        private String formatAbilityState(AbilityStateLine line) {
+            return context.i18n.text(line.translationKey(), line.arguments().toArray());
         }
 
         private void updateGaugeValues(CharacterRuntime player) {

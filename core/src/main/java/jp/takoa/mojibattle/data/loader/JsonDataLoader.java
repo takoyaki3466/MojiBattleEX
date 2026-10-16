@@ -1,6 +1,7 @@
 package jp.takoa.mojibattle.data.loader;
 
 import com.badlogic.gdx.utils.Json;
+import com.badlogic.gdx.utils.JsonValue;
 import com.badlogic.gdx.utils.SerializationException;
 import jp.takoa.mojibattle.resource.ResourceId;
 import jp.takoa.mojibattle.resource.ResourceKind;
@@ -9,6 +10,10 @@ import jp.takoa.mojibattle.resource.ResourceManager;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * 名前空間化されたデータリソースからJSONを読み、欠落と構文不正をパス付き例外へ変換する。
@@ -23,6 +28,19 @@ public final class JsonDataLoader {
             throw new IllegalArgumentException("Resource manager is required");
         }
         this.resources = resources;
+        json.setSerializer(Map.class, new Json.Serializer<Map>() {
+            @Override
+            public void write(Json json, Map object, Class knownType) {
+                json.writeObjectStart();
+                object.forEach((key, value) -> json.writeValue(String.valueOf(key), value));
+                json.writeObjectEnd();
+            }
+
+            @Override
+            public Map read(Json json, JsonValue data, Class type) {
+                return readObject(data);
+            }
+        });
     }
 
     /**
@@ -45,5 +63,39 @@ public final class JsonDataLoader {
         } catch (IOException | RuntimeException error) {
             throw new SerializationException("Invalid config " + id, error);
         }
+    }
+
+    private static Map<String, Object> readObject(JsonValue value) {
+        LinkedHashMap<String, Object> result = new LinkedHashMap<>();
+        for (JsonValue child = value.child; child != null; child = child.next) {
+            result.put(child.name, readValue(child));
+        }
+        return result;
+    }
+
+    private static Object readValue(JsonValue value) {
+        if (value.isObject()) {
+            return readObject(value);
+        }
+        if (value.isArray()) {
+            List<Object> result = new ArrayList<>();
+            for (JsonValue child = value.child; child != null; child = child.next) {
+                result.add(readValue(child));
+            }
+            return List.copyOf(result);
+        }
+        if (value.isString()) {
+            return value.asString();
+        }
+        if (value.isBoolean()) {
+            return value.asBoolean();
+        }
+        if (value.isLong()) {
+            return value.asLong();
+        }
+        if (value.isDouble()) {
+            return value.asDouble();
+        }
+        return null;
     }
 }

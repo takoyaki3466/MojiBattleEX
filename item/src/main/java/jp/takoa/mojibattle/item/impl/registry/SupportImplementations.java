@@ -63,7 +63,10 @@ public final class SupportImplementations {
     }
 
     private static SupportAbilityImplementation create(String id, BiConsumer<SupportAbilityContext, Boolean> handler) {
-        return new SupportAbilityImplementation(id, handler, SupportImplementations::validate);
+        return new SupportAbilityImplementation(id, (context, ultimate) -> {
+            handler.accept(context, ultimate);
+            return true;
+        }, SupportImplementations::validate);
     }
 
     private static void validate(SupportAbilityDefinition definition) {

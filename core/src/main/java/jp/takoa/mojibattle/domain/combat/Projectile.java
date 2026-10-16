@@ -41,6 +41,7 @@ public final class Projectile extends PositionedCombatObject {
     private float followUpRadius;
     private float followUpSpeed;
     private boolean ignoreDefense;
+    private boolean ignoreDefenseOnCritical;
     private boolean ultimateAttack;
     private CharacterRuntime source;
 
@@ -192,6 +193,14 @@ public final class Projectile extends PositionedCombatObject {
         return this;
     }
 
+    public Projectile attackTraits(boolean ultimateAttack, boolean ignoreDefense,
+                                   boolean ignoreDefenseOnCritical) {
+        this.ultimateAttack = ultimateAttack;
+        this.ignoreDefense = ignoreDefense;
+        this.ignoreDefenseOnCritical = ignoreDefenseOnCritical;
+        return this;
+    }
+
     /**
      * 同じプレイヤーに複数のメインがいる場合に、攻撃倍率とゲージ加算の所有者を指定する。
      */
@@ -206,6 +215,10 @@ public final class Projectile extends PositionedCombatObject {
 
     public boolean ignoresDefense() {
         return ignoreDefense;
+    }
+
+    public boolean ignoresDefenseOnCritical() {
+        return ignoreDefenseOnCritical;
     }
 
     public boolean ultimateAttack() {

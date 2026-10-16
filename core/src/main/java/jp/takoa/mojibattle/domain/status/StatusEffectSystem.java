@@ -39,6 +39,7 @@ public final class StatusEffectSystem {
 
         current.remaining = Math.max(current.remaining, effect.remaining);
         current.tickRemaining = Math.min(current.tickRemaining, effect.tickRemaining);
+        current.permanent = current.permanent || effect.permanent;
 
         if (effect.stackRule == StatusStackRule.STACK) {
             current.stacks = Math.min(current.maximumStacks, current.stacks + 1);
@@ -47,10 +48,12 @@ public final class StatusEffectSystem {
 
     public void update(float delta) {
         for (StatusEffect effect : effects) {
-            effect.remaining -= delta;
+            if (!effect.permanent) {
+                effect.remaining -= delta;
+            }
         }
 
-        effects.removeIf(effect -> effect.remaining <= 0);
+        effects.removeIf(effect -> !effect.permanent && effect.remaining <= 0);
     }
 
     /**
@@ -100,5 +103,10 @@ public final class StatusEffectSystem {
      */
     public List<StatusEffect> active() {
         return List.copyOf(effects);
+    }
+
+    /** 被ダメージ成立後、該当する一度きり状態をすべて消費する。 */
+    public void consumeDamageReceived() {
+        effects.removeIf(effect -> effect.consumeOnDamageReceived);
     }
 }
