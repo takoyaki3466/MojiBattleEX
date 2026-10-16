@@ -20,10 +20,10 @@ import jp.takoa.mojibattle.resource.ResourceId;
 import java.util.List;
 
 /** 公開CombatActionsをBattleControllerの検証済み操作へ接続する。 */
-final class CoreCombatActions implements CombatActions {
+public final class CoreCombatActions implements CombatActions {
     private final BattleController battle;
 
-    CoreCombatActions(BattleController battle) {
+    public CoreCombatActions(BattleController battle) {
         this.battle = battle;
     }
 

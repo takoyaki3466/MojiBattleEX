@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "mojibattle",
   "name": "MojiBattleEX Standard Content",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "apiVersion": "1",
   "gameVersion": ">=0.1.0",
   "entrypoint": "jp.takoa.mojibattle.item.ItemContentModule",

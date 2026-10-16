@@ -7,7 +7,7 @@ import jp.takoa.mojibattle.domain.CharacterRuntime;
 public final class CoreCombatantView implements CombatantView {
     private final CharacterRuntime runtime;
 
-    CoreCombatantView(CharacterRuntime runtime) {
+    public CoreCombatantView(CharacterRuntime runtime) {
         this.runtime = runtime;
     }
 

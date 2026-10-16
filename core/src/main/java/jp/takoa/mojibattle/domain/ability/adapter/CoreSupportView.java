@@ -16,6 +16,8 @@ public final class CoreSupportView implements SupportView {
         return runtime.definition.id;
     }
 
+    @Override public String instanceId() { return runtime.instanceId; }
+
     @Override
     public float ultimatePoints() {
         return runtime.ultimatePoints();

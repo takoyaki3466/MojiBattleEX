@@ -42,6 +42,9 @@ import jp.takoa.mojibattle.domain.support.SupportController;
 import jp.takoa.mojibattle.input.PlayerCommand;
 import jp.takoa.mojibattle.registry.Registry;
 import jp.takoa.mojibattle.registry.SupportAbilityImplementation;
+import jp.takoa.mojibattle.registry.SupportPassiveImplementation;
+import jp.takoa.mojibattle.battle.NormalAttackEvent;
+import jp.takoa.mojibattle.resource.ResourceId;
 import jp.takoa.mojibattle.registry.EffectIds;
 import jp.takoa.mojibattle.event.EventBus;
 import jp.takoa.mojibattle.event.gameplay.AttackEvent;
@@ -89,6 +92,7 @@ public final class BattleController {
     private final EnumMap<PlayerId, CharacterRuntime> players = new EnumMap<>(PlayerId.class);
     private final EnumMap<PlayerId, PlayerTeam> teams = new EnumMap<>(PlayerId.class);
     private final IdentityHashMap<CharacterRuntime, AbilityLoadout> abilityLoadouts = new IdentityHashMap<>();
+    private final IdentityHashMap<CharacterRuntime, String> combatantInstanceIds = new IdentityHashMap<>();
 
     private final SupportController supportController;
     private final FieldEffectSystem fieldEffects = new FieldEffectSystem();
@@ -112,6 +116,7 @@ public final class BattleController {
     private float visualPulse;
     private float criticalPulse;
     private boolean awakeningSpawned;
+    private boolean closed;
     private float fieldHealTimer = 10f;
     private float trafficTimer = 7f;
     private int trafficWave;
@@ -126,6 +131,11 @@ public final class BattleController {
      * 登録ライフサイクル用バスを渡してはならない。
      */
     public BattleController(BattleConfig config, CriticalConfig criticalConfig, AwakeningConfig awakeningConfig, AbilityRegistry abilities, BattleMode mode, List<BattleTeamDefinition> teamDefinitions, List<FieldEffectDefinition> availableFieldEffects, Registry<SupportAbilityImplementation> supportAbilityImplementations, EventBus gameplayEvents) {
+        this(config, criticalConfig, awakeningConfig, abilities, mode, teamDefinitions, availableFieldEffects,
+                supportAbilityImplementations, new Registry<>("support passive implementation", SupportPassiveImplementation::id), gameplayEvents);
+    }
+
+    public BattleController(BattleConfig config, CriticalConfig criticalConfig, AwakeningConfig awakeningConfig, AbilityRegistry abilities, BattleMode mode, List<BattleTeamDefinition> teamDefinitions, List<FieldEffectDefinition> availableFieldEffects, Registry<SupportAbilityImplementation> supportAbilityImplementations, Registry<SupportPassiveImplementation> supportPassiveImplementations, EventBus gameplayEvents) {
         this.config = config;
         this.criticalConfig = criticalConfig;
         this.awakeningConfig = awakeningConfig;
@@ -133,7 +143,7 @@ public final class BattleController {
         this.gameplayEvents = gameplayEvents;
 
         damageService = new DamageService(gameplayEvents);
-        supportController = new SupportController(supportAbilityImplementations);
+        supportController = new SupportController(supportAbilityImplementations, supportPassiveImplementations);
 
         this.mode = mode;
 
@@ -154,6 +164,7 @@ public final class BattleController {
             CharacterRuntime runtime = new CharacterRuntime(id, definition, spawns[index], healthMultiplier);
 
             players.put(id, runtime);
+            combatantInstanceIds.put(runtime, id.name().toLowerCase() + ":main:0");
 
             if (!definition.trainingDummy) {
                 abilityLoadouts.put(runtime, abilities.createLoadout(definition));
@@ -169,6 +180,7 @@ public final class BattleController {
                 float side = subIndex == 0 ? -1.8f : 1.8f;
                 CharacterRuntime subMain = new CharacterRuntime(id, subDefinition, new Vector3(spawns[index]).add(side, 0, -1.8f), healthMultiplier);
                 subMainRuntimes.add(subMain);
+                combatantInstanceIds.put(subMain, id.name().toLowerCase() + ":main:" + (subIndex + 1));
                 abilityLoadouts.put(subMain, abilities.createLoadout(subDefinition));
                 gameplayEvents.post(new CharacterSpawnedEvent(subMain));
             }
@@ -182,7 +194,8 @@ public final class BattleController {
 
                 float side = supportIndex == 0 ? -2f : 2f;
 
-                supportRuntimes.add(new SupportCharacterRuntime(id, support, new Vector3(spawns[index]).add(side, 0, 0)));
+                supportRuntimes.add(new SupportCharacterRuntime(id, support, new Vector3(spawns[index]).add(side, 0, 0),
+                        id.name().toLowerCase() + ":support:" + supportIndex));
 
                 if (support.zeroDefenseMain) {
                     runtime.setZeroDefense(true);
@@ -204,6 +217,9 @@ public final class BattleController {
                 abilityLoadouts.get(subMain).primarySkill().initialize(subMain, config.skillCooldownMultiplier);
             }
 
+        }
+        for (PlayerTeam team : teams.values()) {
+            for (SupportCharacterRuntime support : team.supports()) supportController.initialize(this, team, support);
         }
         fieldHealTimer = fieldEffects.interval("periodic_heal", 10f);
         trafficTimer = fieldEffects.interval("traffic", 7f);
@@ -318,6 +334,7 @@ public final class BattleController {
 
         if (result != null) {
             objects.removeIf(object -> !(object instanceof VisualEffect));
+            close();
         }
 
         if (announcement != null) {
@@ -441,6 +458,7 @@ public final class BattleController {
             return;
         }
         NormalAttackProfile profile = normalAttackProfile(source);
+        notifyNormalAttack(source);
         Vector3 start = new Vector3(source.position).add(0, 1.05f, 0);
         Vector3 baseVelocity = new Vector3(target.position).add(0, 1f, 0).sub(start).nor().scl(NORMAL_ATTACK_SPEED);
         for (int projectileIndex = 0; projectileIndex < profile.projectileCount; projectileIndex++) {
@@ -458,6 +476,29 @@ public final class BattleController {
         }
         emitEffect(start, profile.effectId, 2.6f, .3f);
         source.resetNormalAttack(NORMAL_ATTACK_INTERVAL * profile.intervalMultiplier);
+    }
+
+    private void notifyNormalAttack(CharacterRuntime attacker) {
+        notifyNormalAttack(combatantInstanceIds.get(attacker),
+                attacker.definition.id, attacker.playerId, NormalAttackEvent.AttackerType.MAIN);
+    }
+
+    public void notifyNormalAttack(SupportCharacterRuntime attacker) {
+        notifyNormalAttack(attacker.instanceId, attacker.definition.id, attacker.owner, NormalAttackEvent.AttackerType.SUPPORT);
+    }
+
+    private void notifyNormalAttack(String instanceId, String characterId, PlayerId owner, NormalAttackEvent.AttackerType type) {
+        for (PlayerTeam team : teams.values()) {
+            NormalAttackEvent event = new NormalAttackEvent(instanceId, ResourceId.parse(characterId),
+                    team.main().playerId == owner ? NormalAttackEvent.Team.ALLY : NormalAttackEvent.Team.ENEMY, type);
+            for (SupportCharacterRuntime observer : team.supports()) supportController.normalAttack(this, observer, event);
+        }
+    }
+
+    public void close() {
+        if (closed) return;
+        closed = true;
+        for (PlayerTeam team : teams.values()) for (SupportCharacterRuntime support : team.supports()) supportController.close(this, support);
     }
 
     /**

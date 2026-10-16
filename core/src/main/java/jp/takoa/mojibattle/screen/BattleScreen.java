@@ -56,7 +56,8 @@ public final class BattleScreen extends ScreenAdapter {
             List<BattleTeamDefinition> teams = buildTeams(context, mode, mainIds, supportIds, supportCount);
             createdBattle = new BattleController(context.config.battle, context.config.critical,
                     context.config.awakening, context.abilities, mode, teams, context.config.fieldEffects(),
-                    context.registries.supportAbilityImplementations, context.events.gameplay());
+                    context.registries.supportAbilityImplementations, context.registries.supportPassiveImplementations,
+                    context.events.gameplay());
             createdInput = new InputBindingManager(context.config.controls);
             createdRenderer = new SplitScreenRenderer(context.config.battle, context.config.graphics, teams,
                     context.config.skills(), context.config.ultimates(), context.config.awakening.texturePath,
@@ -250,6 +251,7 @@ public final class BattleScreen extends ScreenAdapter {
     @Override
     public void dispose() {
         input.clear();
+        battle.close();
         renderer.dispose();
         hud.dispose();
     }

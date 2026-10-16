@@ -35,6 +35,8 @@ public final class SupportCharacterDefinition {
     public boolean zeroDefenseMain;
     public SupportAbilityDefinition skill;
     public SupportAbilityDefinition ultimate;
+    public String supportPassiveImplementationId;
+    public java.util.Map<String, Object> parameters = java.util.Map.of();
     public String[] fieldPassiveIds;
     public String displayName;
     public String appearanceId;

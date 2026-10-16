@@ -3,6 +3,7 @@ package jp.takoa.mojibattle.domain.ability.adapter;
 import jp.takoa.mojibattle.ability.SupportAbilityActivationContext;
 import jp.takoa.mojibattle.domain.CharacterRuntime;
 import jp.takoa.mojibattle.domain.support.SupportAbilityContext;
+import jp.takoa.mojibattle.domain.support.CoreSupportActions;
 
 /** core補助コンテキストを公開型だけのコンテキストへ変換する。 */
 public final class ExternalSupportAbilityContexts {
@@ -17,6 +18,6 @@ public final class ExternalSupportAbilityContexts {
                 target == null ? null : new CoreCombatantView(target),
                 new CoreCombatActions(context.battle),
                 MapConfigView.of(context.ability.parameters),
-                context.battle.elapsedSeconds());
+                context.battle.elapsedSeconds(), new CoreSupportActions(context.support), context.support.state());
     }
 }

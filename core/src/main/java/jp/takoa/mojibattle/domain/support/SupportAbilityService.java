@@ -22,32 +22,36 @@ public final class SupportAbilityService {
     /**
      * 補助スキルが使用可能でメインが行動可能なら、クールタイムを先に確定して実装を呼び出す。
      */
-    public void useSkill(BattleController battle, PlayerTeam team, SupportCharacterRuntime support) {
+    public boolean useSkill(BattleController battle, PlayerTeam team, SupportCharacterRuntime support) {
         SupportAbilityDefinition ability = support.definition.skill;
 
         if (!support.skillReady() || team.main().isStunned()) {
-            return;
+            return false;
         }
 
         if (execute(battle, team, support, ability, false)) {
             support.startSkillCooldown(battle.supportSkillCooldown(ability.cooldownSeconds));
+            return true;
         }
+        return false;
     }
 
     /**
      * メインが行動可能かつ補助専用ゲージを消費できる場合だけ必殺を実行し、共通告知を出す。
      */
-    public void useUltimate(BattleController battle, PlayerTeam team, SupportCharacterRuntime support) {
+    public boolean useUltimate(BattleController battle, PlayerTeam team, SupportCharacterRuntime support) {
         SupportAbilityDefinition ability = support.definition.ultimate;
 
         if (team.main().isStunned() || support.ultimatePoints() < ability.pointCost) {
-            return;
+            return false;
         }
 
         if (execute(battle, team, support, ability, true)) {
             support.spendUltimate(ability.pointCost);
             battle.announceUltimate(team.main().playerId, ability.nameKey);
+            return true;
         }
+        return false;
     }
 
     /**

@@ -111,6 +111,9 @@ public final class ConfigManager {
 
     /** 旧データで省略可能だった補助キャラクターの表示キーだけを補完する。 */
     private static void normalizeSupport(SupportCharacterDefinition support) {
+        if (support.parameters == null) {
+            support.parameters = java.util.Map.of();
+        }
         if (support.styleKey == null) {
             support.styleKey = "select.support_style." + support.id;
         }

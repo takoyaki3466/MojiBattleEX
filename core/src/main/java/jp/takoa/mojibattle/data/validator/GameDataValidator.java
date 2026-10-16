@@ -113,6 +113,9 @@ public final class GameDataValidator {
         require(assetExists(support.glyphTexture) && assetExists(support.projectileTexture), "Support texture is missing: " + support.id);
         registries.supportAbilityImplementations.require(support.skill.type).validator().accept(support.skill);
         registries.supportAbilityImplementations.require(support.ultimate.type).validator().accept(support.ultimate);
+        if (support.supportPassiveImplementationId != null) {
+            registries.supportPassiveImplementations.require(support.supportPassiveImplementationId);
+        }
         require(support.skill.cooldownSeconds > 0 && support.ultimate.pointCost == 100, "Support ability values are invalid: " + support.id);
         for (String effectId : support.fieldPassiveIds) {
             config.fieldEffect(effectId);

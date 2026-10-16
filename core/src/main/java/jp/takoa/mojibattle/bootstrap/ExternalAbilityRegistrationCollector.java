@@ -7,6 +7,7 @@ import jp.takoa.mojibattle.ability.SkillRuntime;
 import jp.takoa.mojibattle.ability.UltimateRuntime;
 import jp.takoa.mojibattle.ability.SupportSkillRuntime;
 import jp.takoa.mojibattle.ability.SupportUltimateRuntime;
+import jp.takoa.mojibattle.ability.SupportPassiveRuntime;
 import jp.takoa.mojibattle.domain.ability.adapter.ExternalPassiveAdapter;
 import jp.takoa.mojibattle.domain.ability.adapter.ExternalSkillAdapter;
 import jp.takoa.mojibattle.domain.ability.adapter.ExternalUltimateAdapter;
@@ -20,6 +21,7 @@ import jp.takoa.mojibattle.registry.PassiveImplementation;
 import jp.takoa.mojibattle.registry.RegistryId;
 import jp.takoa.mojibattle.registry.SkillImplementation;
 import jp.takoa.mojibattle.registry.UltimateImplementation;
+import jp.takoa.mojibattle.registry.SupportPassiveImplementation;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -31,6 +33,7 @@ final class ExternalAbilityRegistrationCollector {
     private final Map<String, AbilityFactory<? extends PassiveRuntime>> passives = new LinkedHashMap<>();
     private final Map<String, AbilityFactory<? extends SupportSkillRuntime>> supportSkills = new LinkedHashMap<>();
     private final Map<String, AbilityFactory<? extends SupportUltimateRuntime>> supportUltimates = new LinkedHashMap<>();
+    private final Map<String, AbilityFactory<? extends SupportPassiveRuntime>> supportPassives = new LinkedHashMap<>();
     private boolean sealed;
 
     AbilityImplementationRegistrar forMod(String modId) {
@@ -58,6 +61,11 @@ final class ExternalAbilityRegistrationCollector {
             @Override
             public void registerSupportUltimateImplementation(String id, AbilityFactory<? extends SupportUltimateRuntime> factory) {
                 register(supportUltimates, modId, id, factory, "support ultimate");
+            }
+
+            @Override
+            public void registerSupportPassiveImplementation(String id, AbilityFactory<? extends SupportPassiveRuntime> factory) {
+                register(supportPassives, modId, id, factory, "support passive");
             }
         };
     }
@@ -95,6 +103,8 @@ final class ExternalAbilityRegistrationCollector {
                             .activate(ExternalSupportAbilityContexts.create(context)),
                     ExternalAbilityRegistrationCollector::validateSupport));
         });
+        supportPassives.forEach((id, factory) -> registries.supportPassiveImplementations.register(
+                new SupportPassiveImplementation(id, factory)));
     }
 
     private <T> void register(Map<String, AbilityFactory<? extends T>> target, String modId, String rawId,

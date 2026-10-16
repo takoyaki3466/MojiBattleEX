@@ -316,6 +316,7 @@ public final class BattleHud implements Disposable {
             private final Label title = label();
             private final Label skillState = label();
             private final Label ultimateState = label();
+            private final Label passiveState = label();
 
             private SupportHud(float scale) {
                 panel.setBackground(context.skin.getDrawable("button-down"));
@@ -326,6 +327,7 @@ public final class BattleHud implements Disposable {
                 title.setWrap(false);
                 skillState.setWrap(false);
                 ultimateState.setWrap(false);
+                passiveState.setFontScale(scale * .66f);
                 title.setAlignment(com.badlogic.gdx.utils.Align.left);
                 skillState.setAlignment(com.badlogic.gdx.utils.Align.right);
                 ultimateState.setAlignment(com.badlogic.gdx.utils.Align.right);
@@ -344,7 +346,8 @@ public final class BattleHud implements Disposable {
                                 skillState,
                                 scale))
                         .growX()
-                        .padTop(1);
+                        .padTop(1).row();
+                panel.add(passiveState).growX().left().padTop(1);
             }
 
             private Table supportMeter(
@@ -368,6 +371,7 @@ public final class BattleHud implements Disposable {
                     ultimate.setValue(0);
                     skillState.setText("");
                     ultimateState.setText("");
+                    passiveState.setText("");
                     return;
                 }
 
@@ -387,6 +391,11 @@ public final class BattleHud implements Disposable {
                         ultimateState,
                         support.ultimatePoints(),
                         "battle.support_ultimate_available");
+                passiveState.setText(support.stateLines().stream()
+                        .sorted(java.util.Comparator.comparingInt(jp.takoa.mojibattle.ability.AbilityStateLine::priority).reversed())
+                        .limit(3)
+                        .map(line -> context.i18n.text(line.translationKey(), line.arguments().toArray()))
+                        .collect(java.util.stream.Collectors.joining("  ")));
             }
         }
     }

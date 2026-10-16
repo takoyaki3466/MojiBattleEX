@@ -11,6 +11,7 @@ public final class BuiltInRegistries {
     public static final RegistryKey<PassiveImplementation> PASSIVE_IMPLEMENTATIONS = RegistryKey.create("mojibattle:passive_implementations", PassiveImplementation.class);
     public static final RegistryKey<FieldEffectImplementation> FIELD_EFFECT_IMPLEMENTATIONS = RegistryKey.create("mojibattle:field_effect_implementations", FieldEffectImplementation.class);
     public static final RegistryKey<SupportAbilityImplementation> SUPPORT_ABILITY_IMPLEMENTATIONS = RegistryKey.create("mojibattle:support_ability_implementations", SupportAbilityImplementation.class);
+    public static final RegistryKey<SupportPassiveImplementation> SUPPORT_PASSIVE_IMPLEMENTATIONS = RegistryKey.create("mojibattle:support_passive_implementations", SupportPassiveImplementation.class);
     public static final RegistryKey<CombatEffectDefinition> EFFECTS = RegistryKey.create("mojibattle:effects", CombatEffectDefinition.class);
     public static final RegistryKey<AbilityConfigs.ProjectileSkill> SKILL_DEFINITIONS = RegistryKey.create("mojibattle:skill_definitions", AbilityConfigs.ProjectileSkill.class);
     public static final RegistryKey<AbilityConfigs.AreaUltimate> ULTIMATE_DEFINITIONS = RegistryKey.create("mojibattle:ultimate_definitions", AbilityConfigs.AreaUltimate.class);
@@ -23,6 +24,7 @@ public final class BuiltInRegistries {
     public final Registry<PassiveImplementation> passiveImplementations;
     public final Registry<FieldEffectImplementation> fieldEffectImplementations;
     public final Registry<SupportAbilityImplementation> supportAbilityImplementations;
+    public final Registry<SupportPassiveImplementation> supportPassiveImplementations;
     public final Registry<CombatEffectDefinition> effects;
     public final Registry<AbilityConfigs.ProjectileSkill> skillDefinitions;
     public final Registry<AbilityConfigs.AreaUltimate> ultimateDefinitions;
@@ -43,6 +45,7 @@ public final class BuiltInRegistries {
         passiveImplementations = manager.create(PASSIVE_IMPLEMENTATIONS, "passive implementation", PassiveImplementation::id);
         fieldEffectImplementations = manager.create(FIELD_EFFECT_IMPLEMENTATIONS, "field-effect implementation", FieldEffectImplementation::id);
         supportAbilityImplementations = manager.create(SUPPORT_ABILITY_IMPLEMENTATIONS, "support ability implementation", SupportAbilityImplementation::id);
+        supportPassiveImplementations = manager.create(SUPPORT_PASSIVE_IMPLEMENTATIONS, "support passive implementation", SupportPassiveImplementation::id);
         effects = manager.create(EFFECTS, "combat effect", CombatEffectDefinition::id);
         skillDefinitions = manager.create(SKILL_DEFINITIONS, "skill definition", value -> value.id);
         ultimateDefinitions = manager.create(ULTIMATE_DEFINITIONS, "ultimate definition", value -> value.id);
