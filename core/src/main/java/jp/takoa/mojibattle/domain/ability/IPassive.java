@@ -46,6 +46,11 @@ public interface IPassive extends IAbility {
         return 0f;
     }
 
+    /** trueの間、所有者が発生させるすべての攻撃で防御倍率を無視する。 */
+    default boolean ignoresDefense(CharacterRuntime owner) {
+        return false;
+    }
+
     default List<NormalAttackModifier> normalAttackModifiers(CharacterRuntime owner) {
         return List.of();
     }

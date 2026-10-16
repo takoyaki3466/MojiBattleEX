@@ -240,7 +240,7 @@ public final class ConfigManager {
     }
 
     private static boolean externalImplementation(String id) {
-        return !RegistryId.DEFAULT_NAMESPACE.equals(RegistryId.parse(id).namespace());
+        return id != null && id.contains(":");
     }
 
     /** 読込処理を共通ローダーへ委譲し、呼び出し元が同じ失敗形式を受け取れるようにする。 */

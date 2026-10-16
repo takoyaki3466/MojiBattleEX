@@ -9,7 +9,6 @@ import jp.takoa.mojibattle.domain.ability.AbilityConfigs;
 import jp.takoa.mojibattle.domain.support.SupportCharacterDefinition;
 import jp.takoa.mojibattle.registry.BuiltInRegistries;
 import jp.takoa.mojibattle.registry.CombatEffectDefinition;
-import jp.takoa.mojibattle.registry.RegistryId;
 import jp.takoa.mojibattle.resource.ResourceId;
 import jp.takoa.mojibattle.resource.ResourceKind;
 import jp.takoa.mojibattle.resource.ResourceManager;
@@ -179,6 +178,6 @@ public final class GameDataValidator {
     }
 
     private static boolean externalImplementation(String id) {
-        return !RegistryId.DEFAULT_NAMESPACE.equals(RegistryId.parse(id).namespace());
+        return id != null && id.contains(":");
     }
 }

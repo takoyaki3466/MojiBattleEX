@@ -1,3 +1,4 @@
+import org.gradle.api.file.DuplicatesStrategy
 import org.gradle.api.tasks.Sync
 import org.gradle.api.tasks.bundling.Zip
 import org.gradle.jvm.toolchain.JavaToolchainService
@@ -37,17 +38,30 @@ tasks.named<Jar>("jar") {
     manifest.attributes["Main-Class"] = application.mainClass.get()
 }
 
+val standardItemJar = project(":item").tasks.named<Jar>("jar")
+val developmentModsDirectory = layout.buildDirectory.dir("dev-mods")
+val projectModsDirectory = rootProject.layout.projectDirectory.dir("mods")
+
+/** 標準itemとプロジェクト直下の外部MODを、開発実行専用ディレクトリへ毎回同期する。 */
+val prepareRunMods = tasks.register<Sync>("prepareRunMods") {
+    group = "application"
+    description = "Stages the standard item MOD and root mods/*.jar for lwjgl3:run."
+    dependsOn(standardItemJar)
+    from(standardItemJar.flatMap { it.archiveFile })
+    from(projectModsDirectory) {
+        include("*.jar")
+    }
+    into(developmentModsDirectory)
+    duplicatesStrategy = DuplicatesStrategy.FAIL
+}
+
 tasks.named<JavaExec>("run") {
+    dependsOn(prepareRunMods)
     workingDir = rootProject.file("assets")
 
-    val modsDirectory = layout.buildDirectory.dir("dev-mods")
-
     doFirst {
-        val directory = modsDirectory.get().asFile
-        directory.mkdirs()
-
         systemProperty(
-            "mojibattle.modsDir", directory.absolutePath
+            "mojibattle.modsDir", developmentModsDirectory.get().asFile.absolutePath
         )
     }
 }

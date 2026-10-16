@@ -1,0 +1,1 @@
+{"id":"east","type":"MAIN","displayGlyph":"東","nameKey":"character.east.name","maxHp":1030.0,"baseAttack":1.0,"moveSpeed":7.5,"collisionRadius":0.64,"skillId":"east_exchange","ultimateId":"east_sunrise_reversal","passiveId":"east_wind","glyphTexture":"glyphs/east.png","criticalRate":0.03,"criticalDamageMultiplier":1.55,"criticalEnabled":true}

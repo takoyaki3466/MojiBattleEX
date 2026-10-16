@@ -1,17 +1,22 @@
 package jp.takoa.mojibattle.ui;
 
 import com.badlogic.gdx.graphics.Color;
+import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.Batch;
+import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.badlogic.gdx.scenes.scene2d.Touchable;
+import com.badlogic.gdx.scenes.scene2d.Group;
 import com.badlogic.gdx.scenes.scene2d.ui.Image;
 import com.badlogic.gdx.scenes.scene2d.ui.Label;
 import com.badlogic.gdx.scenes.scene2d.ui.ScrollPane;
+import com.badlogic.gdx.scenes.scene2d.ui.Stack;
 import com.badlogic.gdx.scenes.scene2d.ui.Table;
 import com.badlogic.gdx.scenes.scene2d.ui.Widget;
 import com.badlogic.gdx.scenes.scene2d.ui.Value;
 import com.badlogic.gdx.scenes.scene2d.utils.Drawable;
+import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
 import com.badlogic.gdx.utils.Disposable;
 import com.badlogic.gdx.utils.viewport.ScreenViewport;
 import jp.takoa.mojibattle.GameContext;
@@ -25,10 +30,13 @@ import jp.takoa.mojibattle.domain.debug.CharacterDebugSnapshot;
 import jp.takoa.mojibattle.domain.status.StatusEffect;
 import jp.takoa.mojibattle.domain.support.SupportCharacterRuntime;
 import jp.takoa.mojibattle.ability.AbilityStateLine;
+import jp.takoa.mojibattle.resource.GdxTextureLoader;
 
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * 各プレイヤーのHP、スキル、必殺、補助能力および試合情報を重ねて表示するHUD。
@@ -43,6 +51,17 @@ public final class BattleHud implements Disposable {
     private final Label center;
     private final TrainingDebugHud trainingDebugHud;
     private final Image flash;
+    private final Image domainOverlay;
+    private final Group cutInPanel;
+    private final Image cutInBackdrop;
+    private final Image cutInImage;
+    private final Image cutInTopBar;
+    private final Image cutInBottomBar;
+    private final Image cutInSlashA;
+    private final Image cutInSlashB;
+    private final Label cutInTitle;
+    private final GdxTextureLoader textureLoader;
+    private final Map<String, Texture> cutInTextures = new HashMap<>();
     private final boolean trainingMode;
     private float rainbowPhase;
 
@@ -52,6 +71,12 @@ public final class BattleHud implements Disposable {
     public BattleHud(GameContext context, BattleController battle) {
         this.context = context;
         trainingMode = battle.mode() == BattleMode.TRAINING;
+        textureLoader = new GdxTextureLoader(context.resources);
+
+        domainOverlay = new Image(context.skin.newDrawable("gauge-empty"));
+        domainOverlay.setTouchable(Touchable.disabled);
+        domainOverlay.setVisible(false);
+        stage.addActor(domainOverlay);
 
         flash = new Image(context.skin.newDrawable("bar-hp"));
         flash.setTouchable(Touchable.disabled);
@@ -116,6 +141,31 @@ public final class BattleHud implements Disposable {
             centerTable.add(center);
         }
         stage.addActor(centerTable);
+
+        cutInBackdrop = new Image(context.skin.newDrawable("gauge-empty"));
+        cutInImage = new Image();
+        cutInImage.setScaling(com.badlogic.gdx.utils.Scaling.fill);
+        cutInTitle = new Label("", context.skin, "effect-text");
+        cutInTitle.setWrap(true);
+        cutInTitle.setAlignment(com.badlogic.gdx.utils.Align.center);
+        cutInTitle.setFontScale(1.45f);
+        cutInTopBar = new Image(context.skin.newDrawable("gauge-empty"));
+        cutInBottomBar = new Image(context.skin.newDrawable("gauge-empty"));
+        cutInSlashA = new Image(context.skin.newDrawable("gauge-ultimate"));
+        cutInSlashB = new Image(context.skin.newDrawable("gauge-skill"));
+
+        cutInPanel = new Group();
+        cutInPanel.setTransform(true);
+        cutInPanel.addActor(cutInBackdrop);
+        cutInPanel.addActor(cutInImage);
+        cutInPanel.addActor(cutInSlashA);
+        cutInPanel.addActor(cutInSlashB);
+        cutInPanel.addActor(cutInTopBar);
+        cutInPanel.addActor(cutInBottomBar);
+        cutInPanel.addActor(cutInTitle);
+        cutInPanel.setTouchable(Touchable.disabled);
+        cutInPanel.setVisible(false);
+        stage.addActor(cutInPanel);
     }
 
     /**
@@ -132,10 +182,89 @@ public final class BattleHud implements Disposable {
         timer.setText(context.i18n.text("battle.time_remaining", formatTime(battle.timer().remaining())));
 
         updateCenterAnnouncement(battle);
+        updateDomainOverlay(battle);
+        updateCutIn(battle);
 
         if (trainingDebugHud != null) {
             trainingDebugHud.update(battle);
         }
+    }
+
+    private void updateDomainOverlay(BattleController battle) {
+        if (battle.domains().isEmpty()) {
+            domainOverlay.setVisible(false);
+            return;
+        }
+        var domain = battle.domains().get(battle.domains().size() - 1);
+        float intensity = domain.spec().intensity();
+        Color color = switch (domain.spec().visualStyle()) {
+            case MONOCHROME -> new Color(.08f, .08f, .08f, .36f * intensity);
+            case SUNRISE -> new Color(1f, .38f, .05f, .18f * intensity);
+            case BLOOM -> new Color(1f, .18f, .58f, .18f * intensity);
+            case ABYSS -> new Color(.18f, .02f, .34f, .3f * intensity);
+        };
+        domainOverlay.setColor(color);
+        domainOverlay.setVisible(true);
+    }
+
+    private void updateCutIn(BattleController battle) {
+        if (battle.cutIn() == null) {
+            cutInPanel.setVisible(false);
+            return;
+        }
+        var state = battle.cutIn();
+        String imageId = state.spec().image().toString();
+        Texture texture = cutInTextures.computeIfAbsent(imageId, id -> textureLoader.load(id, true));
+        cutInImage.setDrawable(new TextureRegionDrawable(new TextureRegion(texture)));
+        cutInTitle.setText(context.i18n.text(state.spec().titleTranslationKey()));
+        float width = stage.getViewport().getWorldWidth();
+        float height = stage.getViewport().getWorldHeight();
+        float progress = MathUtils.clamp(state.progress(), 0f, 1f);
+        float enter = MathUtils.clamp(progress / .14f, 0f, 1f);
+        float leave = MathUtils.clamp((1f - progress) / .16f, 0f, 1f);
+        float alpha = Math.min(enter, leave);
+        float pulse = .5f + .5f * Math.abs(MathUtils.sin(progress * MathUtils.PI * 13f));
+        boolean horizontal = state.spec().motion() == jp.takoa.mojibattle.battle.CutInMotion.HORIZONTAL_CHARGE;
+
+        cutInPanel.setBounds(0, 0, width, height);
+        cutInBackdrop.setBounds(0, 0, width, height);
+        cutInBackdrop.setColor(0f, 0f, 0f, alpha * .72f);
+
+        float imageWidth = width * (1.22f + progress * .12f);
+        float imageHeight = height * (1.18f + progress * .08f);
+        float travelX = horizontal ? MathUtils.lerp(-width * .22f, width * .06f, progress)
+                : MathUtils.lerp(width * .08f, -width * .14f, progress);
+        float travelY = MathUtils.sin(progress * MathUtils.PI) * height * .055f;
+        cutInImage.setBounds((width - imageWidth) * .5f + travelX,
+                (height - imageHeight) * .5f + travelY, imageWidth, imageHeight);
+        cutInImage.setOrigin(imageWidth * .5f, imageHeight * .5f);
+        cutInImage.setRotation((horizontal ? -2.4f : 3.2f) * (1f - progress));
+        cutInImage.setColor(1f + pulse * .15f, 1f, 1f, alpha);
+
+        float barHeight = height * .105f * enter;
+        cutInTopBar.setBounds(0, height - barHeight, width, barHeight);
+        cutInBottomBar.setBounds(0, 0, width, barHeight);
+        cutInTopBar.setColor(0f, 0f, 0f, alpha);
+        cutInBottomBar.setColor(0f, 0f, 0f, alpha);
+
+        float streakWidth = width * 1.45f;
+        float streakHeight = Math.max(5f, height * (.008f + pulse * .008f));
+        cutInSlashA.setBounds(-width * .2f + MathUtils.lerp(-width, width * .42f, enter),
+                height * .62f, streakWidth, streakHeight);
+        cutInSlashB.setBounds(width * .45f - MathUtils.lerp(-width, width * .68f, enter),
+                height * .34f, streakWidth, streakHeight * .7f);
+        cutInSlashA.setOrigin(streakWidth * .5f, streakHeight * .5f);
+        cutInSlashB.setOrigin(streakWidth * .5f, streakHeight * .35f);
+        cutInSlashA.setRotation(horizontal ? 0f : -11f);
+        cutInSlashB.setRotation(horizontal ? 0f : 8f);
+        cutInSlashA.setColor(1f, .72f, .08f, alpha * (.45f + pulse * .55f));
+        cutInSlashB.setColor(.12f, .78f, 1f, alpha * (.35f + (1f - pulse) * .65f));
+
+        cutInTitle.setBounds(width * .05f, height * (.11f + .04f * enter), width * .9f, height * .2f);
+        cutInTitle.setFontScale(1.55f + pulse * .42f);
+        cutInTitle.setColor(1f, .12f + .88f * Math.abs(MathUtils.sin(rainbowPhase * MathUtils.degreesToRadians)),
+                .08f, alpha);
+        cutInPanel.setVisible(true);
     }
 
     private void updateCenterAnnouncement(BattleController battle) {
@@ -620,6 +749,8 @@ public final class BattleHud implements Disposable {
     public void resize(int width, int height) {
         stage.getViewport().update(width, height, true);
         flash.setBounds(trainingMode ? width / 2f : 0, 0, trainingMode ? width / 2f : width, height);
+        domainOverlay.setBounds(trainingMode ? width / 2f : 0, 0, trainingMode ? width / 2f : width, height);
+        cutInPanel.setBounds(0, 0, width, height);
     }
 
     public Stage stage() {
@@ -628,6 +759,7 @@ public final class BattleHud implements Disposable {
 
     @Override
     public void dispose() {
+        cutInTextures.values().forEach(Texture::dispose);
         stage.dispose();
     }
 }

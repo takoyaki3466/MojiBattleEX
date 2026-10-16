@@ -1,0 +1,1 @@
+{"id":"zan","type":"MAIN","displayGlyph":"斬","nameKey":"character.zan.name","maxHp":1080.0,"baseAttack":1.0,"moveSpeed":6.8,"collisionRadius":0.66,"skillId":"zan_dimensional_slash","ultimateId":"zan_instant_thousand_slashes","passiveId":"zan_heaven_cleaver","glyphTexture":"glyphs/zan.png","criticalRate":0.05,"criticalDamageMultiplier":1.6,"criticalEnabled":true}

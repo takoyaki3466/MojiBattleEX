@@ -1,0 +1,1 @@
+{"id":"beast","type":"MAIN","displayGlyph":"獣","nameKey":"character.beast.name","maxHp":1240.0,"baseAttack":1.05,"moveSpeed":7.1,"collisionRadius":0.7,"skillId":"beast_predatory_pounce","ultimateId":"beast_wild_hunt","passiveId":"beast_feral_evolution","glyphTexture":"glyphs/beast.png","criticalRate":0.08,"criticalDamageMultiplier":1.65,"criticalEnabled":true}
