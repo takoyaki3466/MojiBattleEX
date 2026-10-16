@@ -7,6 +7,7 @@ import jp.takoa.mojibattle.GameApplication;
 import jp.takoa.mojibattle.GameContext;
 import jp.takoa.mojibattle.bootstrap.GameBootstrap;
 import jp.takoa.mojibattle.config.GraphicsConfig;
+import jp.takoa.mojibattle.log.DiagnosticLog;
 import jp.takoa.mojibattle.mod.GameMod;
 import jp.takoa.mojibattle.modloader.LoadedMod;
 import jp.takoa.mojibattle.modloader.ModLoader;
@@ -28,6 +29,7 @@ public final class Lwjgl3Launcher {
     }
 
     public static void main(String[] args) throws Throwable {
+        StartupLog.beginSession();
         Thread.setDefaultUncaughtExceptionHandler(
                 (thread, error) -> StartupLog.error("Uncaught exception in thread " + thread.getName(), error));
         StartupLog.info("Lwjgl3Launcher.main started; log=" + StartupLog.file());
@@ -47,13 +49,14 @@ public final class Lwjgl3Launcher {
                     .normalize();
             StartupLog.info("MOD directory=" + modsDirectory);
             modLoader = new ModLoader(modsDirectory);
-            List<GameMod> mods = discoverMods(modLoader);
+            ModDiscovery discovery = discoverMods(modLoader);
+            DiagnosticLog.setLoadedMods(discovery.descriptions());
 
             ModLoader activeModLoader = modLoader;
             StartupLog.info("Starting LWJGL application");
             new Lwjgl3Application(
                     new GameApplication(
-                            () -> createContext(activeModLoader, mods),
+                            () -> createContext(activeModLoader, discovery.mods()),
                             StartupLog::info),
                     configuration);
             StartupLog.info("LWJGL application exited normally");
@@ -77,19 +80,24 @@ public final class Lwjgl3Launcher {
         return configuration;
     }
 
-    private static List<GameMod> discoverMods(ModLoader modLoader) {
+    private static ModDiscovery discoverMods(ModLoader modLoader) {
         List<GameMod> mods = new ArrayList<>();
+        List<String> descriptions = new ArrayList<>();
         StartupLog.info("Discovering built-in MODs from the application classpath");
         ServiceLoader.load(GameMod.class).forEach(mods::add);
+        mods.stream().map(mod -> mod.id() + "@classpath").forEach(descriptions::add);
         StartupLog.info("Built-in MOD discovery complete; count=" + mods.size()
                 + ", ids=" + mods.stream().map(GameMod::id).toList());
         StartupLog.info("Calling ModLoader.load() for external MODs");
         List<LoadedMod> externalMods = modLoader.load();
         externalMods.stream().map(LoadedMod::instance).forEach(mods::add);
+        externalMods.stream()
+                .map(mod -> mod.metadata().id + "@" + mod.metadata().version)
+                .forEach(descriptions::add);
         StartupLog.info("ModLoader.load() complete; external count=" + externalMods.size()
                 + ", external ids=" + externalMods.stream().map(mod -> mod.metadata().id).toList()
                 + ", total count=" + mods.size());
-        return List.copyOf(mods);
+        return new ModDiscovery(List.copyOf(mods), List.copyOf(descriptions));
     }
 
     private static GameContext createContext(ModLoader modLoader, List<GameMod> mods) {
@@ -136,5 +144,8 @@ public final class Lwjgl3Launcher {
                     "Cannot parse startup graphics config: " + GRAPHICS_CONFIG_RESOURCE,
                     error);
         }
+    }
+
+    private record ModDiscovery(List<GameMod> mods, List<String> descriptions) {
     }
 }

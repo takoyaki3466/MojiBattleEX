@@ -88,6 +88,7 @@ public final class ArenaRenderer implements Disposable {
                          String awakeningTexturePath, Iterable<CombatEffectDefinition> effects,
                          ResourceManager resources) {
         textureLoader = new GdxTextureLoader(resources);
+        try {
         environment.set(new ColorAttribute(ColorAttribute.AmbientLight, 0.95f, 0.97f, 1f, 1));
 
         ModelBuilder modelBuilder = new ModelBuilder();
@@ -208,6 +209,14 @@ public final class ArenaRenderer implements Disposable {
 
         Texture awakening = texture(awakeningTexturePath);
         objectModels.put(awakeningTexturePath, texturedRect(modelBuilder, awakening, (float) awakening.getWidth() / awakening.getHeight(), 1, Color.WHITE));
+        } catch (RuntimeException | Error error) {
+            try {
+                dispose();
+            } catch (RuntimeException | Error disposeError) {
+                error.addSuppressed(disposeError);
+            }
+            throw error;
+        }
     }
 
     private ModelInstance instance(Model model) {

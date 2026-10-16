@@ -19,6 +19,8 @@ dependencies {
     implementation("com.badlogicgames.gdx:gdx-backend-lwjgl3:${property("gdxVersion")}")
     runtimeOnly("com.badlogicgames.gdx:gdx-platform:${property("gdxVersion")}:natives-desktop")
     runtimeOnly("com.badlogicgames.gdx:gdx-freetype-platform:${property("gdxVersion")}:natives-desktop")
+    testImplementation("org.junit.jupiter:junit-jupiter:5.12.1")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher:1.12.1")
 }
 
 sourceSets.main {
@@ -47,6 +49,19 @@ tasks.named<JavaExec>("run") {
         systemProperty(
             "mojibattle.modsDir", directory.absolutePath
         )
+    }
+}
+
+val integrationTestStandardMod = project(":item").tasks.named<Jar>("jar")
+tasks.test {
+    useJUnitPlatform()
+    dependsOn(integrationTestStandardMod)
+    systemProperty(
+        "mojibattle.test.standardModJar",
+        integrationTestStandardMod.flatMap { it.archiveFile }.get().asFile.absolutePath
+    )
+    providers.gradleProperty("expansionModJar").orNull?.let {
+        systemProperty("mojibattle.test.expansionModJar", project.file(it).absolutePath)
     }
 }
 

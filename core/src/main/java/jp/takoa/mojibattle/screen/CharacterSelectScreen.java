@@ -6,6 +6,7 @@ import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.scenes.scene2d.InputEvent;
 import com.badlogic.gdx.scenes.scene2d.InputListener;
 import com.badlogic.gdx.scenes.scene2d.Touchable;
+import com.badlogic.gdx.scenes.scene2d.ui.Dialog;
 import com.badlogic.gdx.scenes.scene2d.ui.Image;
 import com.badlogic.gdx.scenes.scene2d.ui.Label;
 import com.badlogic.gdx.scenes.scene2d.ui.Table;
@@ -19,6 +20,7 @@ import jp.takoa.mojibattle.domain.BattleMode;
 import jp.takoa.mojibattle.domain.CharacterDefinition;
 import jp.takoa.mojibattle.domain.support.SupportCharacterDefinition;
 import jp.takoa.mojibattle.domain.ability.AbilityConfigs;
+import jp.takoa.mojibattle.log.DiagnosticLog;
 import jp.takoa.mojibattle.registry.AbilityPresentationFormatter;
 import jp.takoa.mojibattle.resource.GdxTextureLoader;
 
@@ -207,6 +209,7 @@ public final class CharacterSelectScreen extends StageScreen {
             cardGrid.add(empty).width(650).height(120).center();
         }
         refreshPlayerPreviews();
+        updateDiagnostics();
     }
 
     private int addMainCards() {
@@ -281,6 +284,7 @@ public final class CharacterSelectScreen extends StageScreen {
                 card.setBackground("button-down");
                 pendingId = id;
                 confirm.setDisabled(false);
+                updateDiagnostics();
                 detailsAction.run();
 
                 refreshPlayerPreviews();
@@ -310,7 +314,7 @@ public final class CharacterSelectScreen extends StageScreen {
         AbilityConfigs.ProjectileSkill skill = context.config.skill(character.skillId);
         AbilityConfigs.AreaUltimate ultimate = context.config.ultimate(character.ultimateId);
 
-        String style = character.custom ? context.i18n.text("select.custom_style") : context.i18n.text("guide.character." + character.id);
+        String style = context.i18n.text(styleDescriptionKey(character, skill));
 
         details.setText("- " + context.i18n.text("guide.skill", context.i18n.text(skill.nameKey)) + "\n  " + skillDetail(skill) + "\n- " + context.i18n.text("guide.ultimate", context.i18n.text(ultimate.nameKey)) + "\n  " + ultimateDetail(ultimate) + " / " + context.i18n.text("guide.cost", Math.round(ultimate.pointCost)) + "\n- " + context.i18n.text("guide.passive", passiveNames(character)) + "\n  " + passiveDescriptions(character) + "\n- " + context.i18n.text("select.style", style));
     }
@@ -356,7 +360,9 @@ public final class CharacterSelectScreen extends StageScreen {
             supportIds.add(pendingId);
         }
 
+        pendingId = null;
         phase++;
+        updateDiagnostics();
 
         if (phase == totalSelections()) {
             startBattle();
@@ -379,6 +385,7 @@ public final class CharacterSelectScreen extends StageScreen {
         details.setText(context.i18n.text("select.choose_card_hint"));
 
         refreshPlayerPreviews();
+        updateDiagnostics();
     }
 
     private boolean selectingMain() {
@@ -423,7 +430,63 @@ public final class CharacterSelectScreen extends StageScreen {
     }
 
     private void startBattle() {
-        screens.show(new BattleScreen(context, screens, mode, List.copyOf(mainIds), List.copyOf(supportIds), supportCount));
+        try {
+            screens.show(new BattleScreen(
+                    context,
+                    screens,
+                    mode,
+                    List.copyOf(mainIds),
+                    List.copyOf(supportIds),
+                    supportCount));
+        } catch (RuntimeException | Error error) {
+            DiagnosticLog.error("Battle screen transition failed", error);
+            rollbackLastSelection();
+            showBattleStartError();
+        }
+    }
+
+    private void rollbackLastSelection() {
+        if (!supportIds.isEmpty()) {
+            supportIds.removeLast();
+        } else if (!mainIds.isEmpty()) {
+            mainIds.removeLast();
+        }
+        phase = Math.max(0, phase - 1);
+        pendingId = null;
+        updatePrompt();
+        refreshCards();
+        updateDiagnostics();
+    }
+
+    private void showBattleStartError() {
+        Dialog dialog = new Dialog(context.i18n.text("battle.start.error.title"), context.skin);
+        Label message = new Label(
+                context.i18n.text("battle.start.error.message", DiagnosticLog.file()),
+                context.skin);
+        message.setWrap(true);
+        dialog.getContentTable().add(message).width(720).pad(24);
+        dialog.button(context.i18n.text("battle.start.error.dismiss"));
+        dialog.show(stage);
+    }
+
+    private void updateDiagnostics() {
+        List<String> effectiveMainIds = new ArrayList<>(mainIds);
+        List<String> effectiveSupportIds = new ArrayList<>(supportIds);
+        if (pendingId != null) {
+            (selectingMain() ? effectiveMainIds : effectiveSupportIds).add(pendingId);
+        }
+
+        List<String> glyphTextures = new ArrayList<>();
+        for (String id : effectiveMainIds) {
+            glyphTextures.add(id + "=" + context.characters.require(id).glyphTexture);
+        }
+        List<String> projectileTextures = new ArrayList<>();
+        for (String id : effectiveSupportIds) {
+            SupportCharacterDefinition support = context.supports.require(id);
+            glyphTextures.add(id + "=" + support.glyphTexture);
+            projectileTextures.add(id + "=" + support.projectileTexture);
+        }
+        DiagnosticLog.setSelection(effectiveMainIds, effectiveSupportIds, glyphTextures, projectileTextures);
     }
 
     private void refreshPlayerPreviews() {
@@ -525,6 +588,10 @@ public final class CharacterSelectScreen extends StageScreen {
 
     private String supportOwner(String abilityId, boolean skill) {
         return context.config.supports().stream().filter(value -> abilityId.equals(skill ? value.skill.id : value.ultimate.id)).map(value -> value.id).findFirst().orElse("t");
+    }
+
+    static String styleDescriptionKey(CharacterDefinition character, AbilityConfigs.ProjectileSkill skill) {
+        return character.custom ? "select.custom_style" : skill.descriptionKey;
     }
 
     private static String decimal(float value) {

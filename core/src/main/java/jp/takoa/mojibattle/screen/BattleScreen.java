@@ -47,6 +47,36 @@ public final class BattleScreen extends ScreenAdapter {
         this.context = context;
         this.screens = screens;
 
+        BattleController createdBattle = null;
+        InputBindingManager createdInput = null;
+        SplitScreenRenderer createdRenderer = null;
+        BattleHud createdHud = null;
+        Table createdPauseMenu;
+        try {
+            List<BattleTeamDefinition> teams = buildTeams(context, mode, mainIds, supportIds, supportCount);
+            createdBattle = new BattleController(context.config.battle, context.config.critical,
+                    context.config.awakening, context.abilities, mode, teams, context.config.fieldEffects(),
+                    context.registries.supportAbilityImplementations, context.events.gameplay());
+            createdInput = new InputBindingManager(context.config.controls);
+            createdRenderer = new SplitScreenRenderer(context.config.battle, context.config.graphics, teams,
+                    context.config.skills(), context.config.ultimates(), context.config.awakening.texturePath,
+                    context.registries.effects.values(), context.resources);
+            createdHud = new BattleHud(context, createdBattle);
+            createdPauseMenu = createPauseMenu(createdHud);
+        } catch (RuntimeException | Error error) {
+            disposeAfterConstructionFailure(error, createdInput, createdRenderer, createdHud);
+            throw error;
+        }
+        battle = createdBattle;
+        input = createdInput;
+        renderer = createdRenderer;
+        hud = createdHud;
+        pauseMenu = createdPauseMenu;
+    }
+
+    static List<BattleTeamDefinition> buildTeams(GameContext context, BattleMode mode,
+                                                  List<String> mainIds, List<String> supportIds,
+                                                  int supportCount) {
         int mainCount = mode == BattleMode.CHAOS ? 3 : 1;
         int playerCount = mode == BattleMode.TRAINING ? 1 : mainIds.size() / mainCount;
         List<BattleTeamDefinition> teams = new ArrayList<>();
@@ -74,14 +104,7 @@ public final class BattleScreen extends ScreenAdapter {
         if (mode == BattleMode.TRAINING) {
             teams.add(new BattleTeamDefinition(TrainingDummy.definition(), List.of(), List.of()));
         }
-
-        battle = new BattleController(context.config.battle, context.config.critical, context.config.awakening, context.abilities, mode, teams, context.config.fieldEffects(), context.registries.supportAbilityImplementations, context.events.gameplay());
-        input = new InputBindingManager(context.config.controls);
-        renderer = new SplitScreenRenderer(context.config.battle, context.config.graphics, teams,
-                context.config.skills(), context.config.ultimates(), context.config.awakening.texturePath,
-                context.registries.effects.values(), context.resources);
-        hud = new BattleHud(context, battle);
-        pauseMenu = createPauseMenu();
+        return List.copyOf(teams);
     }
 
     @Override
@@ -159,7 +182,7 @@ public final class BattleScreen extends ScreenAdapter {
         }
     }
 
-    private Table createPauseMenu() {
+    private Table createPauseMenu(BattleHud targetHud) {
         Table table = new Table(context.skin);
         table.setBackground("panel");
         table.setFillParent(true);
@@ -181,8 +204,29 @@ public final class BattleScreen extends ScreenAdapter {
             }
         });
 
-        hud.stage().addActor(table);
+        targetHud.stage().addActor(table);
         return table;
+    }
+
+    private static void disposeAfterConstructionFailure(Throwable failure, InputBindingManager input,
+                                                        SplitScreenRenderer renderer, BattleHud hud) {
+        if (hud != null) {
+            closeAfterFailure(failure, hud::dispose);
+        }
+        if (renderer != null) {
+            closeAfterFailure(failure, renderer::dispose);
+        }
+        if (input != null) {
+            closeAfterFailure(failure, input::clear);
+        }
+    }
+
+    private static void closeAfterFailure(Throwable failure, Runnable cleanup) {
+        try {
+            cleanup.run();
+        } catch (RuntimeException | Error cleanupError) {
+            failure.addSuppressed(cleanupError);
+        }
     }
 
     private void togglePause() {
