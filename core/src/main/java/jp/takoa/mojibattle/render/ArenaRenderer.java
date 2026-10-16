@@ -88,6 +88,7 @@ public final class ArenaRenderer implements Disposable {
                          String awakeningTexturePath, Iterable<CombatEffectDefinition> effects,
                          ResourceManager resources) {
         textureLoader = new GdxTextureLoader(resources);
+        try {
         environment.set(new ColorAttribute(ColorAttribute.AmbientLight, 0.95f, 0.97f, 1f, 1));
 
         ModelBuilder modelBuilder = new ModelBuilder();
@@ -162,7 +163,8 @@ public final class ArenaRenderer implements Disposable {
         int colorIndex = 0;
 
         for (AbilityConfigs.ProjectileSkill skill : skills) {
-            for (String texturePath : skill.textures) {
+            String[] textures = skill.textures == null ? new String[0] : skill.textures;
+            for (String texturePath : textures) {
                 if (!projectileGlyphs.containsKey(texturePath)) {
                     Texture glyphTexture = texture(texturePath);
                     projectileGlyphs.put(texturePath, texturedRect(modelBuilder, glyphTexture, .8f, .8f, projectileColors[colorIndex++ % projectileColors.length]));
@@ -207,6 +209,14 @@ public final class ArenaRenderer implements Disposable {
 
         Texture awakening = texture(awakeningTexturePath);
         objectModels.put(awakeningTexturePath, texturedRect(modelBuilder, awakening, (float) awakening.getWidth() / awakening.getHeight(), 1, Color.WHITE));
+        } catch (RuntimeException | Error error) {
+            try {
+                dispose();
+            } catch (RuntimeException | Error disposeError) {
+                error.addSuppressed(disposeError);
+            }
+            throw error;
+        }
     }
 
     private ModelInstance instance(Model model) {

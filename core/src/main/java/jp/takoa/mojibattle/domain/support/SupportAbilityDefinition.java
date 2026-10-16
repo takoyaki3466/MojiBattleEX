@@ -18,4 +18,5 @@ public final class SupportAbilityDefinition {
     public float pointCost;
     public float baseDamage;
     public float range;
+    public java.util.Map<String, Object> parameters = java.util.Map.of();
 }

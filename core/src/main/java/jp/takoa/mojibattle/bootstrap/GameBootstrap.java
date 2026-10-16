@@ -51,22 +51,29 @@ public final class GameBootstrap {
         BuiltInRegistries registries = new BuiltInRegistries(manager);
         List<GameMod> orderedMods = validateMods(mods);
         ContentRegistrationCollector content = new ContentRegistrationCollector();
+        ExternalAbilityRegistrationCollector externalAbilities = new ExternalAbilityRegistrationCollector();
 
         try {
             for (GameMod mod : orderedMods) {
-                mod.register(new ModContext(mod.id(), events.lifecycle(), resources, content.forMod(mod.id())));
+                mod.register(new ModContext(mod.id(), events.lifecycle(), resources, content.forMod(mod.id()),
+                        externalAbilities.forMod(mod.id())));
             }
-            List<CharacterDataRegistration> additionalCharacters = content.seal();
+            ContentRegistrationCollector.Snapshot additionalContent = content.seal();
+            externalAbilities.install(registries);
             manager.publishRegistrationEvents(events.lifecycle());
             events.lifecycle().post(new RegistriesRegisteredEvent(manager));
 
-            ConfigManager config = new ConfigManager(registries, resources, additionalCharacters);
+            ConfigManager config = new ConfigManager(registries, resources, additionalContent.characters(),
+                    additionalContent.supports(), additionalContent.fieldEffects());
             events.lifecycle().post(new DataLoadedEvent(config));
             LocalizationManager i18n = new LocalizationManager(
                     config.game.language,
                     resources,
-                    additionalCharacters.stream()
+                    java.util.stream.Stream.concat(additionalContent.characters().stream()
                             .map(registration -> registration.translation(config.game.language))
+                            , additionalContent.supports().stream()
+                                    .map(registration -> registration.translation(config.game.language)))
+                            .distinct()
                             .toList());
             new TranslationDataValidator().validate(config, i18n);
 
@@ -88,7 +95,8 @@ public final class GameBootstrap {
             manager.freezeAll();
             events.lifecycle().post(new RegistriesFrozenEvent(manager));
             for (GameMod mod : orderedMods) {
-                mod.initialize(new ModContext(mod.id(), events.lifecycle(), resources, content.forMod(mod.id())));
+                mod.initialize(new ModContext(mod.id(), events.lifecycle(), resources, content.forMod(mod.id()),
+                        externalAbilities.forMod(mod.id())));
             }
             return new RegistrySnapshot(registries, config, i18n, characters, supports, abilities,
                     customCharacters, events, resources);

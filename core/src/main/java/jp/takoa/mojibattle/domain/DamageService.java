@@ -38,15 +38,30 @@ public final class DamageService {
      * @throws IllegalArgumentException 数値が負数または有限値でない場合
      */
     public float apply(CharacterRuntime attacker, CharacterRuntime target, float baseDamage, float attackMultiplier, float defenseMultiplier, AttackTraits traits) {
+        return apply(attacker, target, baseDamage, attackMultiplier, defenseMultiplier, 1f, traits);
+    }
+
+    /**
+     * 防御倍率と、防御無視の影響を受けない被ダメージ補正を分離して適用する。
+     * 状態・フィールド由来の被ダメージ補正は、防御無視攻撃にも適用される。
+     *
+     * @throws IllegalArgumentException 数値が負数または有限値でない場合
+     */
+    public float apply(CharacterRuntime attacker, CharacterRuntime target, float baseDamage,
+                       float attackMultiplier, float defenseMultiplier,
+                       float incomingEffectMultiplier, AttackTraits traits) {
         validate(baseDamage, "baseDamage");
         validate(attackMultiplier, "attackMultiplier");
         validate(defenseMultiplier, "defenseMultiplier");
+        validate(incomingEffectMultiplier, "incomingEffectMultiplier");
 
         if (!target.isAlive()) {
             return 0;
         }
 
-        float requested = baseDamage * attackMultiplier * (traits.ignoreDefense() ? 1f : defenseMultiplier);
+        float requested = baseDamage * attackMultiplier
+                * (traits.ignoreDefense() ? 1f : defenseMultiplier)
+                * incomingEffectMultiplier;
 
         if (!Float.isFinite(requested) || requested < 0) {
             throw new IllegalArgumentException("Invalid calculated damage");

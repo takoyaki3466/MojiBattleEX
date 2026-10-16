@@ -18,6 +18,8 @@ public final class StatusEffect {
     public float tickRemaining;
     public float tickInterval = 1f;
     public float ultimatePointsPerTick;
+    public boolean permanent;
+    public boolean consumeOnDamageReceived;
 
     public StatusEffect(String id, PlayerId source, StatusType type, float magnitude, float duration) {
         this(id, source, type, magnitude, duration, StatusStackRule.REFRESH, 1);
@@ -48,6 +50,17 @@ public final class StatusEffect {
      */
     public StatusEffect ultimatePointsPerTick(float points) {
         ultimatePointsPerTick = Math.max(0, points);
+        return this;
+    }
+
+    /** 明示的な永続状態とし、時間更新による期限切れを無効化する。 */
+    public StatusEffect permanent() {
+        permanent = true;
+        return this;
+    }
+
+    public StatusEffect consumeOnDamageReceived() {
+        consumeOnDamageReceived = true;
         return this;
     }
 }

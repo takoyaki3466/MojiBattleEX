@@ -22,42 +22,52 @@ public final class SupportAbilityService {
     /**
      * 補助スキルが使用可能でメインが行動可能なら、クールタイムを先に確定して実装を呼び出す。
      */
-    public void useSkill(BattleController battle, PlayerTeam team, SupportCharacterRuntime support) {
+    public boolean useSkill(BattleController battle, PlayerTeam team, SupportCharacterRuntime support) {
         SupportAbilityDefinition ability = support.definition.skill;
 
         if (!support.skillReady() || team.main().isStunned()) {
-            return;
+            return false;
         }
 
-        support.startSkillCooldown(battle.supportSkillCooldown(ability.cooldownSeconds));
-        execute(battle, team, support, ability, false);
+        if (execute(battle, team, support, ability, false)) {
+            support.startSkillCooldown(battle.supportSkillCooldown(ability.cooldownSeconds));
+            return true;
+        }
+        return false;
     }
 
     /**
      * メインが行動可能かつ補助専用ゲージを消費できる場合だけ必殺を実行し、共通告知を出す。
      */
-    public void useUltimate(BattleController battle, PlayerTeam team, SupportCharacterRuntime support) {
+    public boolean useUltimate(BattleController battle, PlayerTeam team, SupportCharacterRuntime support) {
         SupportAbilityDefinition ability = support.definition.ultimate;
 
-        if (team.main().isStunned() || !support.spendUltimate(ability.pointCost)) {
-            return;
+        if (team.main().isStunned() || support.ultimatePoints() < ability.pointCost) {
+            return false;
         }
 
-        execute(battle, team, support, ability, true);
-        battle.announceUltimate(team.main().playerId, ability.nameKey);
+        if (execute(battle, team, support, ability, true)) {
+            support.spendUltimate(ability.pointCost);
+            battle.announceUltimate(team.main().playerId, ability.nameKey);
+            return true;
+        }
+        return false;
     }
 
     /**
      * 実装IDを解決して固有処理を呼び、補助能力共通の効果音と多重リング演出を重ねる。
      */
-    private void execute(BattleController battle, PlayerTeam team, SupportCharacterRuntime support, SupportAbilityDefinition ability, boolean ultimate) {
+    private boolean execute(BattleController battle, PlayerTeam team, SupportCharacterRuntime support,
+                            SupportAbilityDefinition ability, boolean ultimate) {
         SupportAbilityImplementation implementation = implementations.require(ability.type);
+        if (!implementation.handler().apply(new SupportAbilityContext(battle, team, support, ability), ultimate)) {
+            return false;
+        }
         battle.emitSound(BattleSoundCue.SUPPORT);
-
-        implementation.handler().accept(new SupportAbilityContext(battle, team, support, ability), ultimate);
 
         for (int ring = 0; ring < (ultimate ? 4 : 2); ring++) {
             battle.emitEffect(support.position, ultimate ? ULTIMATE_EFFECTS[ring] : SKILL_EFFECTS[ring], ultimate ? 12 - ring * 1.6f : 7 - ring, ultimate ? 1.4f : .8f);
         }
+        return true;
     }
 }

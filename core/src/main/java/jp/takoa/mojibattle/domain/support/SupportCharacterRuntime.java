@@ -2,6 +2,11 @@ package jp.takoa.mojibattle.domain.support;
 
 import com.badlogic.gdx.math.Vector3;
 import jp.takoa.mojibattle.domain.PlayerId;
+import jp.takoa.mojibattle.ability.AbilityStateLine;
+import jp.takoa.mojibattle.ability.SupportPassiveRuntime;
+import jp.takoa.mojibattle.battle.SupportNormalAttackModifier;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * 補助キャラクターの位置、攻撃間隔、スキル再使用時間および独立した必殺ゲージを保持する。
@@ -9,6 +14,12 @@ import jp.takoa.mojibattle.domain.PlayerId;
 public final class SupportCharacterRuntime {
     public final PlayerId owner;
     public final SupportCharacterDefinition definition;
+    public final String instanceId;
+    final CoreSupportStateStore state = new CoreSupportStateStore();
+    SupportPassiveRuntime passive;
+    final List<TimedModifier> modifiers = new ArrayList<>();
+    List<AbilityStateLine> actionStateLines = List.of();
+    List<AbilityStateLine> passiveStateLines = List.of();
     public final Vector3 position = new Vector3();
     private float attackCooldown;
     private float skillCooldown;
@@ -16,8 +27,13 @@ public final class SupportCharacterRuntime {
     private float ultimatePoints;
 
     public SupportCharacterRuntime(PlayerId owner, SupportCharacterDefinition definition, Vector3 start) {
+        this(owner, definition, start, owner.name().toLowerCase() + ":" + definition.id);
+    }
+
+    public SupportCharacterRuntime(PlayerId owner, SupportCharacterDefinition definition, Vector3 start, String instanceId) {
         this.owner = owner;
         this.definition = definition;
+        this.instanceId = instanceId;
         position.set(start);
         attackCooldown = definition.attackInterval;
     }
@@ -26,6 +42,7 @@ public final class SupportCharacterRuntime {
         attackCooldown = Math.max(0, attackCooldown - delta);
         skillCooldown = Math.max(0, skillCooldown - delta);
         ultimatePoints = Math.min(100, ultimatePoints + Math.max(0, delta) * definition.ultimateChargePerSecond * Math.max(0, ultimateChargeMultiplier));
+        modifiers.removeIf(value -> value.tick(delta));
     }
 
     public boolean attackReady() {
@@ -35,6 +52,8 @@ public final class SupportCharacterRuntime {
     public void resetAttack() {
         attackCooldown = definition.attackInterval;
     }
+
+    public void resetAttack(float interval) { attackCooldown = Math.max(0.01f, interval); }
 
     public boolean skillReady() {
         return skillCooldown <= 0;
@@ -80,5 +99,20 @@ public final class SupportCharacterRuntime {
 
     public void maximizeUltimate() {
         ultimatePoints = 100;
+    }
+
+    record TimedModifier(SupportNormalAttackModifier modifier, float[] remaining) {
+        boolean tick(float delta) { if (remaining == null) return false; remaining[0] -= delta; return remaining[0] <= 0; }
+    }
+
+    public void close() { modifiers.clear(); actionStateLines = List.of(); passiveStateLines = List.of(); state.close(); passive = null; }
+    public jp.takoa.mojibattle.ability.SupportStateStore state() { return state; }
+    public SupportPassiveRuntime passive() { return passive; }
+    public void passive(SupportPassiveRuntime value) { passive = value; }
+    public List<SupportNormalAttackModifier> normalAttackModifiers() { return modifiers.stream().map(TimedModifier::modifier).toList(); }
+    public List<AbilityStateLine> stateLines() {
+        if (passiveStateLines.isEmpty()) return actionStateLines;
+        if (actionStateLines.isEmpty()) return passiveStateLines;
+        List<AbilityStateLine> result = new ArrayList<>(passiveStateLines); result.addAll(actionStateLines); return List.copyOf(result);
     }
 }

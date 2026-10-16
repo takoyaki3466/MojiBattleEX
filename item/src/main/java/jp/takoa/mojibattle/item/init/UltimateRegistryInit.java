@@ -2,7 +2,7 @@ package jp.takoa.mojibattle.item.init;
 
 import jp.takoa.mojibattle.item.impl.registry.UltimateImplementations;
 import jp.takoa.mojibattle.registry.BuiltInRegistries;
-import jp.takoa.mojibattle.registry.CompatRegister;
+import jp.takoa.mojibattle.registry.DeferredRegister;
 import jp.takoa.mojibattle.registry.RegistryHandle;
 import jp.takoa.mojibattle.registry.UltimateImplementation;
 
@@ -10,7 +10,7 @@ import jp.takoa.mojibattle.registry.UltimateImplementation;
  * 必殺技実装の登録IDと遅延生成Factoryだけを宣言する。
  */
 public final class UltimateRegistryInit {
-    public static final CompatRegister<UltimateImplementation> REGISTER = CompatRegister.create(BuiltInRegistries.ULTIMATE_IMPLEMENTATIONS, "mojibattle");
+    public static final DeferredRegister<UltimateImplementation> REGISTER = DeferredRegister.create(BuiltInRegistries.ULTIMATE_IMPLEMENTATIONS, "mojibattle");
 
     public static final RegistryHandle<UltimateImplementation> AREA = register("area", UltimateImplementations::area);
     public static final RegistryHandle<UltimateImplementation> SELF_HEAL = register("self_heal", UltimateImplementations::selfHeal);

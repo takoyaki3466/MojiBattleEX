@@ -19,6 +19,8 @@ dependencies {
     implementation("com.badlogicgames.gdx:gdx-backend-lwjgl3:${property("gdxVersion")}")
     runtimeOnly("com.badlogicgames.gdx:gdx-platform:${property("gdxVersion")}:natives-desktop")
     runtimeOnly("com.badlogicgames.gdx:gdx-freetype-platform:${property("gdxVersion")}:natives-desktop")
+    testImplementation("org.junit.jupiter:junit-jupiter:5.12.1")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher:1.12.1")
 }
 
 sourceSets.main {
@@ -30,21 +32,37 @@ application {
     applicationName = "MojiBattleEX"
 }
 
-val standardModJar = project(":item").tasks.named<Jar>("jar")
-val prepareDevMods = tasks.register<Sync>("prepareDevMods") {
-    from(standardModJar)
-    into(layout.buildDirectory.dir("dev-mods"))
-}
-
 tasks.named<Jar>("jar") {
     archiveFileName.set("MojiBattleEX.jar")
     manifest.attributes["Main-Class"] = application.mainClass.get()
 }
 
 tasks.named<JavaExec>("run") {
-    dependsOn(prepareDevMods)
     workingDir = rootProject.file("assets")
-    systemProperty("mojibattle.modsDir", layout.buildDirectory.dir("dev-mods").get().asFile.absolutePath)
+
+    val modsDirectory = layout.buildDirectory.dir("dev-mods")
+
+    doFirst {
+        val directory = modsDirectory.get().asFile
+        directory.mkdirs()
+
+        systemProperty(
+            "mojibattle.modsDir", directory.absolutePath
+        )
+    }
+}
+
+val integrationTestStandardMod = project(":item").tasks.named<Jar>("jar")
+tasks.test {
+    useJUnitPlatform()
+    dependsOn(integrationTestStandardMod)
+    systemProperty(
+        "mojibattle.test.standardModJar",
+        integrationTestStandardMod.flatMap { it.archiveFile }.get().asFile.absolutePath
+    )
+    providers.gradleProperty("expansionModJar").orNull?.let {
+        systemProperty("mojibattle.test.expansionModJar", project.file(it).absolutePath)
+    }
 }
 
 val packageName = "MojiBattleEX"
@@ -53,13 +71,7 @@ val packageDescription = "A loud local two-player 3D character battle game"
 val packageVersion = project.version.toString()
 val packageIcon = rootProject.layout.projectDirectory.file("packaging/windows/MojiBattleEX.ico")
 val packageRoot = layout.buildDirectory.dir("jpackage")
-val bundledModsDirectory = packageRoot.map { it.dir("bundled-mods") }
 val installDistribution = tasks.named<Sync>("installDist")
-val prepareBundledMods = tasks.register<Sync>("prepareBundledMods") {
-    dependsOn(standardModJar)
-    from(standardModJar)
-    into(bundledModsDirectory)
-}
 val prepareJpackageInput = tasks.register<Sync>("prepareJpackageInput") {
     dependsOn(installDistribution)
     from(installDistribution.map { it.destinationDir.resolve("lib") })
@@ -75,18 +87,30 @@ val jpackageExecutable = javaToolchains.launcherFor {
 
 fun jpackageBaseArguments(destination: File): List<String> {
     val arguments = mutableListOf(
-        "--name", packageName,
-        "--app-version", packageVersion,
-        "--vendor", packageVendor,
-        "--description", packageDescription,
-        "--input", packageRoot.get().dir("input").asFile.absolutePath,
-        "--main-jar", "MojiBattleEX.jar",
-        "--main-class", application.mainClass.get(),
-        "--dest", destination.absolutePath,
-        "--java-options", "-Dfile.encoding=UTF-8",
-        "--java-options", "-Dmojibattle.modsDir=\$APPDIR/mods",
-        "--java-options", "-Xms256m",
-        "--java-options", "-Xmx2g"
+        "--name",
+        packageName,
+        "--app-version",
+        packageVersion,
+        "--vendor",
+        packageVendor,
+        "--description",
+        packageDescription,
+        "--input",
+        packageRoot.get().dir("input").asFile.absolutePath,
+        "--main-jar",
+        "MojiBattleEX.jar",
+        "--main-class",
+        application.mainClass.get(),
+        "--dest",
+        destination.absolutePath,
+        "--java-options",
+        "-Dfile.encoding=UTF-8",
+        "--java-options",
+        "-Dmojibattle.modsDir=\$APPDIR/mods",
+        "--java-options",
+        "-Xms256m",
+        "--java-options",
+        "-Xmx2g"
     )
     if (packageIcon.asFile.isFile) {
         arguments.addAll(listOf("--icon", packageIcon.asFile.absolutePath))
@@ -94,23 +118,93 @@ fun jpackageBaseArguments(destination: File): List<String> {
     return arguments
 }
 
-val jpackageAppImage = tasks.register<Exec>("jpackageAppImage") {
-    group = "distribution"
-    description = "Creates a self-contained Windows application image with a bundled runtime and MODs."
-    dependsOn(prepareJpackageInput, prepareBundledMods)
-    doFirst {
-        val destination = packageRoot.get().dir("app-image").asFile
-        delete(destination.resolve(packageName))
-        destination.mkdirs()
-        commandLine(listOf(jpackageExecutable.get().absolutePath, "--type", "app-image") + jpackageBaseArguments(destination))
+fun verifyApplicationImage(image: File) {
+    val appDirectory = image.resolve("app")
+    val config = appDirectory.resolve("$packageName.cfg")
+    val configLines = config.readLines()
+    val classpathEntries = configLines.filter { it.startsWith("app.classpath=") }
+    val javaOptions = configLines.filter { it.startsWith("java-options=") }
+
+    require(image.resolve("$packageName.exe").isFile) { "Application launcher is missing" }
+    require(appDirectory.resolve("MojiBattleEX.jar").isFile) { "Main JAR is missing" }
+    require(appDirectory.resolve("api-$packageVersion.jar").isFile) { "API JAR is missing" }
+    require(appDirectory.resolve("core-$packageVersion.jar").isFile) { "Core JAR is missing" }
+    require(appDirectory.resolve("mod-loader-$packageVersion.jar").isFile) { "MOD loader JAR is missing" }
+    val modsDirectory = appDirectory.resolve("mods")
+
+    require(modsDirectory.isDirectory) {
+        "MOD directory is missing"
     }
-    doLast {
-        project.sync {
-            from(bundledModsDirectory)
-            into(packageRoot.get().dir("app-image/$packageName/app/mods"))
-        }
+
+    require(modsDirectory.listFiles()?.none { it.extension.equals("jar", ignoreCase = true) } == true) {
+        "Core-only package must not contain bundled MOD JARs"
+    }
+
+    require(image.resolve("runtime/bin/server/jvm.dll").isFile) { "Bundled JVM is missing" }
+    require(image.resolve("runtime/lib/modules").isFile) { "Bundled Java modules image is missing" }
+    require(appDirectory.listFiles()?.any { it.name.matches(Regex("lwjgl-.*-natives-windows\\.jar")) } == true) {
+        "Windows LWJGL native JAR is missing"
+    }
+    require(classpathEntries.none { it.contains("/mods/") || it.contains("\\mods\\") }) {
+        "MOD JARs must not be placed on the application classpath"
+    }
+    require(javaOptions.contains("java-options=-Dfile.encoding=UTF-8")) { "UTF-8 JVM option is missing" }
+    require(javaOptions.contains("java-options=-Dmojibattle.modsDir=\$APPDIR/mods")) {
+        "Relocatable MOD directory JVM option is missing"
+    }
+    require(javaOptions.contains("java-options=-Xms256m") && javaOptions.contains("java-options=-Xmx2g")) {
+        "Heap JVM options are missing"
     }
 }
+
+fun registerJpackageAppImage(
+    taskName: String, outputDirectory: String, console: Boolean, taskDescription: String
+) = tasks.register<Exec>(taskName) {
+    group = "distribution"
+    description = taskDescription
+    dependsOn(prepareJpackageInput)
+    doFirst {
+        if (console && !System.getProperty("os.name").lowercase().contains("windows")) {
+            throw GradleException("The debug app image with --win-console can only be built on Windows.")
+        }
+        val destination = packageRoot.get().dir(outputDirectory).asFile
+        delete(destination.resolve(packageName))
+        destination.mkdirs()
+        val consoleArguments = if (console) listOf("--win-console") else emptyList()
+        commandLine(
+            listOf(
+                jpackageExecutable.get().absolutePath, "--type", "app-image"
+            ) + consoleArguments + jpackageBaseArguments(destination)
+        )
+    }
+    doLast {
+        val image = packageRoot.get().dir("$outputDirectory/$packageName").asFile
+
+        val modsDirectory = image.resolve("app/mods")
+
+        if (!modsDirectory.mkdirs() && !modsDirectory.isDirectory) {
+            throw GradleException(
+                "Failed to create MOD directory: ${modsDirectory.absolutePath}"
+            )
+        }
+
+        verifyApplicationImage(image)
+    }
+}
+
+val jpackageAppImage = registerJpackageAppImage(
+    "jpackageAppImage",
+    "app-image",
+    false,
+    "Creates a self-contained Windows application image with a bundled runtime and MODs."
+)
+
+val jpackageDebugAppImage = registerJpackageAppImage(
+    "jpackageDebugAppImage",
+    "debug-app-image",
+    true,
+    "Creates a Windows app image with a console for startup diagnostics."
+)
 
 val jpackagePortableZip = tasks.register<Zip>("jpackagePortableZip") {
     group = "distribution"
@@ -127,26 +221,36 @@ val jpackageWindowsExe = tasks.register<Exec>("jpackageWindowsExe") {
     description = "Creates the Windows EXE installer. WiX Toolset must be installed and available on PATH."
     dependsOn(jpackageAppImage)
     doFirst {
-        if (!System.getProperty("os.name").lowercase().contains("windows"))
-            throw GradleException("The EXE installer can only be built on Windows.")
+        if (!System.getProperty("os.name").lowercase()
+                .contains("windows")
+        ) throw GradleException("The EXE installer can only be built on Windows.")
         val destination = packageRoot.get().dir("installer").asFile
         val temporary = packageRoot.get().dir("temp-exe").asFile
         delete(destination.resolve("$packageName-$packageVersion.exe"), temporary)
         destination.mkdirs()
-        commandLine(listOf(
-            jpackageExecutable.get().absolutePath,
-            "--type", "exe",
-            "--name", packageName,
-            "--app-image", packageRoot.get().dir("app-image/$packageName").asFile.absolutePath,
-            "--dest", destination.absolutePath,
-            "--temp", temporary.absolutePath,
-            "--win-menu",
-            "--win-menu-group", packageName,
-            "--win-shortcut",
-            "--win-dir-chooser",
-            "--win-per-user-install",
-            "--win-upgrade-uuid", "f851cedf-2fff-4053-90eb-1cb7c31cc44b"
-        ))
+        commandLine(
+            listOf(
+                jpackageExecutable.get().absolutePath,
+                "--type",
+                "exe",
+                "--name",
+                packageName,
+                "--app-image",
+                packageRoot.get().dir("app-image/$packageName").asFile.absolutePath,
+                "--dest",
+                destination.absolutePath,
+                "--temp",
+                temporary.absolutePath,
+                "--win-menu",
+                "--win-menu-group",
+                packageName,
+                "--win-shortcut",
+                "--win-dir-chooser",
+                "--win-per-user-install",
+                "--win-upgrade-uuid",
+                "f851cedf-2fff-4053-90eb-1cb7c31cc44b"
+            )
+        )
     }
 }
 
@@ -175,7 +279,8 @@ val releaseChecksums = tasks.register("releaseChecksums") {
             val hash = digest.digest().joinToString("") { (it.toInt() and 0xff).toString(16).padStart(2, '0') }
             "$hash  ${file.name}"
         }
-        distributionDirectory.resolve("SHA256SUMS.txt").writeText(lines.joinToString(System.lineSeparator(), postfix = System.lineSeparator()))
+        distributionDirectory.resolve("SHA256SUMS.txt")
+            .writeText(lines.joinToString(System.lineSeparator(), postfix = System.lineSeparator()))
     }
 }
 

@@ -85,7 +85,9 @@ public final class GameContext implements AutoCloseable {
         }
 
         for (AbilityConfigs.ProjectileSkill skill : config.skills()) {
-            extraCharacters.append(String.join("", skill.glyphs));
+            if (skill.glyphs != null) {
+                extraCharacters.append(String.join("", skill.glyphs));
+            }
         }
 
         skin = UiFactory.createSkin(i18n, extraCharacters.toString());
