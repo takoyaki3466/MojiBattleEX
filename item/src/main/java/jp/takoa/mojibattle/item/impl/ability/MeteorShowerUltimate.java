@@ -36,7 +36,8 @@ public final class MeteorShowerUltimate implements IUltimate {
         if (targetPlayer == null) {
             return false;
         }
-        for (int i = 0; i < config.meteorCount; i++) {
+        long strikeCount = config.meteorCount + battle.additionalUltimateAttackCount(user);
+        for (long i = 0; i < strikeCount; i++) {
             boolean arenaWide = "meteor".equals(config.dropStyle);
             float spread = arenaWide ? extent : Math.max(1.8f, config.radius * .65f);
             Vector3 target = arenaWide

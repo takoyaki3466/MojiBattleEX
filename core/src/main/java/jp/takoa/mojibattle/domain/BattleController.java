@@ -2085,4 +2085,17 @@ public final class BattleController {
     private float ultimateDamageMultiplier(CharacterRuntime owner) {
         return passiveProduct(owner, value -> value.ultimateDamageMultiplier(owner));
     }
+
+    /** 必殺技の反復攻撃へ加算する、装備中パッシブ由来の追加回数を返す。 */
+    public long additionalUltimateAttackCount(CharacterRuntime owner) {
+        long result = 0L;
+        for (IPassive passive : passives(owner)) {
+            long addition = Math.max(0L, passive.additionalUltimateAttackCount(owner));
+            if (Long.MAX_VALUE - result < addition) {
+                return Long.MAX_VALUE;
+            }
+            result += addition;
+        }
+        return result;
+    }
 }
