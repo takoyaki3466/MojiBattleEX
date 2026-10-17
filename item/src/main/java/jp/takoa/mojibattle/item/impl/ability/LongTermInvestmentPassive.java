@@ -17,6 +17,7 @@ public final class LongTermInvestmentPassive implements IPassive {
     private final AbilityConfigs.TimedPassive config;
     private final EnumMap<PlayerId, Float> rollTimers = new EnumMap<>(PlayerId.class);
     private final EnumMap<PlayerId, Float> cooldowns = new EnumMap<>(PlayerId.class);
+    private final EnumMap<PlayerId, Long> companyDropBonuses = new EnumMap<>(PlayerId.class);
 
     public LongTermInvestmentPassive(AbilityConfigs.TimedPassive config) {
         this.config = config;
@@ -33,6 +34,9 @@ public final class LongTermInvestmentPassive implements IPassive {
             return Math.min(
                     config.maximumMultiplier,
                     1f + (1f - owner.hpRatio()) * config.missingHealthAttackBonus);
+        }
+        if ("company_growth".equals(config.type)) {
+            return 1f;
         }
         int intervals = (int) Math.floor(Math.max(0, elapsed) / config.intervalSeconds);
         return Math.min(config.maximumMultiplier, 1f + intervals * config.attackIncreasePerInterval
@@ -72,6 +76,22 @@ public final class LongTermInvestmentPassive implements IPassive {
     @Override
     public float ultimateDamageMultiplier(CharacterRuntime owner) {
         return positiveOrOne(config.ultimateDamageMultiplier);
+    }
+
+    @Override
+    public void onSkillActivated(BattleController battle, CharacterRuntime owner) {
+        if (!"company_growth".equals(config.type)) {
+            return;
+        }
+        companyDropBonuses.compute(owner.playerId, (ignored, current) ->
+                current == null ? 2L : current > Long.MAX_VALUE - 2L ? Long.MAX_VALUE : current + 2L);
+    }
+
+    @Override
+    public long additionalUltimateAttackCount(CharacterRuntime owner) {
+        return "company_growth".equals(config.type)
+                ? companyDropBonuses.getOrDefault(owner.playerId, 0L)
+                : 0L;
     }
 
     @Override

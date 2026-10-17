@@ -1,5 +1,6 @@
 package jp.takoa.mojibattle.screen;
 
+import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.scenes.scene2d.Actor;
@@ -9,6 +10,7 @@ import com.badlogic.gdx.scenes.scene2d.Touchable;
 import com.badlogic.gdx.scenes.scene2d.ui.Dialog;
 import com.badlogic.gdx.scenes.scene2d.ui.Image;
 import com.badlogic.gdx.scenes.scene2d.ui.Label;
+import com.badlogic.gdx.scenes.scene2d.ui.ScrollPane;
 import com.badlogic.gdx.scenes.scene2d.ui.Table;
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
 import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
@@ -34,9 +36,11 @@ import java.util.Map;
  * プレイヤーごとにメインと補助キャラクターを選び、詳細確認後に戦闘を開始する画面。
  */
 public final class CharacterSelectScreen extends StageScreen {
-    private static final float MENU_WIDTH_RATIO = .985f;
-    private static final float MENU_HEIGHT_RATIO = .97f;
-    private static final int CARD_COLUMNS = 5;
+    private static final float MENU_WIDTH_RATIO = .997f;
+    private static final float MENU_HEIGHT_RATIO = .992f;
+    private static final int CARD_COLUMNS = 7;
+    private static final float CARD_WIDTH = 104f;
+    private static final float CARD_HEIGHT = 92f;
 
     private final BattleMode mode;
     private final int playerCount;
@@ -44,7 +48,7 @@ public final class CharacterSelectScreen extends StageScreen {
     private final GdxTextureLoader textureLoader;
     private final Label prompt;
     private final Label chosen;
-    private final Label details;
+    private final Table detailsContent = new Table();
 
     private final Image preview = new Image();
     private final Table cardGrid = new Table();
@@ -79,11 +83,11 @@ public final class CharacterSelectScreen extends StageScreen {
         root.pad(0);
         Table roster = new Table(context.skin);
         roster.setBackground("panel");
-        roster.pad(10);
+        roster.pad(7);
 
         Label heading = new Label(context.i18n.text("select.title"), context.skin, "title");
         heading.setFontScale(.48f);
-        roster.add(heading).width(705).height(58).left().row();
+        roster.add(heading).growX().height(52).left().row();
 
         prompt = new Label("", context.skin);
         prompt.setColor(.62f, 1f, .76f, 1f);
@@ -91,7 +95,7 @@ public final class CharacterSelectScreen extends StageScreen {
 
         chosen = new Label("", context.skin);
         chosen.setFontScale(.62f);
-        roster.add(chosen).left().padBottom(8).row();
+        roster.add(chosen).left().padBottom(4).row();
 
         Label supportCountLabel = new Label(context.i18n.text("select.support_count"), context.skin);
         TextButton oneSupport = new TextButton(context.i18n.text("select.support_count_one"), context.skin);
@@ -118,24 +122,32 @@ public final class CharacterSelectScreen extends StageScreen {
         existingTab = new TextButton(context.i18n.text("select.existing"), context.skin);
         customTab = new TextButton(context.i18n.text("select.custom"), context.skin);
 
-        tabs.add(existingTab).width(260).height(52).padRight(5);
-        tabs.add(customTab).width(260).height(52).padLeft(5);
+        tabs.add(existingTab).width(230).height(44).padRight(4);
+        tabs.add(customTab).width(230).height(44).padLeft(4);
 
-        roster.add(tabs).left().padBottom(5).row();
-        roster.add(cardGrid).width(705).height(302).top().left();
+        roster.add(tabs).left().padBottom(4).row();
+
+        cardGrid.top().left();
+        ScrollPane cardScroll = new ScrollPane(cardGrid);
+        cardScroll.setFadeScrollBars(false);
+        cardScroll.setOverscroll(false, false);
+        cardScroll.setScrollingDisabled(false, false);
+        roster.add(cardScroll).grow().minWidth(0).minHeight(0).top().left();
 
         Table information = new Table(context.skin);
         information.setBackground("panel");
-        information.pad(12);
+        information.pad(9);
 
         preview.setScaling(Scaling.fit);
-        information.add(preview).size(145, 145).row();
+        information.add(preview).growX().height(158).row();
 
-        details = new Label(context.i18n.text("select.choose_card_hint"), context.skin);
-        details.setWrap(true);
-        details.setAlignment(Align.left, Align.top);
-        details.setFontScale(.59f);
-        information.add(details).width(455).height(292).top().left().padTop(6).row();
+        detailsContent.top().left();
+        ScrollPane detailsScroll = new ScrollPane(detailsContent);
+        detailsScroll.setFadeScrollBars(false);
+        detailsScroll.setOverscroll(false, false);
+        detailsScroll.setScrollingDisabled(true, false);
+        information.add(detailsScroll).grow().minWidth(0).minHeight(0).top().left().padTop(5).row();
+        showDetailHint();
 
         Table decisions = new Table();
         cancel = new TextButton(context.i18n.text("select.cancel"), context.skin);
@@ -143,10 +155,10 @@ public final class CharacterSelectScreen extends StageScreen {
 
         confirm.setDisabled(true);
 
-        decisions.add(cancel).width(180).height(50).padRight(5);
-        decisions.add(confirm).width(200).height(50).padLeft(5);
+        decisions.add(cancel).growX().height(46).padRight(4);
+        decisions.add(confirm).growX().height(46).padLeft(4);
 
-        information.add(decisions).padTop(6);
+        information.add(decisions).growX().height(52).padTop(4);
 
         cancel.addListener(new ChangeListener() {
             public void changed(ChangeEvent event, Actor actor) {
@@ -160,14 +172,15 @@ public final class CharacterSelectScreen extends StageScreen {
         });
 
         Table upper = new Table();
-        upper.add(roster).width(735).height(548).top().padRight(5);
-        upper.add(information).width(495).height(548).top().padLeft(5);
+        upper.add(roster).grow().minWidth(0).minHeight(0).top().padRight(3);
+        upper.add(information).width(com.badlogic.gdx.scenes.scene2d.ui.Value.percentWidth(.31f, upper))
+                .growY().minWidth(330).minHeight(0).top().padLeft(3);
 
         Table shell = new Table(context.skin);
         shell.setBackground("bar-bg");
-        shell.pad(5);
-        shell.add(upper).growX().top().row();
-        shell.add(playerPreviews).growX().height(126).padTop(3);
+        shell.pad(3);
+        shell.add(upper).grow().minWidth(0).minHeight(0).top().row();
+        shell.add(playerPreviews).growX().height(112).padTop(3);
 
         addMenu(root, shell, MENU_WIDTH_RATIO, MENU_HEIGHT_RATIO);
 
@@ -197,7 +210,7 @@ public final class CharacterSelectScreen extends StageScreen {
         confirm.setDisabled(true);
         preview.setDrawable(null);
 
-        details.setText(context.i18n.text("select.choose_card_hint"));
+        showDetailHint();
         existingTab.setText((showingCustom ? "" : "▶ ") + context.i18n.text("select.existing"));
         customTab.setText((showingCustom ? "▶ " : "") + context.i18n.text("select.custom"));
 
@@ -269,9 +282,9 @@ public final class CharacterSelectScreen extends StageScreen {
         summaryLabel.setAlignment(Align.center);
         summaryLabel.setFontScale(.47f);
 
-        card.add(image).size(46, 46).row();
-        card.add(glyphLabel).width(118).height(20).row();
-        card.add(summaryLabel).width(118).height(28).top();
+        card.add(image).size(45, 45).row();
+        card.add(glyphLabel).width(90).height(18).row();
+        card.add(summaryLabel).width(90).height(22).top();
 
         card.addListener(new InputListener() {
             @Override
@@ -292,7 +305,7 @@ public final class CharacterSelectScreen extends StageScreen {
             }
         });
 
-        cardGrid.add(card).width(132).height(108).pad(4).top();
+        cardGrid.add(card).width(CARD_WIDTH).height(CARD_HEIGHT).pad(3).top();
     }
 
     private TextureRegionDrawable drawable(String path) {
@@ -315,8 +328,24 @@ public final class CharacterSelectScreen extends StageScreen {
         AbilityConfigs.AreaUltimate ultimate = context.config.ultimate(character.ultimateId);
 
         String style = context.i18n.text(styleDescriptionKey(character, skill));
-
-        details.setText("- " + context.i18n.text("guide.skill", context.i18n.text(skill.nameKey)) + "\n  " + skillDetail(skill) + "\n- " + context.i18n.text("guide.ultimate", context.i18n.text(ultimate.nameKey)) + "\n  " + ultimateDetail(ultimate) + " / " + context.i18n.text("guide.cost", Math.round(ultimate.pointCost)) + "\n- " + context.i18n.text("guide.passive", passiveNames(character)) + "\n  " + passiveDescriptions(character) + "\n- " + context.i18n.text("select.style", style));
+        showDetailCards(
+                name(character),
+                new DetailSection(
+                        context.i18n.text("guide.skill", context.i18n.text(skill.nameKey)),
+                        skillDetail(skill),
+                        new Color(.20f, .88f, 1f, 1f)),
+                new DetailSection(
+                        context.i18n.text("guide.ultimate", context.i18n.text(ultimate.nameKey)),
+                        ultimateDetail(ultimate) + "\n" + context.i18n.text("guide.cost", Math.round(ultimate.pointCost)),
+                        new Color(1f, .72f, .12f, 1f)),
+                new DetailSection(
+                        context.i18n.text("guide.passive", passiveNames(character)),
+                        passiveDescriptions(character),
+                        new Color(.55f, 1f, .34f, 1f)),
+                new DetailSection(
+                        context.i18n.text("select.style", ""),
+                        style,
+                        new Color(1f, .50f, .78f, 1f)));
     }
 
     private void showSupport(SupportCharacterDefinition support) {
@@ -328,7 +357,57 @@ public final class CharacterSelectScreen extends StageScreen {
         String ultimate = context.i18n.text("guide.support_ultimate", context.i18n.text(support.ultimate.nameKey), Math.round(support.ultimate.pointCost));
         String style = support.custom ? context.i18n.text("select.custom_style") : context.i18n.text(support.styleKey);
 
-        details.setText("- " + skill + "\n  " + context.i18n.text(skillDescriptionKey) + "\n- " + ultimate + "\n  " + context.i18n.text(ultimateDescriptionKey) + "\n- " + context.i18n.text("guide.field_passives_title") + "\n  " + fieldDetails(support) + "\n- " + context.i18n.text("select.style", style));
+        showDetailCards(
+                name(support),
+                new DetailSection(skill, context.i18n.text(skillDescriptionKey), new Color(.20f, .88f, 1f, 1f)),
+                new DetailSection(ultimate, context.i18n.text(ultimateDescriptionKey), new Color(1f, .72f, .12f, 1f)),
+                new DetailSection(context.i18n.text("guide.field_passives_title"), fieldDetails(support),
+                        new Color(.55f, 1f, .34f, 1f)),
+                new DetailSection(context.i18n.text("select.style", ""), style,
+                        new Color(1f, .50f, .78f, 1f)));
+    }
+
+    /** 右側の解説を、強調見出しと本文を持つ独立した枠へ組み直す。 */
+    private void showDetailCards(String title, DetailSection... sections) {
+        detailsContent.clearChildren();
+
+        Label titleLabel = new Label(title, context.skin, "title");
+        titleLabel.setFontScale(.34f);
+        titleLabel.setAlignment(Align.center);
+        detailsContent.add(titleLabel).growX().height(54).pad(4).row();
+
+        for (DetailSection section : sections) {
+            Table card = new Table(context.skin);
+            card.setBackground("bar-bg");
+            card.pad(9);
+
+            Label heading = new Label(section.heading(), context.skin, "effect-text");
+            heading.setWrap(true);
+            heading.setFontScale(.72f);
+            heading.setColor(section.accent());
+            heading.setAlignment(Align.left);
+
+            Label body = new Label(section.body(), context.skin);
+            body.setWrap(true);
+            body.setFontScale(.66f);
+            body.setAlignment(Align.left, Align.top);
+
+            card.add(heading).growX().width(310).left().padBottom(7).row();
+            card.add(body).growX().width(310).left().top();
+            detailsContent.add(card).growX().minWidth(300).maxWidth(420).pad(4, 3, 5, 3).row();
+        }
+    }
+
+    private void showDetailHint() {
+        detailsContent.clearChildren();
+        Label hint = new Label(context.i18n.text("select.choose_card_hint"), context.skin, "effect-text");
+        hint.setWrap(true);
+        hint.setFontScale(.72f);
+        hint.setAlignment(Align.center);
+        detailsContent.add(hint).width(310).growY().center().pad(24);
+    }
+
+    private record DetailSection(String heading, String body, Color accent) {
     }
 
     private String fieldDetails(SupportCharacterDefinition support) {
@@ -382,7 +461,7 @@ public final class CharacterSelectScreen extends StageScreen {
         pendingId = null;
         confirm.setDisabled(true);
         preview.setDrawable(null);
-        details.setText(context.i18n.text("select.choose_card_hint"));
+        showDetailHint();
 
         refreshPlayerPreviews();
         updateDiagnostics();
@@ -494,56 +573,47 @@ public final class CharacterSelectScreen extends StageScreen {
 
         boolean denseChaos = mode == BattleMode.CHAOS && playerCount > 2;
         boolean compact = mode == BattleMode.CHAOS || playerCount > 2 && supportCount > 1;
-        float mainSize = denseChaos ? 24 : compact ? 42 : playerCount > 2 ? 48 : 74;
-        float supportSize = denseChaos ? 20 : compact ? 28 : playerCount > 2 ? 32 : 46;
-        float nameWidth = denseChaos ? 30 : compact ? 48 : playerCount > 2 ? 72 : 125;
+        float mainSize = denseChaos ? 34 : compact ? 42 : playerCount > 2 ? 48 : 66;
+        float supportSize = denseChaos ? 28 : compact ? 34 : playerCount > 2 ? 40 : 52;
 
         for (int player = 0; player < playerCount; player++) {
             Table card = new Table(context.skin);
             card.setBackground("panel");
-            card.pad(6);
+            card.pad(4);
 
             Label playerLabel = new Label((player + 1) + "P", context.skin);
-            playerLabel.setFontScale(.72f);
-            card.add(playerLabel).left().row();
+            playerLabel.setFontScale(.66f);
+            card.add(playerLabel).left().height(20).row();
 
-            Table mainPortraits = new Table();
+            Table portraits = new Table();
             for (int slot = 0; slot < mainCount; slot++) {
-                addMainPreview(mainPortraits, player, slot, mainSize, nameWidth);
+                addMainPreview(portraits, player, slot, mainSize);
             }
-
-            Table supportPortraits = new Table();
             for (int slot = 0; slot < supportCount; slot++) {
-                addSupportPreview(supportPortraits, player, slot, supportSize, nameWidth);
+                addSupportPreview(portraits, player, slot, supportSize);
             }
-            card.add(mainPortraits).left().row();
-            card.add(supportPortraits).left();
-            playerPreviews.add(card).expandX().fillX().height(120).pad(3);
+            card.add(portraits).expand().center();
+            playerPreviews.add(card).expandX().fillX().height(106).pad(2);
         }
     }
 
-    private void addMainPreview(Table portraits, int player, int slot, float imageSize, float nameWidth) {
+    private void addMainPreview(Table portraits, int player, int slot, float imageSize) {
         int index = player * mainCount + slot;
         String mainId = index < mainIds.size()
                 ? mainIds.get(index)
                 : selectingMain() && index == phase ? pendingId : null;
 
         if (mainId == null) {
-            portraits.add(new Label(context.i18n.text("select.unselected"), context.skin)).width(imageSize + nameWidth);
+            portraits.add(new Label(context.i18n.text("select.unselected"), context.skin))
+                    .width(imageSize).height(imageSize).center().pad(2);
             return;
         }
 
         CharacterDefinition main = context.characters.require(mainId);
-        portraits.add(new Image(drawable(main.glyphTexture))).size(imageSize, imageSize);
-
-        Label label = new Label(name(main), context.skin);
-        label.setWrap(true);
-        label.setFontScale(mode == BattleMode.CHAOS && playerCount > 2 ? .34f : playerCount > 2 && supportCount > 1 ? .44f : playerCount > 2 ? .52f : .7f);
-
-        portraits.add(label).width(nameWidth).left();
+        portraits.add(new Image(drawable(main.glyphTexture))).size(imageSize, imageSize).pad(2);
     }
 
-    private void addSupportPreview(Table portraits, int player, int slot, float imageSize, float nameWidth) {
+    private void addSupportPreview(Table portraits, int player, int slot, float imageSize) {
         int supportSelection = phase - mainSelectionCount();
         int index = player * supportCount + slot;
 
@@ -553,13 +623,7 @@ public final class CharacterSelectScreen extends StageScreen {
         }
 
         SupportCharacterDefinition support = context.supports.require(supportId);
-        portraits.add(new Image(drawable(support.glyphTexture))).size(imageSize, imageSize).padLeft(playerCount > 2 && supportCount > 1 ? 2 : 6);
-
-        Label label = new Label(name(support), context.skin);
-        label.setWrap(true);
-        label.setFontScale(mode == BattleMode.CHAOS && playerCount > 2 ? .32f : playerCount > 2 && supportCount > 1 ? .4f : playerCount > 2 ? .48f : .65f);
-
-        portraits.add(label).width(nameWidth).left();
+        portraits.add(new Image(drawable(support.glyphTexture))).size(imageSize, imageSize).pad(2);
     }
 
     private String name(CharacterDefinition value) {

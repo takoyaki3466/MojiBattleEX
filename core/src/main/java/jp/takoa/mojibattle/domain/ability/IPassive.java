@@ -41,6 +41,15 @@ public interface IPassive extends IAbility {
         return 1f;
     }
 
+    /**
+     * 必殺技が生成する攻撃オブジェクトへ追加する回数。
+     *
+     * <p>回数制の必殺技だけが参照し、上限や消費の有無はパッシブ実装側が決める。</p>
+     */
+    default long additionalUltimateAttackCount(CharacterRuntime owner) {
+        return 0L;
+    }
+
     /** 会心率へ加算する割合。0.05は5パーセントポイント。 */
     default float criticalRateModifier(CharacterRuntime owner) {
         return 0f;
