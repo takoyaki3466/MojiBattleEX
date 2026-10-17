@@ -1,7 +1,9 @@
 package jp.takoa.mojibattle.domain.ability.adapter;
 
 import jp.takoa.mojibattle.battle.CombatActions;
+import jp.takoa.mojibattle.battle.BattlefieldView;
 import jp.takoa.mojibattle.battle.CombatantView;
+import jp.takoa.mojibattle.battle.DuelSpec;
 import jp.takoa.mojibattle.battle.DamageType;
 import jp.takoa.mojibattle.battle.DamageRequest;
 import jp.takoa.mojibattle.battle.DamageResult;
@@ -30,6 +32,8 @@ public final class CoreCombatActions implements CombatActions {
         this.battle = battle;
     }
 
+    @Override public BattlefieldView battlefield() { return new CoreBattlefieldView(battle); }
+
     @Override
     public void damage(CombatantView source, CombatantView target, float amount) {
         damage(source, target, amount, DamageType.SKILL);
@@ -37,7 +41,7 @@ public final class CoreCombatActions implements CombatActions {
 
     @Override
     public void damage(CombatantView source, CombatantView target, float amount, DamageType type) {
-        battle.applyAbilityDamage(runtime(source), runtime(target), amount, type);
+        battle.applyCombatantDamage(combatant(source), combatant(target), DamageRequest.of(amount, type));
     }
 
     @Override
@@ -45,7 +49,7 @@ public final class CoreCombatActions implements CombatActions {
         if (request == null) {
             throw new IllegalArgumentException("Damage request is required");
         }
-        return battle.applyAbilityDamage(runtime(source), runtime(target), request);
+        return battle.applyCombatantDamage(combatant(source), combatant(target), request);
     }
 
     @Override
@@ -53,7 +57,7 @@ public final class CoreCombatActions implements CombatActions {
         if (!Float.isFinite(amount) || amount < 0) {
             throw new IllegalArgumentException("Heal amount must be finite and non-negative");
         }
-        runtime(target).heal(amount);
+        battle.healCombatant(combatant(target), amount);
     }
 
     @Override
@@ -73,14 +77,14 @@ public final class CoreCombatActions implements CombatActions {
         if (spec == null) {
             throw new IllegalArgumentException("Status specification is required");
         }
-        CharacterRuntime sourceRuntime = runtime(source);
-        CharacterRuntime targetRuntime = runtime(target);
+        Object sourceRuntime = combatant(source);
+        Object targetRuntime = combatant(target);
         StatusStackRule stacking = switch (spec.stacking()) {
             case REPLACE -> StatusStackRule.REPLACE;
             case REFRESH -> StatusStackRule.REFRESH;
             case ADD_STACK -> StatusStackRule.STACK;
         };
-        StatusEffect effect = new StatusEffect(spec.id().toString(), sourceRuntime.playerId,
+        StatusEffect effect = new StatusEffect(spec.id().toString(), battle.ownerOf(sourceRuntime),
                 statusType(spec.type()), spec.magnitude(), spec.duration().seconds(), stacking,
                 spec.maximumStacks()).tickEvery(spec.tickIntervalSeconds());
         if (spec.duration().permanentFlag()) {
@@ -89,7 +93,7 @@ public final class CoreCombatActions implements CombatActions {
         if (spec.consumption() == jp.takoa.mojibattle.battle.StatusConsumption.ON_DAMAGE_RECEIVED) {
             effect.consumeOnDamageReceived();
         }
-        targetRuntime.statuses.apply(effect);
+        battle.statusesOf(targetRuntime).apply(effect);
     }
 
     @Override
@@ -126,18 +130,21 @@ public final class CoreCombatActions implements CombatActions {
 
     @Override
     public List<CombatantView> enemiesOf(CombatantView source) {
-        return battle.enemiesOf(runtime(source)).stream()
-                .map(CoreCombatantView::new)
-                .map(CombatantView.class::cast)
-                .toList();
+        return battlefield().enemiesOf(source);
     }
 
     @Override
     public List<CombatantView> alliesOf(CombatantView source) {
-        return battle.alliesOf(runtime(source)).stream()
-                .map(CoreCombatantView::new)
-                .map(CombatantView.class::cast)
-                .toList();
+        return battlefield().alliesOf(source);
+    }
+
+    @Override public void startDuel(DuelSpec spec) {
+        if (spec == null) throw new IllegalArgumentException("Duel specification is required");
+        battle.startDuel(spec, spec.allies().stream().map(this::combatant).toList(), combatant(spec.enemy()));
+    }
+
+    @Override public void lockNormalAttackTarget(CombatantView attacker, CombatantView target, float durationSeconds) {
+        battle.lockNormalAttackTarget(combatant(attacker), combatant(target), durationSeconds);
     }
 
     @Override
@@ -185,6 +192,12 @@ public final class CoreCombatActions implements CombatActions {
             throw new IllegalArgumentException("Combatant does not belong to this battle");
         }
         return core.runtime();
+    }
+
+    private Object combatant(CombatantView view) {
+        if (view instanceof CoreUnifiedCombatantView core && core.battle() == battle) return core.combatant();
+        if (view instanceof CoreCombatantView core && battle.containsCombatant(core.runtime())) return core.runtime();
+        throw new IllegalArgumentException("Combatant does not belong to this battle");
     }
 
     private static void requireNonNegative(float value, String name) {

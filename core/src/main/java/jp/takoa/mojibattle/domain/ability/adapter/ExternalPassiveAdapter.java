@@ -67,7 +67,7 @@ public final class ExternalPassiveAdapter implements IPassive {
     @Override
     public void update(BattleController battle, CharacterRuntime owner, float delta) {
         runtime.update(new PassiveUpdateContext(
-                new CoreCombatantView(owner),
+                new CoreCombatantView(battle, owner),
                 new CoreCombatActions(battle),
                 delta,
                 battle.elapsedSeconds()));
@@ -105,7 +105,7 @@ public final class ExternalPassiveAdapter implements IPassive {
 
     private static DamageEventContext damageContext(BattleController battle, CharacterRuntime source,
                                                      CharacterRuntime target, float amount) {
-        return new DamageEventContext(new CoreCombatantView(source), new CoreCombatantView(target), amount,
+        return new DamageEventContext(new CoreCombatantView(battle, source), new CoreCombatantView(battle, target), amount,
                 new CoreCombatActions(battle), battle.elapsedSeconds());
     }
 }

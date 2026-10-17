@@ -6,6 +6,16 @@ package jp.takoa.mojibattle.battle;
 public interface CombatantView {
     String id();
 
+    /** 戦闘中の個体を一意に表すID。旧ホストでは定義IDへフォールバックする。 */
+    default String instanceId() {
+        return id();
+    }
+
+    /** この個体がメイン、補助、召喚のどれであるかを返す。 */
+    default CombatantKind kind() {
+        return CombatantKind.MAIN;
+    }
+
     float hp();
 
     float maximumHp();
@@ -18,4 +28,14 @@ public interface CombatantView {
     }
 
     boolean alive();
+
+    /** 防御を含む現在の被ダメージ倍率。1が無補正。 */
+    default float defenseMultiplier() {
+        return 1f;
+    }
+
+    /** coreの描画型に依存しない現在位置。 */
+    default CombatantPosition position() {
+        return CombatantPosition.ORIGIN;
+    }
 }

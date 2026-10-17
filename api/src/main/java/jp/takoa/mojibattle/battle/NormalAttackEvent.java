@@ -13,7 +13,7 @@ public record NormalAttackEvent(String attackerInstanceId, ResourceId characterI
         Objects.requireNonNull(attackerType, "attackerType");
     }
     public enum Team { ALLY, ENEMY }
-    public enum AttackerType { MAIN, SUPPORT }
+    public enum AttackerType { MAIN, SUPPORT, SUMMON }
     public AttackType attackType() { return AttackType.NORMAL; }
     public enum AttackType { NORMAL }
 }

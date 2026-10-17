@@ -11,8 +11,8 @@ final class ExternalAbilityContexts {
     static AbilityActivationContext create(BattleController battle, CharacterRuntime user) {
         CharacterRuntime target = battle.targetOf(user.playerId);
         return new AbilityActivationContext(
-                new CoreCombatantView(user),
-                target == null ? null : new CoreCombatantView(target),
+                new CoreCombatantView(battle, user),
+                target == null ? null : new CoreCombatantView(battle, target),
                 new CoreCombatActions(battle));
     }
 }

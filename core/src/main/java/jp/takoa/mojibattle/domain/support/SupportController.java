@@ -55,6 +55,9 @@ public final class SupportController {
             int supportCount,
             float delta) {
         support.update(delta, battle.supportUltimateChargeMultiplier());
+        if (support.hiddenAndDisabled() || !support.isAlive()) return;
+        Object lockedTarget = battle.lockedNormalAttackTarget(support);
+        if (lockedTarget instanceof CharacterRuntime lockedMain) enemy = lockedMain;
         if (support.passive() != null) {
             support.passive().update(context(battle, battle.team(support.owner), support), delta);
             support.passiveStateLines = java.util.List.copyOf(java.util.Objects.requireNonNull(
@@ -86,14 +89,14 @@ public final class SupportController {
         float attackRangeSquared = support.definition.attackRange * support.definition.attackRange;
 
         if (support.attackReady() && support.position.dst2(enemy.position) <= attackRangeSquared) {
-            AttackProfile profile = profile(support);
+            AttackProfile profile = profile(battle, support);
             Vector3 start = new Vector3(support.position).add(0, 1, 0);
             Vector3 velocity = new Vector3(enemy.position).add(0, 1, 0).sub(start).nor().scl(support.definition.projectileSpeed);
             battle.notifyNormalAttack(support);
             for (int projectileIndex=0; projectileIndex<profile.projectiles; projectileIndex++) {
                 float angle = profile.projectiles == 1 ? 0 : -profile.spread/2 + profile.spread*projectileIndex/(profile.projectiles-1f);
                 for (int hit=0; hit<profile.hits; hit++) {
-                    Projectile shot = new Projectile(battle.nextAttackId(), support.owner, support.definition.displayGlyph, profile.texture, profile.effect, start, new Vector3(velocity).rotate(Vector3.Y, angle), .42f, support.definition.baseDamage*profile.damage, 0, 2.5f).criticalProfile(support.definition.criticalEnabled, support.definition.criticalRate, support.definition.criticalDamageMultiplier);
+                    Projectile shot = new Projectile(battle.nextAttackId(), support.owner, support.definition.displayGlyph, profile.texture, profile.effect, start, new Vector3(velocity).rotate(Vector3.Y, angle), .42f, support.definition.baseDamage*profile.damage, 0, 2.5f).criticalProfile(support.definition.criticalEnabled, support.definition.criticalRate, support.definition.criticalDamageMultiplier).sourceInstanceId(support.instanceId);
                     if (support.definition.curvedProjectile) shot.curve(24f);
                     battle.spawn(shot);
                 }
@@ -121,11 +124,13 @@ public final class SupportController {
 
     private static SupportPassiveContext context(BattleController battle, PlayerTeam team, SupportCharacterRuntime support) {
         CharacterRuntime target=battle.targetOf(support.owner);
-        return new SupportPassiveContext(new CoreSupportView(support),new CoreCombatantView(team.main()),target==null?null:new CoreCombatantView(target),new CoreCombatActions(battle),new CoreSupportActions(support),support.state(),MapConfigView.of(support.definition.parameters),battle.elapsedSeconds());
+        return new SupportPassiveContext(new CoreSupportView(support),new CoreCombatantView(battle,team.main()),target==null?null:new CoreCombatantView(battle,target),new CoreCombatActions(battle),new CoreSupportActions(battle,support),support.state(),MapConfigView.of(support.definition.parameters),battle.elapsedSeconds());
     }
 
-    private static AttackProfile profile(SupportCharacterRuntime support) {
+    private static AttackProfile profile(BattleController battle, SupportCharacterRuntime support) {
         float damage=1, interval=1, spread=0; int projectiles=1,hits=1; String texture=support.definition.projectileTexture,effect=EffectIds.WIND;
+        int living = battle.livingBattleCombatants().size();
+        damage *= support.countAttackMultiplier(living);
         var ordered=support.normalAttackModifiers().stream().sorted(java.util.Comparator.comparingInt(SupportNormalAttackModifier::priority).thenComparing(v->v.id().toString())).toList();
         for(var m:ordered){
             switch(m.stacking()){

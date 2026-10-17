@@ -308,6 +308,8 @@ flowchart LR
 
 `api` は外部 MOD がコンパイル時に参照する最小境界です。Java 21 のみで動き、libGDX や `core` へ依存しません。公開 Maven artifact ID は `mojibattle-api` です。
 
+APIの全契約、設計原則、導入手順、用途別サンプル、全公開クラス、後方互換性、更新履歴は [`api/README.md`](api/README.md) にまとめています。
+
 | パッケージ | 主な型 | 役割 |
 |---|---|---|
 | `mod` | `GameMod`, `ModContext`, `GameApiVersion` | MOD エントリーポイント、API / ゲーム版 |
@@ -428,7 +430,7 @@ flowchart LR
 
 - metadata schema は現在 `1` のみです。
 - MOD ID は正規化済み小文字で、`mojibattle_game` はホスト予約 ID、`mojibattle` は標準コンテンツIDです。
-- API major は `1`、ゲームバージョンは `0.1.0` です。
+- API major は `1`、ゲームバージョンは `0.8.1` です。
 - semantic version は厳密な `major.minor.patch` のみです。prerelease / build metadata は扱いません。
 - `gameVersion` は完全一致または `>=x.y.z` を受け付けます。
 - dependency range は空文字または `>=x.y.z` のみです。
@@ -665,7 +667,7 @@ glyphs/kabushiki.png
 現在の座標は次のとおりです。
 
 ```text
-jp.takoa.mojibattle:mojibattle-api:0.7.0
+jp.takoa.mojibattle:mojibattle-api:0.8.1
 ```
 
 ### 2. MOD プロジェクトを作る
@@ -690,7 +692,7 @@ java {
 }
 
 dependencies {
-    compileOnly("jp.takoa.mojibattle:mojibattle-api:0.7.0")
+    compileOnly("jp.takoa.mojibattle:mojibattle-api:0.8.1")
 }
 ```
 
@@ -719,12 +721,12 @@ examplemod.jar
   "name": "Example MOD",
   "version": "1.0.0",
   "apiVersion": "1",
-  "gameVersion": ">=0.1.0",
+  "gameVersion": ">=0.8.1",
   "entrypoint": "com.example.examplemod.ExampleMod",
   "dependencies": {
     "required": {
-      "mojibattle_game": ">=0.1.0",
-      "mojibattle": ">=0.1.0"
+      "mojibattle_game": ">=0.8.1",
+      "mojibattle": ">=0.8.1"
     },
     "optional": {}
   }
@@ -977,4 +979,5 @@ README 単体で全体像が分かるよう内容を統合していますが、�
 - [`docs/MIGRATION_PHASES.md`](docs/MIGRATION_PHASES.md) — Phase 1～9の実装記録
 - [`docs/JAVADOC_AUDIT.md`](docs/JAVADOC_AUDIT.md) — Javadoc 監査
 - [`docs/STATIC_CHECK_REPORT.md`](docs/STATIC_CHECK_REPORT.md) — 静的確認記録
+- [`api/README.md`](api/README.md) — MOD API 0.8.1 完全ガイド、全公開クラス、更新履歴
 - [`packaging/README.md`](packaging/README.md) — Windows リリース作成

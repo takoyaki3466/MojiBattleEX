@@ -8,6 +8,11 @@ import java.util.List;
  * Ability実装がcore内部型へ触れずに要求できる戦闘操作の最小境界。
  */
 public interface CombatActions {
+    /** メイン、補助、召喚を含む現在の戦場。 */
+    default BattlefieldView battlefield() {
+        return BattlefieldView.EMPTY;
+    }
+
     void damage(CombatantView source, CombatantView target, float amount);
 
     /** DamageService相当の全計算を通して、指定種別の基礎ダメージを与える。 */
@@ -62,12 +67,23 @@ public interface CombatActions {
 
     /** 使用者と同じチームおよび死亡者を除いた敵を返す。 */
     default List<CombatantView> enemiesOf(CombatantView source) {
-        return List.of();
+        return battlefield().enemiesOf(source);
     }
 
     /** 使用者自身を含む、同じチームの生存メインキャラクターを登録順で返す。 */
     default List<CombatantView> alliesOf(CombatantView source) {
-        return List.of(source);
+        List<CombatantView> allies = battlefield().alliesOf(source);
+        return allies.isEmpty() ? List.of(source) : allies;
+    }
+
+    /** 指定条件の決闘を開始する。 */
+    default void startDuel(DuelSpec spec) {
+        throw new UnsupportedOperationException("Duels are not supported by this combat host");
+    }
+
+    /** 攻撃者の通常攻撃対象を指定秒数だけ固定する。補助・召喚も攻撃者に指定できる。 */
+    default void lockNormalAttackTarget(CombatantView attacker, CombatantView target, float durationSeconds) {
+        throw new UnsupportedOperationException("Normal attack target locks are not supported by this combat host");
     }
 
     /** sourceからtargetを離す。実装は戦場境界とキャラクター衝突を保証する。 */

@@ -28,6 +28,7 @@ import jp.takoa.mojibattle.domain.CharacterDefinition;
 import jp.takoa.mojibattle.domain.CharacterRuntime;
 import jp.takoa.mojibattle.domain.combat.CombatObject;
 import jp.takoa.mojibattle.domain.combat.FamilySummon;
+import jp.takoa.mojibattle.domain.combat.TemporarySupportSummon;
 import jp.takoa.mojibattle.domain.combat.LineStrike;
 import jp.takoa.mojibattle.domain.PlayerId;
 import jp.takoa.mojibattle.domain.combat.Projectile;
@@ -326,7 +327,9 @@ public final class ArenaRenderer implements Disposable {
                 List<SupportCharacterRuntime> supports = battle.supports(id);
                 List<ModelInstance> models = supportModels.get(id);
                 for (int supportIndex = 0; supportIndex < supports.size(); supportIndex++) {
-                    renderSupport(models.get(supportIndex), supports.get(supportIndex), camera);
+                    if (!supports.get(supportIndex).hiddenAndDisabled() && supports.get(supportIndex).isAlive()) {
+                        renderSupport(models.get(supportIndex), supports.get(supportIndex), camera);
+                    }
                 }
             }
         }
@@ -435,6 +438,15 @@ public final class ArenaRenderer implements Disposable {
             } else if (object instanceof FamilySummon family) {
                 renderFamily(family, camera);
 
+            } else if (object instanceof TemporarySupportSummon temporary) {
+                ensureProjectileModel(temporary.texturePath);
+                ModelInstance glyph = modelForResource(projectileGlyphs, temporary.texturePath);
+                if (glyph != null) {
+                    tempPosition.set(temporary.position()).add(0, 1.15f + MathUtils.sin(animationTime * 7f) * .12f, 0);
+                    billboard(glyph, tempPosition, camera, 1.55f);
+                    batch.render(glyph, environment);
+                }
+
             } else if (object instanceof CarHazard car) {
                 renderCar(car, camera);
 
@@ -486,6 +498,12 @@ public final class ArenaRenderer implements Disposable {
         tempPosition.set(runtime.position).add(0, 1.15f + MathUtils.sin(animationTime * 6f) * .14f, 0);
         billboard(model, tempPosition, camera, 1.25f);
         batch.render(model, environment);
+    }
+
+    private void ensureProjectileModel(String texturePath) {
+        if (modelForResource(projectileGlyphs, texturePath) == null) {
+            addProjectileModel(new ModelBuilder(), texturePath, Color.WHITE);
+        }
     }
 
     private void renderLineStrike(LineStrike line, Camera camera) {

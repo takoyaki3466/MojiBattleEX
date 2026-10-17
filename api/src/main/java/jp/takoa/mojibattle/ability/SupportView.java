@@ -1,6 +1,6 @@
 package jp.takoa.mojibattle.ability;
 
-/** HPを持たない補助キャラクターの読取り専用ビュー。 */
+/** 補助Abilityの所有個体と専用ゲージを表す制御用ビュー。HP等の戦闘値はBattlefieldViewから取得する。 */
 public interface SupportView {
     String id();
 

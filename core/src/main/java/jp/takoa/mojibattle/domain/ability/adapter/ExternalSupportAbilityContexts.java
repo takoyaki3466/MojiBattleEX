@@ -14,10 +14,10 @@ public final class ExternalSupportAbilityContexts {
         CharacterRuntime target = context.battle.targetOf(context.team.main().playerId);
         return new SupportAbilityActivationContext(
                 new CoreSupportView(context.support),
-                new CoreCombatantView(context.team.main()),
-                target == null ? null : new CoreCombatantView(target),
+                new CoreCombatantView(context.battle, context.team.main()),
+                target == null ? null : new CoreCombatantView(context.battle, target),
                 new CoreCombatActions(context.battle),
                 MapConfigView.of(context.ability.parameters),
-                context.battle.elapsedSeconds(), new CoreSupportActions(context.support), context.support.state());
+                context.battle.elapsedSeconds(), new CoreSupportActions(context.battle, context.support), context.support.state());
     }
 }

@@ -21,7 +21,10 @@ import jp.takoa.mojibattle.battle.BattlefieldPulseSpec;
 import jp.takoa.mojibattle.battle.CutInSpec;
 import jp.takoa.mojibattle.battle.DomainSpec;
 import jp.takoa.mojibattle.battle.NormalAttackModifier;
+import jp.takoa.mojibattle.battle.CombatantKind;
+import jp.takoa.mojibattle.battle.DuelSpec;
 import jp.takoa.mojibattle.ability.AbilityStateLine;
+import jp.takoa.mojibattle.ability.SupportSplitSpec;
 import jp.takoa.mojibattle.domain.combat.AwakeningItem;
 import jp.takoa.mojibattle.domain.combat.ActiveDomain;
 import jp.takoa.mojibattle.domain.combat.BattlefieldPulse;
@@ -29,6 +32,7 @@ import jp.takoa.mojibattle.domain.combat.CarHazard;
 import jp.takoa.mojibattle.domain.combat.CashBundle;
 import jp.takoa.mojibattle.domain.combat.CombatObject;
 import jp.takoa.mojibattle.domain.combat.FamilySummon;
+import jp.takoa.mojibattle.domain.combat.TemporarySupportSummon;
 import jp.takoa.mojibattle.domain.combat.LineStrike;
 import jp.takoa.mojibattle.domain.combat.Projectile;
 import jp.takoa.mojibattle.domain.combat.ScheduledCombatAction;
@@ -39,6 +43,7 @@ import jp.takoa.mojibattle.domain.combat.UltimateStrike;
 import jp.takoa.mojibattle.domain.combat.VisualEffect;
 import jp.takoa.mojibattle.domain.debug.CharacterDebugSnapshot;
 import jp.takoa.mojibattle.domain.status.StatusEffect;
+import jp.takoa.mojibattle.domain.status.StatusEffectSystem;
 import jp.takoa.mojibattle.domain.status.StatusType;
 import jp.takoa.mojibattle.domain.support.FieldEffectSystem;
 import jp.takoa.mojibattle.domain.support.SupportCharacterDefinition;
@@ -65,6 +70,9 @@ import java.util.List;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.Comparator;
+import java.util.Map;
+import java.util.HashMap;
+import java.util.LinkedHashSet;
 
 /**
  * 固定時間ステップごとに入力、キャラクター、攻撃判定、状態効果、勝敗を更新する戦闘ドメインの中核。
@@ -98,6 +106,10 @@ public final class BattleController {
     private final EnumMap<PlayerId, PlayerTeam> teams = new EnumMap<>(PlayerId.class);
     private final IdentityHashMap<CharacterRuntime, AbilityLoadout> abilityLoadouts = new IdentityHashMap<>();
     private final IdentityHashMap<CharacterRuntime, String> combatantInstanceIds = new IdentityHashMap<>();
+    private final IdentityHashMap<Object, String> summonInstanceIds = new IdentityHashMap<>();
+    private final List<DuelState> duels = new ArrayList<>();
+    private final Map<String, TargetLock> normalAttackTargetLocks = new HashMap<>();
+    private long summonSequence;
 
     private final SupportController supportController;
     private final FieldEffectSystem fieldEffects = new FieldEffectSystem();
@@ -267,6 +279,8 @@ public final class BattleController {
         visualPulse = Math.max(0, visualPulse - delta * 3.2f);
         criticalPulse = Math.max(0, criticalPulse - delta * 2.5f);
         timer.update(delta);
+        duels.removeIf(duel -> duel.expiresAt <= timer.elapsed());
+        normalAttackTargetLocks.values().removeIf(lock -> lock.expiresAt <= timer.elapsed() || !alive(findByInstanceId(lock.targetInstanceId)));
         updatePresentationStates(delta);
 
         if (!finalMinuteStarted && timer.remaining() <= config.finalMinuteSeconds) {
@@ -549,6 +563,7 @@ public final class BattleController {
             object.update(delta);
             switch (object) {
                 case FamilySummon family -> updateFamily(family, delta);
+                case TemporarySupportSummon temporary -> updateTemporarySupportSummon(temporary, delta);
                 case BattlefieldPulse pulse -> resolveBattlefieldPulse(pulse, delta);
                 case Projectile projectile -> resolveProjectile(projectile);
                 case UltimateStrike strike when strike.takeDamagePending() -> resolveStrike(strike);
@@ -571,10 +586,70 @@ public final class BattleController {
             }
         }
 
+        Set<String> recombine = new HashSet<>();
+        for (CombatObject object : objects) {
+            if (object instanceof TemporarySupportSummon temporary && temporary.expired() && temporary.recombineOnEnd) {
+                recombine.add(temporary.sourceSupportInstanceId);
+            }
+        }
         objects.removeIf(CombatObject::expired);
         objects.addAll(pendingObjects);
 
         pendingObjects.clear();
+        for (String supportId : recombine) {
+            boolean hasSplit = objects.stream().anyMatch(value -> value instanceof TemporarySupportSummon temporary
+                    && temporary.sourceSupportInstanceId.equals(supportId) && !temporary.expired());
+            if (!hasSplit) {
+                Object support = findOwnedByInstanceId(supportId);
+                if (support instanceof SupportCharacterRuntime runtime) runtime.hiddenAndDisabled(false);
+            }
+        }
+    }
+
+    private Object findOwnedByInstanceId(String id) {
+        for (CharacterRuntime main : allMains()) if (id.equals(instanceIdOf(main))) return main;
+        for (PlayerTeam team : teams.values()) for (SupportCharacterRuntime support : team.supports()) if (id.equals(support.instanceId)) return support;
+        for (CombatObject object : objects) if (isLivingSummon(object) && id.equals(instanceIdOf(object))) return object;
+        for (CombatObject object : pendingObjects) if (isLivingSummon(object) && id.equals(instanceIdOf(object))) return object;
+        return null;
+    }
+
+    /** 補助を一時召喚群へ置き換える。召喚は次の更新確定前からBattlefieldViewへ現れる。 */
+    public void splitSupport(SupportCharacterRuntime support, SupportSplitSpec spec) {
+        if (!containsBattleCombatant(support) || spec == null || support.hiddenAndDisabled()) throw new IllegalArgumentException("Invalid support split");
+        Object target = spec.commonTarget() == null ? null : findByInstanceId(spec.commonTarget().instanceId());
+        if (target != null && ownerOf(target) == support.owner) throw new IllegalArgumentException("Split target must be an enemy");
+        if (spec.hideAndDisableOriginal()) support.hiddenAndDisabled(true);
+        int count = spec.members().size();
+        for (int index = 0; index < count; index++) {
+            var member = spec.members().get(index);
+            float angle = MathUtils.PI2 * index / count;
+            Vector3 start = new Vector3(support.position).add(MathUtils.cos(angle) * 1.2f, 0, MathUtils.sin(angle) * 1.2f);
+            TemporarySupportSummon summon = new TemporarySupportSummon(support.owner, support.instanceId,
+                    support.instanceId + ":split:" + (++summonSequence), support.definition.id, member.displayGlyph(),
+                    member.texture().toString(), start, support.maximumHp(), member.attackDamage(),
+                    member.attackIntervalSeconds(), member.moveSpeed(), target == null ? null : instanceIdOf(target),
+                    spec.durationSeconds(), spec.recombineOnEnd());
+            spawn(summon);
+        }
+    }
+
+    private void updateTemporarySupportSummon(TemporarySupportSummon summon, float delta) {
+        if (summon.expired()) return;
+        Object target = lockedNormalAttackTarget(summon);
+        if (target == null) target = findByInstanceId(summon.commonTargetInstanceId);
+        if (target == null) target = targetOf(summon.owner);
+        if (target == null || !alive(target)) return;
+        Vector3 targetPosition = positionOf(target);
+        Vector3 movement = new Vector3(targetPosition).sub(summon.position()); movement.y = 0;
+        if (movement.len2() > 36f && summon.moveSpeed > 0) summon.position().mulAdd(movement.nor(), Math.min(movement.len(), summon.moveSpeed * delta));
+        if (!summon.attackReady()) return;
+        Vector3 start = new Vector3(summon.position()).add(0, 1, 0);
+        Vector3 velocity = new Vector3(targetPosition).add(0, 1, 0).sub(start).nor().scl(16f);
+        spawn(new Projectile(nextAttackId(), summon.owner, summon.glyph, summon.texturePath, EffectIds.IMPACT,
+                start, velocity, .4f, summon.attackDamage, 0, 2.5f).sourceInstanceId(summon.instanceId));
+        notifyNormalAttack(summon.instanceId, summon.definitionId, summon.owner, NormalAttackEvent.AttackerType.SUMMON);
+        summon.resetAttack();
     }
 
     /** 領域とカットインの表示寿命を、戦闘の固定時間と同じ時計で進める。 */
@@ -632,9 +707,13 @@ public final class BattleController {
         }
 
         boolean contact = false;
+        Object projectileSource = projectile.sourceInstanceId() == null
+                ? (projectile.source() == null ? player(projectile.owner) : projectile.source())
+                : findByInstanceId(projectile.sourceInstanceId());
+        if (projectileSource == null) return;
 
         for (CombatObject object : objects) {
-            if (!(object instanceof FamilySummon family) || family.owner == projectile.owner || family.expired()) {
+            if (!(object instanceof FamilySummon family) || family.owner == projectile.owner || family.expired() || !canDamage(projectileSource, family)) {
                 continue;
             }
 
@@ -652,7 +731,7 @@ public final class BattleController {
         CharacterRuntime contactTarget = null;
 
         for (CharacterRuntime candidate : allMains()) {
-            if (candidate.playerId != projectile.owner && candidate.isAlive()) {
+            if (candidate.playerId != projectile.owner && candidate.isAlive() && canDamage(projectileSource, candidate)) {
 
                 float combined = projectile.radius * 3f * hitboxMultiplier + candidate.definition.collisionRadius * 1.5f;
 
@@ -674,7 +753,7 @@ public final class BattleController {
         float explosionRadius2 = explosionRadius * explosionRadius;
 
         for (CombatObject object : objects) {
-            if (!(object instanceof FamilySummon family) || family.owner == projectile.owner || family.expired()) {
+            if (!(object instanceof FamilySummon family) || family.owner == projectile.owner || family.expired() || !canDamage(projectileSource, family)) {
                 continue;
             }
 
@@ -686,7 +765,7 @@ public final class BattleController {
             }
         }
         for (CharacterRuntime target : allMains()) {
-            if (target.playerId != projectile.owner && target.isAlive()) {
+            if (target.playerId != projectile.owner && target.isAlive() && canDamage(projectileSource, target)) {
                 Vector3 targetCenter = new Vector3(target.position).add(0, 1, 0);
 
                 if (projectile.position().dst2(targetCenter) > explosionRadius2) {
@@ -700,7 +779,7 @@ public final class BattleController {
                         || projectile.ignoresDefenseOnCritical() && critical > 1f
                         || passiveIgnoresDefense(owner);
                 float dealt = damageService.apply(owner, target, projectile.baseDamage, attack * critical,
-                        defenseMultiplier(target), incomingEffectMultiplier(target),
+                        combatantDefenseMultiplier(target), incomingEffectMultiplier(target) * duelDamageMultiplier(projectileSource, target),
                         new DamageService.AttackTraits(ignoreDefense));
 
                 if (dealt > 0) {
@@ -1000,8 +1079,9 @@ public final class BattleController {
     /** 既存戦闘オブジェクトにも、APIパッシブの防御無視を同一規則で適用する。 */
     private float applyLegacyDamage(CharacterRuntime owner, CharacterRuntime target, float baseDamage,
                                     float attack) {
-        return damageService.apply(owner, target, baseDamage, attack, defenseMultiplier(target),
-                incomingEffectMultiplier(target),
+        if (!canDamage(owner, target)) return 0;
+        return damageService.apply(owner, target, baseDamage, attack, combatantDefenseMultiplier(target),
+                incomingEffectMultiplier(target) * duelDamageMultiplier(owner, target),
                 new DamageService.AttackTraits(passiveIgnoresDefense(owner)));
     }
 
@@ -1057,7 +1137,8 @@ public final class BattleController {
 
     private void damageFamily(PlayerId attackerId, FamilySummon family, float baseDamage, String effectId) {
         CharacterRuntime attacker = player(attackerId);
-        float dealt = family.receiveDamage(baseDamage * attackMultiplier(attacker));
+        if (!canDamage(attacker, family)) return;
+        float dealt = family.receiveDamage(baseDamage * attackMultiplier(attacker) * duelDamageMultiplier(attacker, family));
 
         attacker.recordDamage(dealt);
 
@@ -1361,6 +1442,7 @@ public final class BattleController {
         if (request == null) {
             throw new IllegalArgumentException("Damage request is required");
         }
+        if (!canDamage(source, target)) return new DamageResult(0, false, request.ignoreDefense());
         float typeScale = switch (request.type()) {
             case NORMAL -> 1f;
             case SKILL -> .55f;
@@ -1373,8 +1455,8 @@ public final class BattleController {
                 || request.ignoreDefenseOnCritical() && criticalHit
                 || passiveIgnoresDefense(source);
         float dealt = damageService.apply(source, target, request.baseDamage() * typeScale,
-                attackMultiplier(source) * ultimate * critical, defenseMultiplier(target),
-                incomingEffectMultiplier(target), new DamageService.AttackTraits(ignoreDefense));
+                attackMultiplier(source) * ultimate * critical, combatantDefenseMultiplier(target),
+                incomingEffectMultiplier(target) * duelDamageMultiplier(source, target), new DamageService.AttackTraits(ignoreDefense));
         if (critical > 1f && dealt > 0) {
             criticalPulse = 1f;
             emitEffect(target.position, EffectIds.CRITICAL, 7f, .8f);
@@ -1383,6 +1465,49 @@ public final class BattleController {
             trainingStatistics.record(dealt);
         }
         return new DamageResult(dealt, criticalHit, ignoreDefense);
+    }
+
+    /** 任意種別の公開戦闘個体へ構造化ダメージを適用する。 */
+    public DamageResult applyCombatantDamage(Object source, Object target, DamageRequest request) {
+        if (!containsBattleCombatant(source) || !containsBattleCombatant(target) || request == null) {
+            throw new IllegalArgumentException("Damage combatants must belong to this battle");
+        }
+        if (source instanceof CharacterRuntime sourceMain && target instanceof CharacterRuntime targetMain) {
+            return applyAbilityDamage(sourceMain, targetMain, request);
+        }
+        if (!canDamage(source, target) || !alive(target)) return new DamageResult(0, false, request.ignoreDefense());
+        float scale = damageTypeScale(request.type());
+        float defense = request.ignoreDefense() ? 1f : combatantDefenseMultiplier(target);
+        float incoming = target instanceof FamilySummon ? 1f
+                : statusesOf(target).multiplier(StatusType.DAMAGE_TAKEN_UP)
+                * statusesOf(target).multiplier(StatusType.DAMAGE_TAKEN_DOWN);
+        float amount = request.baseDamage() * scale * defense * incoming * duelDamageMultiplier(source, target);
+        float dealt;
+        if (target instanceof SupportCharacterRuntime support) dealt = support.receiveDamage(amount);
+        else if (target instanceof FamilySummon family) {
+            float rawBeforeFamilyDefense = request.baseDamage() * scale * duelDamageMultiplier(source, target);
+            dealt = family.receiveDamage(rawBeforeFamilyDefense);
+        }
+        else if (target instanceof TemporarySupportSummon temporary) dealt = temporary.receiveDamage(amount);
+        else if (target instanceof CharacterRuntime main) dealt = main.receiveDamage(amount);
+        else throw new IllegalArgumentException("Unknown combatant");
+        if (source instanceof CharacterRuntime main) main.recordDamage(dealt);
+        return new DamageResult(dealt, false, request.ignoreDefense());
+    }
+
+    public void healCombatant(Object target, float amount) {
+        if (!containsBattleCombatant(target) || !Float.isFinite(amount) || amount < 0) throw new IllegalArgumentException("Invalid heal");
+        if (target instanceof CharacterRuntime main) main.heal(amount);
+        else if (target instanceof SupportCharacterRuntime support) support.heal(amount);
+        else if (target instanceof FamilySummon family) family.heal(amount);
+        else if (target instanceof TemporarySupportSummon temporary) temporary.heal(amount);
+    }
+
+    public StatusEffectSystem statusesOf(Object target) {
+        if (target instanceof CharacterRuntime main) return main.statuses;
+        if (target instanceof SupportCharacterRuntime support) return support.statuses;
+        if (target instanceof TemporarySupportSummon temporary) return temporary.statuses;
+        throw new IllegalArgumentException("This combatant does not support status effects");
     }
 
     /** 視覚だけを担う領域を追加する。同時発動中の領域は解除しない。 */
@@ -1625,8 +1750,185 @@ public final class BattleController {
         return result;
     }
 
+    /** メイン、補助、召喚を含む、この戦闘が所有する全個体。 */
+    public List<Object> livingBattleCombatants() {
+        List<Object> result = new ArrayList<>();
+        for (CharacterRuntime main : allMains()) if (main.isAlive()) result.add(main);
+        for (PlayerTeam team : teams.values()) for (SupportCharacterRuntime support : team.supports()) {
+            if (support.isAlive() && !support.hiddenAndDisabled()) result.add(support);
+        }
+        for (CombatObject object : objects) if (isLivingSummon(object)) result.add(object);
+        for (CombatObject object : pendingObjects) if (isLivingSummon(object) && !result.contains(object)) result.add(object);
+        return List.copyOf(result);
+    }
+
+    private static boolean isLivingSummon(Object value) {
+        return value instanceof FamilySummon family && family.isAlive()
+                || value instanceof TemporarySupportSummon temporary && !temporary.expired();
+    }
+
+    public boolean containsBattleCombatant(Object value) {
+        if (value instanceof CharacterRuntime main) return containsCombatant(main);
+        if (value instanceof SupportCharacterRuntime support) {
+            return teams.values().stream().flatMap(team -> team.supports().stream()).anyMatch(candidate -> candidate == support);
+        }
+        return (objects.contains(value) || pendingObjects.contains(value)) && isLivingSummon(value);
+    }
+
+    public List<Object> alliedBattleCombatants(Object source) {
+        PlayerId owner = ownerOf(source);
+        return livingBattleCombatants().stream().filter(value -> ownerOf(value) == owner).toList();
+    }
+
+    public List<Object> enemyBattleCombatants(Object source) {
+        PlayerId owner = ownerOf(source);
+        return livingBattleCombatants().stream().filter(value -> ownerOf(value) != owner).toList();
+    }
+
+    public PlayerId ownerOf(Object value) {
+        if (value instanceof CharacterRuntime main) return main.playerId;
+        if (value instanceof SupportCharacterRuntime support) return support.owner;
+        if (value instanceof FamilySummon family) return family.owner;
+        if (value instanceof TemporarySupportSummon temporary) return temporary.owner;
+        throw new IllegalArgumentException("Unknown combatant");
+    }
+
+    public String definitionIdOf(Object value) {
+        if (value instanceof CharacterRuntime main) return main.definition.id;
+        if (value instanceof SupportCharacterRuntime support) return support.definition.id;
+        if (value instanceof FamilySummon) return "mojibattle:family_summon";
+        if (value instanceof TemporarySupportSummon temporary) return temporary.definitionId;
+        throw new IllegalArgumentException("Unknown combatant");
+    }
+
+    public String instanceIdOf(Object value) {
+        if (value instanceof CharacterRuntime main) return combatantInstanceIds.get(main);
+        if (value instanceof SupportCharacterRuntime support) return support.instanceId;
+        if (value instanceof TemporarySupportSummon temporary) return temporary.instanceId;
+        if (value instanceof FamilySummon) return summonInstanceIds.computeIfAbsent(value, ignored -> "summon:" + (++summonSequence));
+        throw new IllegalArgumentException("Unknown combatant");
+    }
+
+    public CombatantKind kindOf(Object value) {
+        if (value instanceof CharacterRuntime) return CombatantKind.MAIN;
+        if (value instanceof SupportCharacterRuntime) return CombatantKind.SUPPORT;
+        if (value instanceof FamilySummon || value instanceof TemporarySupportSummon) return CombatantKind.SUMMON;
+        throw new IllegalArgumentException("Unknown combatant");
+    }
+
+    public float hpOf(Object value) {
+        if (value instanceof CharacterRuntime main) return main.hp();
+        if (value instanceof SupportCharacterRuntime support) return support.hp();
+        if (value instanceof FamilySummon family) return family.hp();
+        if (value instanceof TemporarySupportSummon temporary) return temporary.hp();
+        throw new IllegalArgumentException("Unknown combatant");
+    }
+
+    public float maximumHpOf(Object value) {
+        if (value instanceof CharacterRuntime main) return main.maxHp();
+        if (value instanceof SupportCharacterRuntime support) return support.maximumHp();
+        if (value instanceof FamilySummon family) return family.maximumHp;
+        if (value instanceof TemporarySupportSummon temporary) return temporary.maximumHp();
+        throw new IllegalArgumentException("Unknown combatant");
+    }
+
+    public float ultimatePointsOf(Object value) {
+        if (value instanceof CharacterRuntime main) return main.ultimatePoints();
+        if (value instanceof SupportCharacterRuntime support) return support.ultimatePoints();
+        return 0;
+    }
+
+    public boolean alive(Object value) {
+        if (value == null) return false;
+        if (value instanceof CharacterRuntime main) return main.isAlive();
+        if (value instanceof SupportCharacterRuntime support) return support.isAlive();
+        return isLivingSummon(value);
+    }
+
+    public Vector3 positionOf(Object value) {
+        if (value instanceof CharacterRuntime main) return main.position;
+        if (value instanceof SupportCharacterRuntime support) return support.position;
+        if (value instanceof CombatObject object) return object.position();
+        throw new IllegalArgumentException("Unknown combatant");
+    }
+
+    public float combatantDefenseMultiplier(Object value) {
+        float base = value instanceof CharacterRuntime main ? defenseMultiplier(main)
+                : value instanceof SupportCharacterRuntime support ? support.defenseMultiplier()
+                : value instanceof FamilySummon family ? family.defenseMultiplier() : 1f;
+        DuelState duel = duelFor(instanceIdOf(value));
+        return base * (duel == null ? 1f : duel.participantDefenseMultiplier);
+    }
+
+    public Object findByInstanceId(String id) {
+        if (id == null) return null;
+        return livingBattleCombatants().stream().filter(value -> id.equals(instanceIdOf(value))).findFirst().orElse(null);
+    }
+
+    public void startDuel(DuelSpec spec, List<Object> allies, Object enemy) {
+        if (spec == null || allies.isEmpty() || !containsBattleCombatant(enemy) || !alive(enemy)) throw new IllegalArgumentException("Invalid duel");
+        PlayerId allyOwner = ownerOf(allies.getFirst());
+        if (allies.stream().anyMatch(value -> !containsBattleCombatant(value) || !alive(value) || ownerOf(value) != allyOwner)
+                || ownerOf(enemy) == allyOwner) throw new IllegalArgumentException("Duel sides must be opposing teams");
+        Set<String> allyIds = new LinkedHashSet<>();
+        allies.forEach(value -> allyIds.add(instanceIdOf(value)));
+        Set<String> nextParticipants = new HashSet<>(allyIds);
+        nextParticipants.add(instanceIdOf(enemy));
+        List<DuelState> replaced = duels.stream().filter(value -> value.allies.stream().anyMatch(nextParticipants::contains)
+                || nextParticipants.contains(value.enemy)).toList();
+        for (DuelState old : replaced) {
+            old.allies.forEach(normalAttackTargetLocks::remove);
+            normalAttackTargetLocks.remove(old.enemy);
+        }
+        duels.removeAll(replaced);
+        DuelState state = new DuelState(Set.copyOf(allyIds), instanceIdOf(enemy), timer.elapsed() + spec.durationSeconds(),
+                spec.restrictTargets(), spec.participantDefenseMultiplier(), spec.outsideAttackerDamageMultiplier());
+        duels.add(state);
+        for (String id : allyIds) normalAttackTargetLocks.put(id, new TargetLock(state.enemy, state.expiresAt));
+        normalAttackTargetLocks.put(state.enemy, new TargetLock(allyIds.iterator().next(), state.expiresAt));
+    }
+
+    public void lockNormalAttackTarget(Object attacker, Object target, float durationSeconds) {
+        if (!containsBattleCombatant(attacker) || !containsBattleCombatant(target)
+                || ownerOf(attacker) == ownerOf(target) || !Float.isFinite(durationSeconds) || durationSeconds <= 0) {
+            throw new IllegalArgumentException("Invalid normal attack target lock");
+        }
+        normalAttackTargetLocks.put(instanceIdOf(attacker), new TargetLock(instanceIdOf(target), timer.elapsed() + durationSeconds));
+    }
+
+    public Object lockedNormalAttackTarget(Object attacker) {
+        TargetLock lock = normalAttackTargetLocks.get(instanceIdOf(attacker));
+        return lock == null ? null : findByInstanceId(lock.targetInstanceId);
+    }
+
+    public boolean canDamage(Object attacker, Object target) {
+        if (!containsBattleCombatant(attacker) || !containsBattleCombatant(target) || ownerOf(attacker) == ownerOf(target)) return false;
+        DuelState duel = duelFor(instanceIdOf(attacker));
+        if (duel == null || !duel.restrictTargets) return true;
+        String attackerId = instanceIdOf(attacker), targetId = instanceIdOf(target);
+        return duel.enemy.equals(attackerId) ? duel.allies.contains(targetId) : duel.enemy.equals(targetId);
+    }
+
+    public float duelDamageMultiplier(Object attacker, Object target) {
+        String attackerId = instanceIdOf(attacker), targetId = instanceIdOf(target);
+        DuelState targetDuel = duelFor(targetId);
+        if (targetDuel == null) return 1f;
+        boolean sameDuel = targetDuel.enemy.equals(attackerId) || targetDuel.allies.contains(attackerId);
+        return sameDuel ? 1f : targetDuel.outsideAttackerDamageMultiplier;
+    }
+
+    private DuelState duelFor(String instanceId) {
+        return duels.stream().filter(value -> value.enemy.equals(instanceId) || value.allies.contains(instanceId)).findFirst().orElse(null);
+    }
+
+    private record TargetLock(String targetInstanceId, float expiresAt) { }
+    private record DuelState(Set<String> allies, String enemy, float expiresAt, boolean restrictTargets,
+                             float participantDefenseMultiplier, float outsideAttackerDamageMultiplier) { }
+
     public CharacterRuntime targetOf(PlayerId owner) {
         CharacterRuntime source = player(owner), best = null;
+        Object locked = lockedNormalAttackTarget(source);
+        if (locked instanceof CharacterRuntime lockedMain && lockedMain.isAlive()) return lockedMain;
         float bestDistance = Float.MAX_VALUE;
 
         for (CharacterRuntime candidate : players.values()) {

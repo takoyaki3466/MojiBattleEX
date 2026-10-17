@@ -12,4 +12,15 @@ public interface SupportActions {
     List<SupportNormalAttackModifier> normalAttackModifiers();
     boolean removeNormalAttackModifier(ResourceId id);
     void setStateLines(List<AbilityStateLine> lines);
+
+    /** 補助を指定された一時召喚個体へ分裂させる。 */
+    default void splitTemporarily(SupportSplitSpec spec) {
+        throw new UnsupportedOperationException("Temporary support splitting is not supported by this host");
+    }
+
+    /** 生存中のメイン・補助・召喚数を使う動的な攻撃倍率を登録する。 */
+    default void setBattlefieldCountAttackMultiplier(ResourceId id, int priority,
+            float baseMultiplier, float multiplierPerCombatant) {
+        throw new UnsupportedOperationException("Battlefield-count modifiers are not supported by this host");
+    }
 }
