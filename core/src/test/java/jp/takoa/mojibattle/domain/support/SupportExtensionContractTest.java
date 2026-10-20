@@ -1,8 +1,17 @@
 package jp.takoa.mojibattle.domain.support;
 
 import com.badlogic.gdx.math.Vector3;
-import jp.takoa.mojibattle.ability.*;
-import jp.takoa.mojibattle.battle.*;
+import jp.takoa.mojibattle.ability.config.annotations.ConfigView;
+import jp.takoa.mojibattle.ability.context.*;
+import jp.takoa.mojibattle.ability.presentation.*;
+import jp.takoa.mojibattle.ability.runtime.*;
+import jp.takoa.mojibattle.ability.support.*;
+import jp.takoa.mojibattle.battle.action.*;
+import jp.takoa.mojibattle.battle.action.spec.*;
+import jp.takoa.mojibattle.battle.combatant.*;
+import jp.takoa.mojibattle.battle.damage.*;
+import jp.takoa.mojibattle.battle.event.*;
+import jp.takoa.mojibattle.battle.modifier.*;
 import jp.takoa.mojibattle.domain.PlayerId;
 import jp.takoa.mojibattle.resource.ResourceId;
 import org.junit.jupiter.api.Test;
@@ -62,7 +71,7 @@ final class SupportExtensionContractTest {
             public float ultimatePoints(){return 0;} public boolean alive(){return true;}
         };
         RecordingActions combatActions = new RecordingActions();
-        return new Fixture(runtime, actions, combatActions, new SupportPassiveContext(support,owner,owner,combatActions,actions,runtime.state,ConfigView.empty(),0));
+        return new Fixture(runtime, actions, combatActions, new SupportPassiveContext(support,owner,owner,combatActions,actions,runtime.state, ConfigView.empty(),0));
     }
 
     private record Fixture(SupportCharacterRuntime runtime, CoreSupportActions actions, RecordingActions combatActions, SupportPassiveContext context) { }

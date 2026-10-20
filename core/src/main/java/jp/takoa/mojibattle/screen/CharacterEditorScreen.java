@@ -179,7 +179,7 @@ public final class CharacterEditorScreen extends StageScreen {
         for (CharacterDefinition owner : context.config.characters()) {
             AbilityConfigs.ProjectileSkill ability = context.config.skill(owner.skillId);
 
-            String summary = AbilityPresentationFormatter.format(context.registries.skillImplementations.require(ability.implementationId).presentation().apply(ability, context.config.battle.skillCooldownMultiplier), context.i18n);
+            String summary = AbilityPresentationFormatter.format(context.registries.skillImplementations.require(ability.implementationId).presentation().apply(jp.takoa.mojibattle.domain.ability.adapter.MapConfigView.forPresentation(ability), context.config.battle.skillCooldownMultiplier), context.i18n);
             String label = context.i18n.text("editor.ability_option", context.i18n.text(ability.nameKey), context.i18n.text(owner.nameKey), summary);
 
             addChoice(ability.id, label, skillId, () -> skillId = ability.id);

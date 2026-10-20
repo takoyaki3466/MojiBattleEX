@@ -1,7 +1,7 @@
 package jp.takoa.mojibattle.domain.ability.adapter;
 
-import jp.takoa.mojibattle.battle.CombatantView;
-import jp.takoa.mojibattle.battle.CombatantPosition;
+import jp.takoa.mojibattle.battle.combatant.CombatantView;
+import jp.takoa.mojibattle.battle.combatant.CombatantPosition;
 import jp.takoa.mojibattle.domain.CharacterRuntime;
 import jp.takoa.mojibattle.domain.BattleController;
 

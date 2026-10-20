@@ -1,25 +1,44 @@
 package jp.takoa.mojibattle.domain.ability.adapter;
 
-import jp.takoa.mojibattle.battle.CombatActions;
-import jp.takoa.mojibattle.battle.BattlefieldView;
-import jp.takoa.mojibattle.battle.CombatantView;
-import jp.takoa.mojibattle.battle.DuelSpec;
-import jp.takoa.mojibattle.battle.DamageType;
-import jp.takoa.mojibattle.battle.DamageRequest;
-import jp.takoa.mojibattle.battle.DamageResult;
-import jp.takoa.mojibattle.battle.DelayedStrikeSpec;
-import jp.takoa.mojibattle.battle.ProjectileSpec;
-import jp.takoa.mojibattle.battle.AreaAttackSpec;
-import jp.takoa.mojibattle.battle.StatusEffectType;
-import jp.takoa.mojibattle.battle.StatusSpec;
-import jp.takoa.mojibattle.battle.BattlefieldPulseSpec;
-import jp.takoa.mojibattle.battle.CutInSpec;
-import jp.takoa.mojibattle.battle.DomainSpec;
+import com.badlogic.gdx.math.MathUtils;
+import com.badlogic.gdx.math.Vector3;
+import jp.takoa.mojibattle.battle.action.CombatActions;
+import jp.takoa.mojibattle.battle.combatant.BattlefieldView;
+import jp.takoa.mojibattle.battle.combatant.CombatantView;
+import jp.takoa.mojibattle.battle.rule.DuelSpec;
+import jp.takoa.mojibattle.battle.damage.DamageType;
+import jp.takoa.mojibattle.battle.damage.DamageRequest;
+import jp.takoa.mojibattle.battle.damage.DamageResult;
+import jp.takoa.mojibattle.battle.action.spec.DelayedStrikeSpec;
+import jp.takoa.mojibattle.battle.action.spec.ProjectileSpec;
+import jp.takoa.mojibattle.battle.action.spec.AreaAttackSpec;
+import jp.takoa.mojibattle.battle.action.spec.CompanionSummonSpec;
+import jp.takoa.mojibattle.battle.action.spec.DetonationSpec;
+import jp.takoa.mojibattle.battle.action.spec.FallingStrikeSpec;
+import jp.takoa.mojibattle.battle.action.spec.LineAttackSpec;
+import jp.takoa.mojibattle.battle.action.spec.MovingHazardSpec;
+import jp.takoa.mojibattle.battle.action.spec.ProjectileBarrageSpec;
+import jp.takoa.mojibattle.battle.action.spec.ProjectilePatternSpec;
+import jp.takoa.mojibattle.battle.action.spec.SkillBarrageSpec;
+import jp.takoa.mojibattle.battle.action.spec.SpinningAttackSpec;
+import jp.takoa.mojibattle.battle.status.StatusEffectType;
+import jp.takoa.mojibattle.battle.status.StatusSpec;
+import jp.takoa.mojibattle.battle.action.spec.BattlefieldPulseSpec;
+import jp.takoa.mojibattle.battle.presentation.CutInSpec;
+import jp.takoa.mojibattle.battle.presentation.DomainSpec;
 import jp.takoa.mojibattle.domain.status.StatusEffect;
 import jp.takoa.mojibattle.domain.status.StatusStackRule;
 import jp.takoa.mojibattle.domain.status.StatusType;
 import jp.takoa.mojibattle.domain.BattleController;
 import jp.takoa.mojibattle.domain.CharacterRuntime;
+import jp.takoa.mojibattle.domain.combat.CarHazard;
+import jp.takoa.mojibattle.domain.combat.CashBundle;
+import jp.takoa.mojibattle.domain.combat.FamilySummon;
+import jp.takoa.mojibattle.domain.combat.LineStrike;
+import jp.takoa.mojibattle.domain.combat.Projectile;
+import jp.takoa.mojibattle.domain.combat.SpinningOne;
+import jp.takoa.mojibattle.domain.combat.SushiBarrage;
+import jp.takoa.mojibattle.domain.combat.UltimateStrike;
 import jp.takoa.mojibattle.resource.ResourceId;
 
 import java.util.List;
@@ -90,7 +109,7 @@ public final class CoreCombatActions implements CombatActions {
         if (spec.duration().permanentFlag()) {
             effect.permanent();
         }
-        if (spec.consumption() == jp.takoa.mojibattle.battle.StatusConsumption.ON_DAMAGE_RECEIVED) {
+        if (spec.consumption() == jp.takoa.mojibattle.battle.status.StatusConsumption.ON_DAMAGE_RECEIVED) {
             effect.consumeOnDamageReceived();
         }
         battle.statusesOf(targetRuntime).apply(effect);
@@ -109,7 +128,45 @@ public final class CoreCombatActions implements CombatActions {
         if (spec == null) {
             throw new IllegalArgumentException("Projectile specification is required");
         }
-        battle.spawnExternalProjectile(runtime(source), runtime(target), spec);
+        battle.spawnExternalProjectile(runtime(source), combatant(target), spec);
+    }
+
+    @Override
+    public void spawnProjectilePattern(CombatantView source, ProjectilePatternSpec spec) {
+        CharacterRuntime owner = runtime(source);
+        if (!spec.pointsOnHit()) {
+            battle.addSkillUltimatePoints(owner, spec.ultimatePointsPerHit() * spec.shots().size());
+        }
+        if (spec.activationEffectId() != null) {
+            battle.emitEffect(new Vector3(owner.position).add(0, 1, 0), spec.activationEffectId().toString(), 2.8f, .32f);
+        }
+        if (spec.activationTexture() != null) {
+            battle.emitImageEffect(new Vector3(owner.position).add(0, 1.4f, 0), spec.activationTexture().toString(),
+                    string(spec.activationEffectId()), spec.activationEffectScale(), .8f);
+        }
+        long attackId = battle.nextAttackId();
+        Vector3 forward = new Vector3(owner.facing).nor();
+        Vector3 right = new Vector3(-forward.z, 0, forward.x);
+        for (int index = 0; index < spec.shots().size(); index++) {
+            var shot = spec.shots().get(index);
+            Vector3 direction = spec.radial() ? new Vector3(
+                    MathUtils.sin(MathUtils.PI2 * index / spec.shots().size()), 0,
+                    MathUtils.cos(MathUtils.PI2 * index / spec.shots().size())) : new Vector3(forward);
+            Vector3 start = new Vector3(owner.position).mulAdd(direction, 1f);
+            if (!spec.radial()) start.mulAdd(right, shot.lateralOffset());
+            start.y += 1.1f + shot.verticalOffset();
+            Projectile projectile = new Projectile(attackId, owner.playerId, shot.glyph(), string(shot.texture()),
+                    string(spec.hitEffectId()), start, direction.scl(spec.speed() * 1.3f), spec.radius(),
+                    shot.baseDamage() * .55f, shot.stunSeconds(), shot.bindSeconds(), spec.lifetimeSeconds(),
+                    spec.boomerang(), spec.boomerangDistance(), spec.pointsOnHit() ? spec.ultimatePointsPerHit() : 0)
+                    .attackTraits(spec.ultimateAttack(), false).source(owner);
+            if (spec.followUpTexture() != null) {
+                projectile.followUp(spec.followUpGlyph(), spec.followUpTexture().toString(),
+                        spec.followUpDamage() * .55f, spec.followUpRadius(), spec.followUpSpeed());
+            }
+            battle.spawn(projectile);
+        }
+        if (spec.fallingStrike() != null) spawnFallingStrike(source, spec.fallingStrike());
     }
 
     @Override
@@ -117,7 +174,166 @@ public final class CoreCombatActions implements CombatActions {
         if (spec == null) {
             throw new IllegalArgumentException("Area attack specification is required");
         }
-        battle.spawnAreaAttack(runtime(source), runtime(target), spec);
+        battle.spawnAreaAttack(combatant(source), combatant(target), spec);
+    }
+
+    @Override
+    public void spawnFallingStrike(CombatantView source, FallingStrikeSpec spec) {
+        CharacterRuntime owner = runtime(source);
+        var p = spec.position();
+        UltimateStrike strike = new UltimateStrike(owner.playerId, new Vector3(p.x(), p.y(), p.z()),
+                spec.radius(), spec.damage().baseDamage(), spec.warningSeconds(), spec.effectSeconds(),
+                spec.spawnHeight(), string(spec.warningEffectId()), string(spec.impactEffectId()),
+                spec.dropStyle(), string(spec.objectTexture()), spec.horizontalOffset(), spec.burnDuration(),
+                spec.burnDamage(), spec.burnTickInterval(), spec.burnUltimatePointsPerTick());
+        strike.startAfter(spec.startDelaySeconds());
+        if (spec.damage().type() == DamageType.SKILL) strike.skillAttack();
+        battle.spawn(strike);
+    }
+
+    @Override
+    public void spawnLineAttack(CombatantView source, LineAttackSpec spec) {
+        CharacterRuntime owner = runtime(source);
+        for (int index = 0; index < spec.directions(); index++) {
+            Vector3 direction = spec.directions() == 1 ? new Vector3(owner.facing) : new Vector3(
+                    MathUtils.cos(MathUtils.PI2 * index / spec.directions()), 0,
+                    MathUtils.sin(MathUtils.PI2 * index / spec.directions()));
+            battle.spawn(new LineStrike(owner.playerId, owner.position, direction, spec.length(), spec.width(),
+                    spec.damage().baseDamage(), spec.warningSeconds() + index * .035f, spec.effectSeconds(),
+                    string(spec.warningEffectId()), string(spec.impactEffectId()), string(spec.objectTexture())).mainUltimate());
+        }
+    }
+
+    @Override
+    public void summonCompanions(CombatantView source, CompanionSummonSpec spec) {
+        CharacterRuntime owner = runtime(source);
+        float phase = battle.nextAttackId() * 1.37f;
+        for (int index = 0; index < spec.count(); index++) {
+            float angle = phase + MathUtils.PI2 * index / spec.count();
+            float radius = 2.2f + (index % 2) * .8f;
+            Vector3 spawn = new Vector3(owner.position).add(MathUtils.cos(angle) * radius, 0,
+                    MathUtils.sin(angle) * radius);
+            battle.spawn(new FamilySummon(owner.playerId, spawn, string(spec.texture()), spec.maximumHp(),
+                    spec.defense(), spec.attackDamage(), spec.attackInterval(), spec.projectileSpeed(),
+                    string(spec.impactEffectId()), angle, radius));
+        }
+    }
+
+    @Override
+    public void spawnMovingHazards(CombatantView source, MovingHazardSpec spec) {
+        CharacterRuntime owner = runtime(source);
+        for (int index = 0; index < spec.count(); index++) {
+            float angle = -27f + index * 18f;
+            Vector3 direction = new Vector3(owner.facing).rotate(Vector3.Y, angle);
+            Vector3 start = new Vector3(owner.position).mulAdd(direction, index * .45f);
+            battle.spawn(new CarHazard(owner.playerId, start, direction, spec.speed(), spec.radius(),
+                    spec.damage().baseDamage(), spec.stunSeconds(), spec.lifetimeSeconds(),
+                    battle.arenaHalfExtent(), string(spec.texture()), string(spec.impactEffectId())).mainUltimate());
+        }
+    }
+
+    @Override
+    public void spawnSpinningAttack(CombatantView source, SpinningAttackSpec spec) {
+        CharacterRuntime owner = runtime(source);
+        battle.spawn(new SpinningOne(owner.playerId, owner.position, spec.length(), spec.width(),
+                spec.damage().baseDamage(), spec.healOnHit(), spec.missingHealthBonus(), spec.lifetimeSeconds(),
+                string(spec.texture()), string(spec.impactEffectId())));
+    }
+
+    @Override
+    public void startSkillBarrage(CombatantView source, SkillBarrageSpec spec) {
+        CharacterRuntime owner = runtime(source);
+        battle.spawn(new jp.takoa.mojibattle.domain.combat.SkillBarrage(
+                owner, spec.skillId(), spec.count(), spec.intervalSeconds(), owner.position));
+    }
+
+    @Override
+    public void startProjectileBarrage(CombatantView source, ProjectileBarrageSpec spec) {
+        CharacterRuntime owner = runtime(source);
+        battle.spawn(new SushiBarrage(owner, spec.count(), spec.intervalSeconds(), spec.damage().baseDamage(),
+                spec.speed(), spec.lifetimeSeconds(), spec.radius(), string(spec.texture()),
+                string(spec.impactEffectId()), spec.damage().ignoreDefense()));
+        if (spec.enhancedNormalGlyph() != null && spec.texture() != null) {
+            owner.enhanceNormalAttack(spec.enhancedNormalGlyph(), spec.texture().toString(), spec.enhancedNormalScale());
+        }
+    }
+
+    @Override
+    public void detonateOwnedMarkers(CombatantView source, DetonationSpec spec) {
+        battle.detonateCashBundles(runtime(source), spec.damage().baseDamage(), spec.radius(),
+                spec.warningSeconds(), spec.effectSeconds(), spec.incomingDamageMultiplier(),
+                spec.debuffDurationSeconds(), string(spec.texture()), string(spec.warningEffectId()),
+                string(spec.impactEffectId()));
+    }
+
+    @Override
+    public boolean spawnDetonatableMarker(CombatantView source, ResourceId texture, int maximumOwned) {
+        CharacterRuntime owner = runtime(source);
+        if (texture == null || maximumOwned < 1) return false;
+        long count = battle.objects().stream()
+                .filter(object -> object instanceof CashBundle cash && cash.owner == owner.playerId).count();
+        if (count >= maximumOwned) return false;
+        long interval = (long) Math.floor(battle.elapsedSeconds());
+        float angle = Math.floorMod(interval * 137L + owner.playerId.ordinal() * 71L, 360L);
+        float radius = 3f + Math.floorMod(interval, 4L) * 1.3f;
+        Vector3 position = new Vector3(owner.position).add(MathUtils.cosDeg(angle) * radius, 0,
+                MathUtils.sinDeg(angle) * radius);
+        float edge = battle.arenaHalfExtent() - .8f;
+        position.x = MathUtils.clamp(position.x, -edge, edge);
+        position.z = MathUtils.clamp(position.z, -edge, edge);
+        battle.spawn(new CashBundle(owner.playerId, position, texture.toString()));
+        return true;
+    }
+
+    @Override
+    public void stun(CombatantView target, float durationSeconds) {
+        requireNonNegative(durationSeconds, "Stun duration");
+        runtime(target).applyStun(durationSeconds);
+    }
+
+    @Override
+    public void bind(CombatantView target, float durationSeconds) {
+        requireNonNegative(durationSeconds, "Bind duration");
+        runtime(target).applyBind(durationSeconds);
+    }
+
+    @Override
+    public void pullToward(CombatantView target, CombatantView destination, float maximumDistance,
+                           float remainingDistance) {
+        requireNonNegative(maximumDistance, "Pull distance");
+        requireNonNegative(remainingDistance, "Remaining distance");
+        CharacterRuntime moving = runtime(target);
+        Vector3 direction = new Vector3(battle.positionOf(combatant(destination))).sub(moving.position);
+        direction.y = 0;
+        float distance = direction.len();
+        if (distance > 0) moving.position.mulAdd(direction.scl(1f / distance),
+                Math.min(maximumDistance, Math.max(0, distance - remainingDistance)));
+    }
+
+    @Override
+    public boolean teleportBesideTarget(CombatantView mover, float distance) {
+        requireNonNegative(distance, "Teleport distance");
+        return battle.teleportRight(runtime(mover).playerId, distance);
+    }
+
+    @Override public void halveAllSkillCooldowns() { battle.halveAllSkillCooldowns(); }
+
+    @Override
+    public void gatherMainCombatantsAtCenter(float centerScale) {
+        if (!Float.isFinite(centerScale) || centerScale < 0 || centerScale > 1) {
+            throw new IllegalArgumentException("centerScale must be between zero and one");
+        }
+        for (CharacterRuntime target : battle.players()) {
+            target.position.scl(centerScale);
+            target.position.y = 0;
+        }
+    }
+
+    @Override public float arenaHalfExtent() { return battle.arenaHalfExtent(); }
+
+    @Override
+    public long additionalUltimateAttackCount(CombatantView source) {
+        return battle.additionalUltimateAttackCount(runtime(source));
     }
 
     @Override
@@ -125,7 +341,7 @@ public final class CoreCombatActions implements CombatActions {
         if (effectId == null) {
             throw new IllegalArgumentException("Effect ID is required");
         }
-        battle.emitEffect(runtime(origin).position, effectId.toString(), scale, durationSeconds);
+        battle.emitEffect(battle.positionOf(combatant(origin)), effectId.toString(), scale, durationSeconds);
     }
 
     @Override
@@ -149,17 +365,17 @@ public final class CoreCombatActions implements CombatActions {
 
     @Override
     public void knockbackAwayFrom(CombatantView source, CombatantView target, float distance) {
-        battle.knockbackAwayFrom(runtime(source), runtime(target), distance);
+        battle.knockbackAwayFrom(combatant(source), combatant(target), distance);
     }
 
     @Override
     public void activateDomain(CombatantView source, DomainSpec spec) {
-        battle.activateDomain(runtime(source), spec);
+        battle.activateDomain(combatant(source), spec);
     }
 
     @Override
     public boolean isDomainActive(CombatantView source, ResourceId domainId) {
-        return battle.isDomainActive(runtime(source), domainId);
+        return battle.isDomainActive(combatant(source), domainId);
     }
 
     @Override
@@ -174,12 +390,12 @@ public final class CoreCombatActions implements CombatActions {
 
     @Override
     public void swapPositions(CombatantView first, CombatantView second) {
-        battle.swapPositions(runtime(first), runtime(second));
+        battle.swapPositions(combatant(first), combatant(second));
     }
 
     @Override
     public void mirrorAcrossArenaCenter(CombatantView target) {
-        battle.mirrorAcrossArenaCenter(runtime(target));
+        battle.mirrorAcrossArenaCenter(combatant(target));
     }
 
     @Override
@@ -206,6 +422,10 @@ public final class CoreCombatActions implements CombatActions {
         }
     }
 
+    private static String string(ResourceId id) {
+        return id == null ? null : id.toString();
+    }
+
     private static StatusType statusType(StatusEffectType type) {
         return switch (type) {
             case ATTACK_MULTIPLIER -> StatusType.ATTACK_UP;
@@ -219,6 +439,7 @@ public final class CoreCombatActions implements CombatActions {
             case DAMAGE_OVER_TIME -> StatusType.BURN;
             case HEAL_OVER_TIME -> StatusType.HEAL_OVER_TIME;
             case NEXT_INCOMING_DAMAGE_MULTIPLIER -> StatusType.DAMAGE_TAKEN_DOWN;
+            case BONUS_DAMAGE_MULTIPLIER -> StatusType.BONUS_DAMAGE;
         };
     }
 }

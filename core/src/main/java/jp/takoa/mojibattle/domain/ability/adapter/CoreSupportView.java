@@ -1,6 +1,6 @@
 package jp.takoa.mojibattle.domain.ability.adapter;
 
-import jp.takoa.mojibattle.ability.SupportView;
+import jp.takoa.mojibattle.ability.support.SupportView;
 import jp.takoa.mojibattle.domain.support.SupportCharacterRuntime;
 
 /** SupportCharacterRuntimeを公開読取り契約へ射影する。 */

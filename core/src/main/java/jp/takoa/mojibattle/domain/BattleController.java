@@ -10,21 +10,26 @@ import jp.takoa.mojibattle.config.CriticalConfig;
 import jp.takoa.mojibattle.config.AwakeningConfig;
 import jp.takoa.mojibattle.domain.ability.AbilityRegistry;
 import jp.takoa.mojibattle.domain.ability.AbilityLoadout;
-import jp.takoa.mojibattle.domain.ability.IPassive;
-import jp.takoa.mojibattle.battle.DamageType;
-import jp.takoa.mojibattle.battle.DamageRequest;
-import jp.takoa.mojibattle.battle.DamageResult;
-import jp.takoa.mojibattle.battle.DelayedStrikeSpec;
-import jp.takoa.mojibattle.battle.ProjectileSpec;
-import jp.takoa.mojibattle.battle.AreaAttackSpec;
-import jp.takoa.mojibattle.battle.BattlefieldPulseSpec;
-import jp.takoa.mojibattle.battle.CutInSpec;
-import jp.takoa.mojibattle.battle.DomainSpec;
-import jp.takoa.mojibattle.battle.NormalAttackModifier;
-import jp.takoa.mojibattle.battle.CombatantKind;
-import jp.takoa.mojibattle.battle.DuelSpec;
-import jp.takoa.mojibattle.ability.AbilityStateLine;
-import jp.takoa.mojibattle.ability.SupportSplitSpec;
+import jp.takoa.mojibattle.ability.runtime.PassiveRuntime;
+import jp.takoa.mojibattle.ability.context.PassiveUpdateContext;
+import jp.takoa.mojibattle.ability.context.DamageEventContext;
+import jp.takoa.mojibattle.domain.ability.adapter.CoreCombatActions;
+import jp.takoa.mojibattle.domain.ability.adapter.CoreCombatantView;
+import jp.takoa.mojibattle.domain.ability.adapter.ExternalAbilityContexts;
+import jp.takoa.mojibattle.battle.damage.DamageType;
+import jp.takoa.mojibattle.battle.damage.DamageRequest;
+import jp.takoa.mojibattle.battle.damage.DamageResult;
+import jp.takoa.mojibattle.battle.action.spec.DelayedStrikeSpec;
+import jp.takoa.mojibattle.battle.action.spec.ProjectileSpec;
+import jp.takoa.mojibattle.battle.action.spec.AreaAttackSpec;
+import jp.takoa.mojibattle.battle.action.spec.BattlefieldPulseSpec;
+import jp.takoa.mojibattle.battle.presentation.CutInSpec;
+import jp.takoa.mojibattle.battle.presentation.DomainSpec;
+import jp.takoa.mojibattle.battle.modifier.NormalAttackModifier;
+import jp.takoa.mojibattle.battle.combatant.CombatantKind;
+import jp.takoa.mojibattle.battle.rule.DuelSpec;
+import jp.takoa.mojibattle.ability.presentation.AbilityStateLine;
+import jp.takoa.mojibattle.ability.support.SupportSplitSpec;
 import jp.takoa.mojibattle.domain.combat.AwakeningItem;
 import jp.takoa.mojibattle.domain.combat.ActiveDomain;
 import jp.takoa.mojibattle.domain.combat.BattlefieldPulse;
@@ -51,9 +56,9 @@ import jp.takoa.mojibattle.domain.support.SupportCharacterRuntime;
 import jp.takoa.mojibattle.domain.support.SupportController;
 import jp.takoa.mojibattle.input.PlayerCommand;
 import jp.takoa.mojibattle.registry.Registry;
-import jp.takoa.mojibattle.registry.SupportAbilityImplementation;
-import jp.takoa.mojibattle.registry.SupportPassiveImplementation;
-import jp.takoa.mojibattle.battle.NormalAttackEvent;
+import jp.takoa.mojibattle.registry.impl.SupportAbilityImpl;
+import jp.takoa.mojibattle.registry.impl.SupportPassiveImpl;
+import jp.takoa.mojibattle.battle.event.NormalAttackEvent;
 import jp.takoa.mojibattle.resource.ResourceId;
 import jp.takoa.mojibattle.registry.EffectIds;
 import jp.takoa.mojibattle.event.EventBus;
@@ -131,7 +136,9 @@ public final class BattleController {
     private boolean paused;
     private boolean finalMinuteStarted;
     private Announcement announcement;
-    private CutInState cutIn;
+    private final List<CutInState> cutIns = new ArrayList<>();
+    private boolean cutInsEnabled = true;
+    private long cutInRevision;
     private float visualPulse;
     private float criticalPulse;
     private boolean awakeningSpawned;
@@ -141,7 +148,7 @@ public final class BattleController {
     private int trafficWave;
 
 
-    public BattleController(BattleConfig config, CriticalConfig criticalConfig, AwakeningConfig awakeningConfig, AbilityRegistry abilities, BattleMode mode, List<BattleTeamDefinition> teamDefinitions, List<FieldEffectDefinition> availableFieldEffects, Registry<SupportAbilityImplementation> supportAbilityImplementations) {
+    public BattleController(BattleConfig config, CriticalConfig criticalConfig, AwakeningConfig awakeningConfig, AbilityRegistry abilities, BattleMode mode, List<BattleTeamDefinition> teamDefinitions, List<FieldEffectDefinition> availableFieldEffects, Registry<SupportAbilityImpl> supportAbilityImplementations) {
         this(config, criticalConfig, awakeningConfig, abilities, mode, teamDefinitions, availableFieldEffects, supportAbilityImplementations, new EventBus());
     }
 
@@ -149,12 +156,12 @@ public final class BattleController {
      * 戦闘状態を構築し、生成・攻撃・ダメージ等を指定ゲームイベントバスへ通知する。
      * 登録ライフサイクル用バスを渡してはならない。
      */
-    public BattleController(BattleConfig config, CriticalConfig criticalConfig, AwakeningConfig awakeningConfig, AbilityRegistry abilities, BattleMode mode, List<BattleTeamDefinition> teamDefinitions, List<FieldEffectDefinition> availableFieldEffects, Registry<SupportAbilityImplementation> supportAbilityImplementations, EventBus gameplayEvents) {
+    public BattleController(BattleConfig config, CriticalConfig criticalConfig, AwakeningConfig awakeningConfig, AbilityRegistry abilities, BattleMode mode, List<BattleTeamDefinition> teamDefinitions, List<FieldEffectDefinition> availableFieldEffects, Registry<SupportAbilityImpl> supportAbilityImplementations, EventBus gameplayEvents) {
         this(config, criticalConfig, awakeningConfig, abilities, mode, teamDefinitions, availableFieldEffects,
-                supportAbilityImplementations, new Registry<>("support passive implementation", SupportPassiveImplementation::id), gameplayEvents);
+                supportAbilityImplementations, new Registry<>("support passive implementation", SupportPassiveImpl::id), gameplayEvents);
     }
 
-    public BattleController(BattleConfig config, CriticalConfig criticalConfig, AwakeningConfig awakeningConfig, AbilityRegistry abilities, BattleMode mode, List<BattleTeamDefinition> teamDefinitions, List<FieldEffectDefinition> availableFieldEffects, Registry<SupportAbilityImplementation> supportAbilityImplementations, Registry<SupportPassiveImplementation> supportPassiveImplementations, EventBus gameplayEvents) {
+    public BattleController(BattleConfig config, CriticalConfig criticalConfig, AwakeningConfig awakeningConfig, AbilityRegistry abilities, BattleMode mode, List<BattleTeamDefinition> teamDefinitions, List<FieldEffectDefinition> availableFieldEffects, Registry<SupportAbilityImpl> supportAbilityImplementations, Registry<SupportPassiveImpl> supportPassiveImplementations, EventBus gameplayEvents) {
         this.config = config;
         this.criticalConfig = criticalConfig;
         this.awakeningConfig = awakeningConfig;
@@ -230,10 +237,10 @@ public final class BattleController {
             teams.put(id, new PlayerTeam(runtime, subMainRuntimes, supportRuntimes));
 
             if (!definition.trainingDummy) {
-                abilityLoadouts.get(runtime).primarySkill().initialize(runtime, config.skillCooldownMultiplier);
+                initializeSkill(runtime);
             }
             for (CharacterRuntime subMain : subMainRuntimes) {
-                abilityLoadouts.get(subMain).primarySkill().initialize(subMain, config.skillCooldownMultiplier);
+                initializeSkill(subMain);
             }
 
         }
@@ -292,8 +299,9 @@ public final class BattleController {
         for (CharacterRuntime current : allMains()) {
             current.update(delta);
 
-            for (IPassive passive : passives(current)) {
-                passive.update(this, current, delta);
+            for (PassiveRuntime passive : passives(current)) {
+                passive.update(new PassiveUpdateContext(new CoreCombatantView(this, current), new CoreCombatActions(this),
+                        delta, elapsedSeconds()));
             }
         }
 
@@ -384,7 +392,7 @@ public final class BattleController {
         // Screen-right for a camera looking along forward is forward x world-up.
         Vector3 right = new Vector3(-forward.z, 0, forward.x);
 
-        float passiveSpeed = passiveProduct(player, passive -> passive.moveSpeedMultiplier(player, timer.elapsed()));
+        float passiveSpeed = passiveProduct(player, passive -> passive.moveSpeedMultiplier(new CoreCombatantView(this, player)));
         float fieldSpeed = fieldMoveMultiplier(player);
         float statusSpeed = player.statuses.multiplier(StatusType.MOVE_UP) * player.statuses.multiplier(StatusType.MOVE_DOWN);
 
@@ -438,12 +446,12 @@ public final class BattleController {
                 fireNormalAttack(subMain, target);
 
                 AbilityLoadout loadout = abilityLoadouts.get(subMain);
-                if (subMain.skillReady() && loadout.primarySkill().tryActivate(this, subMain)) {
+                if (subMain.skillReady() && activateSkill(loadout.primarySkill(), subMain)) {
                     notifySkillActivated(subMain);
                     gameplayEvents.post(new AttackEvent(subMain, subMain.definition.skillId, false));
                     gameplayEvents.post(new SkillActivatedEvent(subMain, subMain.definition.skillId));
                 }
-                if (loadout.ultimate().tryActivate(this, subMain)) {
+                if (activateUltimate(loadout.ultimate(), subMain)) {
                     notifyUltimateActivated(subMain);
                     gameplayEvents.post(new AttackEvent(subMain, subMain.definition.ultimateId, true));
                     gameplayEvents.post(new UltimateActivatedEvent(subMain, subMain.definition.ultimateId));
@@ -533,13 +541,13 @@ public final class BattleController {
 
         AbilityLoadout loadout = abilityLoadouts.get(user);
 
-        if (command.useSkill() && loadout.primarySkill().tryActivate(this, user)) {
+        if (command.useSkill() && activateSkill(loadout.primarySkill(), user)) {
             notifySkillActivated(user);
             gameplayEvents.post(new AttackEvent(user, user.definition.skillId, false));
             gameplayEvents.post(new SkillActivatedEvent(user, user.definition.skillId));
         }
 
-        if (command.useUltimate() && loadout.ultimate().tryActivate(this, user)) {
+        if (command.useUltimate() && activateUltimate(loadout.ultimate(), user)) {
             notifyUltimateActivated(user);
             gameplayEvents.post(new AttackEvent(user, user.definition.ultimateId, true));
             gameplayEvents.post(new UltimateActivatedEvent(user, user.definition.ultimateId));
@@ -552,6 +560,44 @@ public final class BattleController {
                 supportController.useUltimate(this, team, support);
             }
         }
+    }
+
+    private boolean activateSkill(AbilityRegistry.ConfiguredSkill skill, CharacterRuntime user) {
+        if (!acceptsActions() || !user.isAlive() || user.isStunned() || !user.skillReady()) return false;
+        float healthCost = user.maxHp() * Math.max(0f, skill.healthCostRatio());
+        if (healthCost > 0f && user.hp() <= healthCost) return false;
+        if (!skill.runtime().tryActivate(ExternalAbilityContexts.create(this, user))) return false;
+        if (healthCost > 0f && !user.spendHealth(healthCost)) {
+            throw new IllegalStateException("Health changed during Ability activation");
+        }
+        if (skill.maximumStocks() > 1 && !user.consumeSkillStock()) {
+            throw new IllegalStateException("Skill stocks changed during Ability activation");
+        }
+        if (skill.maximumStocks() <= 1) user.startSkillCooldown(skillCooldown(user, skill.cooldownSeconds()));
+        return true;
+    }
+
+    private void initializeSkill(CharacterRuntime user) {
+        AbilityRegistry.ConfiguredSkill skill = abilityLoadouts.get(user).primarySkill();
+        if (skill.maximumStocks() > 1) {
+            user.configureSkillStocks(skill.maximumStocks(), skill.initialStocks(),
+                    skill.stockRechargeSeconds() * config.skillCooldownMultiplier);
+        }
+    }
+
+    private boolean activateUltimate(AbilityRegistry.ConfiguredUltimate ultimate, CharacterRuntime user) {
+        if (!acceptsActions() || !user.isAlive() || user.isStunned()
+                || user.ultimatePoints() < ultimate.pointCost()) return false;
+        long previousCutInRevision = cutInRevision;
+        if (!ultimate.runtime().tryActivate(ExternalAbilityContexts.create(this, user))) return false;
+        if (!user.spendUltimate(ultimate.pointCost())) {
+            throw new IllegalStateException("Ultimate points changed during Ability activation");
+        }
+        if (cutInRevision == previousCutInRevision) {
+            showDefaultUltimateCutIn(user, user.definition.glyphTexture, ultimate.nameKey());
+        }
+        announceUltimate(user.playerId, ultimate.nameKey());
+        return true;
     }
 
     /**
@@ -578,7 +624,8 @@ public final class BattleController {
                 }
 
                 case SkillBarrage barrage when barrage.takePulse() ->
-                        abilityLoadouts.get(barrage.source).skill(barrage.skillId).activateFromUltimate(this, barrage.source);
+                        abilityLoadouts.get(barrage.source).skill(barrage.skillId).runtime()
+                                .activateFromUltimate(ExternalAbilityContexts.create(this, barrage.source));
                 case SushiBarrage barrage when barrage.takeShot() -> spawnSushi(barrage);
                 case AwakeningItem item -> resolveAwakening(item);
                 default -> {
@@ -658,12 +705,8 @@ public final class BattleController {
             domain.update(delta);
         }
         domains.removeIf(ActiveDomain::expired);
-        if (cutIn != null) {
-            cutIn.update(delta);
-            if (cutIn.expired()) {
-                cutIn = null;
-            }
-        }
+        cutIns.forEach(state -> state.update(delta));
+        cutIns.removeIf(CutInState::expired);
     }
 
     /** 中央吸引を毎フレーム、範囲ダメージを宣言周期ごとに全敵へ適用する。 */
@@ -783,7 +826,7 @@ public final class BattleController {
                         new DamageService.AttackTraits(ignoreDefense));
 
                 if (dealt > 0) {
-                    target.applyStun(projectile.stunSeconds * passiveProduct(owner, passive -> passive.stunMultiplier(owner)));
+                    target.applyStun(projectile.stunSeconds * passiveProduct(owner, passive -> passive.stunMultiplier(view(owner))));
                     target.applyBind(projectile.bindSeconds);
 
                     if (projectile.ultimatePointsOnHit > 0 && pointAwardedAttacks.add(projectile.attackId)) {
@@ -1057,7 +1100,7 @@ public final class BattleController {
     }
 
     private float attackMultiplier(CharacterRuntime owner) {
-        float passive = passiveProduct(owner, value -> value.attackMultiplier(owner, timer.elapsed(), familyCount(owner.playerId)));
+        float passive = passiveProduct(owner, value -> value.attackMultiplier(new CoreCombatantView(this, owner)));
         float finale = finalMinuteStarted ? config.finalMinuteAttackMultiplier : 1;
         float status = owner.statuses.multiplier(StatusType.ATTACK_UP) * owner.statuses.multiplier(StatusType.ATTACK_DOWN) * owner.statuses.multiplier(StatusType.BONUS_DAMAGE);
 
@@ -1069,7 +1112,7 @@ public final class BattleController {
     private float passiveHitboxMultiplier(PlayerId ownerId) {
         CharacterRuntime owner = player(ownerId);
 
-        return passiveProduct(owner, value -> value.hitboxMultiplier(owner));
+        return passiveProduct(owner, value -> value.hitboxMultiplier(view(owner)));
     }
 
     private float incomingDamageMultiplier(CharacterRuntime target) {
@@ -1096,7 +1139,7 @@ public final class BattleController {
             return 1f;
         }
 
-        float defense = passiveProduct(target, value -> value.incomingDamageMultiplier(target));
+        float defense = passiveProduct(target, value -> value.incomingDamageMultiplier(view(target)));
 
         return defense * (target.awakened() ? 1f / awakeningConfig.defenseMultiplier : 1f);
     }
@@ -1511,32 +1554,69 @@ public final class BattleController {
     }
 
     /** 視覚だけを担う領域を追加する。同時発動中の領域は解除しない。 */
-    public void activateDomain(CharacterRuntime source, DomainSpec spec) {
-        if (!containsCombatant(source) || spec == null) {
+    public void activateDomain(Object source, DomainSpec spec) {
+        if (!containsBattleCombatant(source) || spec == null) {
             throw new IllegalArgumentException("Domain source and specification must belong to this battle");
         }
         domains.add(new ActiveDomain(source, spec));
         if (spec.ambientEffectId() != null) {
-            emitEffect(source.position, spec.ambientEffectId().toString(), 12f * spec.intensity(), .8f);
+            emitEffect(positionOf(source), spec.ambientEffectId().toString(), 12f * spec.intensity(), .8f);
         }
     }
 
     /** 指定キャラクター自身が発動した領域だけを照会する。 */
-    public boolean isDomainActive(CharacterRuntime source, ResourceId domainId) {
-        if (!containsCombatant(source) || domainId == null) {
+    public boolean isDomainActive(Object source, ResourceId domainId) {
+        if (!containsBattleCombatant(source) || domainId == null) {
             return false;
         }
         return domains.stream().anyMatch(domain -> domain.owner() == source && domain.spec().id().equals(domainId));
     }
 
-    /** 高優先度のカットインを現在表示へ採用する。 */
+    /** 同じ発動元・表示文の旧カットインだけを優先度に従って置換し、別発動は同時表示する。 */
     public void showCutIn(CharacterRuntime source, CutInSpec spec) {
         if (!containsCombatant(source) || spec == null) {
             throw new IllegalArgumentException("Cut-in source and specification must belong to this battle");
         }
-        if (cutIn == null || spec.priority() >= cutIn.spec().priority()) {
-            cutIn = new CutInState(source, spec);
+        if (!cutInsEnabled) {
+            return;
         }
+        for (int index = 0; index < cutIns.size(); index++) {
+            CutInState current = cutIns.get(index);
+            if (current.source() == source
+                    && current.spec().titleTranslationKey().equals(spec.titleTranslationKey())) {
+                if (spec.priority() >= current.spec().priority()) {
+                    cutIns.set(index, new CutInState(source, spec));
+                    cutInRevision++;
+                }
+                return;
+            }
+        }
+        cutIns.add(new CutInState(source, spec));
+        cutInRevision++;
+    }
+
+    /** 個別カットインを持たない必殺技へ、キャラクター画像を使った標準演出を追加する。 */
+    public void showDefaultUltimateCutIn(CharacterRuntime source, String imagePath, String titleTranslationKey) {
+        if (imagePath == null || imagePath.isBlank() || titleTranslationKey == null || titleTranslationKey.isBlank()) {
+            return;
+        }
+        String namespace = source.definition.id != null && source.definition.id.contains(":")
+                ? source.definition.id.substring(0, source.definition.id.indexOf(':')) : "mojibattle";
+        ResourceId image = imagePath.contains(":") ? ResourceId.parse(imagePath) : new ResourceId(namespace, imagePath);
+        showCutIn(source, new CutInSpec(image, titleTranslationKey, 2.2f, 10));
+    }
+
+    public void setCutInsEnabled(boolean enabled) {
+        cutInsEnabled = enabled;
+        if (!enabled) cutIns.clear();
+    }
+
+    public boolean cutInsEnabled() {
+        return cutInsEnabled;
+    }
+
+    public long cutInRevision() {
+        return cutInRevision;
     }
 
     /** 中央吸引と周期攻撃を、通常の戦場オブジェクトとして開始する。 */
@@ -1548,24 +1628,27 @@ public final class BattleController {
     }
 
     /** 2体の位置を交換し、戦場外や高さのずれを補正する。 */
-    public void swapPositions(CharacterRuntime first, CharacterRuntime second) {
-        if (!containsCombatant(first) || !containsCombatant(second)) {
+    public void swapPositions(Object first, Object second) {
+        if (!containsBattleCombatant(first) || !containsBattleCombatant(second)) {
             throw new IllegalArgumentException("Position swap combatants must belong to this battle");
         }
-        Vector3 previous = new Vector3(first.position);
-        first.position.set(second.position);
-        second.position.set(previous);
-        clampToArena(first);
-        clampToArena(second);
+        Vector3 firstPosition = positionOf(first);
+        Vector3 secondPosition = positionOf(second);
+        Vector3 previous = new Vector3(firstPosition);
+        firstPosition.set(secondPosition);
+        secondPosition.set(previous);
+        clampBattleCombatantToArena(first);
+        clampBattleCombatantToArena(second);
     }
 
     /** 対象を戦場中央に対して点対称の位置へ移動する。 */
-    public void mirrorAcrossArenaCenter(CharacterRuntime target) {
-        if (!containsCombatant(target)) {
+    public void mirrorAcrossArenaCenter(Object target) {
+        if (!containsBattleCombatant(target)) {
             throw new IllegalArgumentException("Mirrored combatant must belong to this battle");
         }
-        target.position.set(-target.position.x, config.groundY, -target.position.z);
-        clampToArena(target);
+        Vector3 position = positionOf(target);
+        position.set(-position.x, config.groundY, -position.z);
+        clampBattleCombatantToArena(target);
     }
 
     public List<ActiveDomain> domains() {
@@ -1573,7 +1656,11 @@ public final class BattleController {
     }
 
     public CutInState cutIn() {
-        return cutIn;
+        return cutIns.stream().max(java.util.Comparator.comparingInt(state -> state.spec().priority())).orElse(null);
+    }
+
+    public List<CutInState> cutIns() {
+        return List.copyOf(cutIns);
     }
 
     /** 獲得倍率を適用する通常の必殺ポイント加算。 */
@@ -1612,12 +1699,12 @@ public final class BattleController {
         }));
     }
 
-    public void spawnExternalProjectile(CharacterRuntime source, CharacterRuntime target, ProjectileSpec spec) {
-        if (!containsCombatant(source) || !containsCombatant(target)) {
+    public void spawnExternalProjectile(CharacterRuntime source, Object target, ProjectileSpec spec) {
+        if (!containsCombatant(source) || !containsBattleCombatant(target)) {
             throw new IllegalArgumentException("Projectile combatants must belong to this battle");
         }
         Vector3 start = new Vector3(source.position).add(0, 1.05f, 0);
-        Vector3 baseVelocity = new Vector3(target.position).add(0, 1f, 0).sub(start).nor().scl(spec.speed());
+        Vector3 baseVelocity = new Vector3(positionOf(target)).add(0, 1f, 0).sub(start).nor().scl(spec.speed());
         float typeScale = damageTypeScale(spec.damage().type());
         for (int index = 0; index < spec.projectileCount(); index++) {
             float offset = spec.projectileCount() == 1 ? 0f
@@ -1635,11 +1722,11 @@ public final class BattleController {
         }
     }
 
-    public void spawnAreaAttack(CharacterRuntime source, CharacterRuntime target, AreaAttackSpec spec) {
-        if (!containsCombatant(source) || !containsCombatant(target)) {
+    public void spawnAreaAttack(Object source, Object target, AreaAttackSpec spec) {
+        if (!containsBattleCombatant(source) || !containsBattleCombatant(target)) {
             throw new IllegalArgumentException("Area attack combatants must belong to this battle");
         }
-        Vector3 center = new Vector3(target.position);
+        Vector3 center = new Vector3(positionOf(target));
         if (spec.objectTexture() != null) {
             String effectId = spec.warningEffectId() == null ? EffectIds.IMPACT : spec.warningEffectId().toString();
             emitImageEffect(center, spec.objectTexture().toString(), effectId, spec.effectScale(),
@@ -1651,9 +1738,9 @@ public final class BattleController {
         }
         spawn(new ScheduledCombatAction(center, spec.delaySeconds(), () -> {
             float radiusSquared = spec.radius() * spec.radius();
-            for (CharacterRuntime enemy : enemiesOf(source)) {
-                if (enemy.position.dst2(center) <= radiusSquared) {
-                    applyAbilityDamage(source, enemy, spec.damage());
+            for (Object enemy : enemyBattleCombatants(source)) {
+                if (positionOf(enemy).dst2(center) <= radiusSquared) {
+                    applyCombatantDamage(source, enemy, spec.damage());
                 }
             }
             if (spec.impactEffectId() != null) {
@@ -1682,44 +1769,60 @@ public final class BattleController {
     /**
      * 対象をsourceから離す候補を境界内で探し、他の生存メインと重ならない最遠点へ移動する。
      */
-    public void knockbackAwayFrom(CharacterRuntime source, CharacterRuntime target, float distance) {
-        if (!containsCombatant(source) || !containsCombatant(target)) {
+    public void knockbackAwayFrom(Object source, Object target, float distance) {
+        if (!containsBattleCombatant(source) || !containsBattleCombatant(target)) {
             throw new IllegalArgumentException("Knockback combatants must belong to this battle");
         }
         if (!Float.isFinite(distance) || distance < 0) {
             throw new IllegalArgumentException("Knockback distance must be finite and non-negative");
         }
-        if (distance == 0 || !target.isAlive()) {
+        if (distance == 0 || !alive(target)) {
             return;
         }
-        Vector3 direction = new Vector3(target.position).sub(source.position);
+        Vector3 targetPosition = positionOf(target);
+        Vector3 direction = new Vector3(targetPosition).sub(positionOf(source));
         direction.y = 0;
-        if (direction.isZero()) {
-            direction.set(target.facing.x, 0, target.facing.z);
+        if (direction.isZero() && target instanceof CharacterRuntime main) {
+            direction.set(main.facing.x, 0, main.facing.z);
         }
         if (direction.isZero() || !Float.isFinite(direction.x) || !Float.isFinite(direction.z)) {
             direction.set(1, 0, 0);
         }
         direction.nor();
-        float margin = Math.min(config.arenaHalfExtent, Math.max(0, target.definition.collisionRadius));
+        float margin = Math.min(config.arenaHalfExtent, collisionRadiusOf(target));
         float limit = Math.max(0, config.arenaHalfExtent - margin);
         Vector3 candidate = new Vector3();
         for (int step = 20; step >= 0; step--) {
             float travel = distance * step / 20f;
-            candidate.set(target.position).mulAdd(direction, travel);
+            candidate.set(targetPosition).mulAdd(direction, travel);
             candidate.x = MathUtils.clamp(candidate.x, -limit, limit);
             candidate.z = MathUtils.clamp(candidate.z, -limit, limit);
             candidate.y = config.groundY;
-            if (collisionFree(target, candidate)) {
-                target.position.set(candidate);
+            if (!(target instanceof CharacterRuntime main) || collisionFree(main, candidate)) {
+                targetPosition.set(candidate);
                 return;
             }
         }
         // 呼出し前の位置が不正でも、少なくとも有限な戦場内座標へ復旧する。
-        target.position.set(
-                MathUtils.clamp(target.position.x, -limit, limit),
+        targetPosition.set(
+                MathUtils.clamp(targetPosition.x, -limit, limit),
                 config.groundY,
-                MathUtils.clamp(target.position.z, -limit, limit));
+                MathUtils.clamp(targetPosition.z, -limit, limit));
+    }
+
+    /** 任意種別の戦闘個体を、当たり半径を考慮した戦場内座標へ収める。 */
+    private void clampBattleCombatantToArena(Object target) {
+        Vector3 position = positionOf(target);
+        float limit = Math.max(0f, config.arenaHalfExtent - collisionRadiusOf(target));
+        position.x = MathUtils.clamp(position.x, -limit, limit);
+        position.z = MathUtils.clamp(position.z, -limit, limit);
+        position.y = config.groundY;
+    }
+
+    private static float collisionRadiusOf(Object target) {
+        if (target instanceof CharacterRuntime main) return Math.max(0f, main.definition.collisionRadius);
+        if (target instanceof FamilySummon family) return Math.max(0f, family.collisionRadius());
+        return .5f;
     }
 
     private boolean collisionFree(CharacterRuntime moving, Vector3 candidate) {
@@ -2110,19 +2213,19 @@ public final class BattleController {
     public CharacterDebugSnapshot debugSnapshot(PlayerId id) {
         CharacterRuntime value = player(id);
 
-        float passiveMove = passiveProduct(value, passive -> passive.moveSpeedMultiplier(value, timer.elapsed()));
+        float passiveMove = passiveProduct(value, passive -> passive.moveSpeedMultiplier(new CoreCombatantView(this, value)));
         float statusMove = value.statuses.multiplier(StatusType.MOVE_UP) * value.statuses.multiplier(StatusType.MOVE_DOWN);
         float effectiveMoveSpeed = value.definition.moveSpeed * 1.2f * passiveMove * fieldMoveMultiplier(value) * statusMove * (value.awakened() ? awakeningConfig.moveSpeedMultiplier : 1f);
 
-        float cooldownMultiplier = config.skillCooldownMultiplier * passiveProduct(value, passive -> passive.skillCooldownMultiplier(value)) * value.statuses.multiplier(StatusType.COOLDOWN_REDUCTION) * fieldEffects.multiplier("cooldown", timer.elapsed(), value);
-        float ultimateGainMultiplier = passiveProduct(value, passive -> passive.ultimateGainMultiplier(value)) * value.statuses.multiplier(StatusType.ULTIMATE_GAIN_UP) * (value.awakened() ? awakeningConfig.ultimateGainMultiplier : 1f);
+        float cooldownMultiplier = config.skillCooldownMultiplier * passiveProduct(value, passive -> passive.skillCooldownMultiplier(view(value))) * value.statuses.multiplier(StatusType.COOLDOWN_REDUCTION) * fieldEffects.multiplier("cooldown", timer.elapsed(), value);
+        float ultimateGainMultiplier = passiveProduct(value, passive -> passive.ultimateGainMultiplier(view(value))) * value.statuses.multiplier(StatusType.ULTIMATE_GAIN_UP) * (value.awakened() ? awakeningConfig.ultimateGainMultiplier : 1f);
         float criticalRate = MathUtils.clamp(criticalConfig.baseRate + value.definition.criticalRate
                 + value.statuses.additive(StatusType.CRITICAL_RATE_UP)
                 + fieldEffects.additive("critical_rate", value) + fieldEffects.additive("critical_enable", value)
                 + passiveCriticalRateModifier(value), 0, 1);
         float criticalDamage = Math.max(criticalConfig.baseDamageMultiplier, value.definition.criticalDamageMultiplier + fieldEffects.additive("critical_damage", value)) * value.statuses.multiplier(StatusType.CRITICAL_DAMAGE_UP);
 
-        return new CharacterDebugSnapshot(value.definition.id, value.hp(), value.maxHp(), value.missingHp(), value.definition.baseAttack, attackMultiplier(value), value.definition.moveSpeed, effectiveMoveSpeed, incomingDamageMultiplier(value), value.definition.collisionRadius, passiveHitboxMultiplier(id), value.skillCooldown(), value.skillChargeRatio(), value.skillStocks(), value.maximumSkillStocks(), value.ultimatePoints(), value.totalDamage(), value.stunRemaining(), value.movementLocked(), value.awakened(), value.isAlive(), value.zeroDefense(), value.position.x, value.position.y, value.position.z, value.facing.x, value.facing.z, cooldownMultiplier, ultimateGainMultiplier, passiveProduct(value, passive -> passive.stunMultiplier(value)), ultimateDamageMultiplier(value), criticalRate, criticalDamage, value.definition.criticalEnabled || fieldEffects.hasType("critical_enable") || value.statuses.has(StatusType.CRITICAL_RATE_UP) || passiveCriticalRateModifier(value) != 0f);
+        return new CharacterDebugSnapshot(value.definition.id, value.hp(), value.maxHp(), value.missingHp(), value.definition.baseAttack, attackMultiplier(value), value.definition.moveSpeed, effectiveMoveSpeed, incomingDamageMultiplier(value), value.definition.collisionRadius, passiveHitboxMultiplier(id), value.skillCooldown(), value.skillChargeRatio(), value.skillStocks(), value.maximumSkillStocks(), value.ultimatePoints(), value.totalDamage(), value.stunRemaining(), value.movementLocked(), value.awakened(), value.isAlive(), value.zeroDefense(), value.position.x, value.position.y, value.position.z, value.facing.x, value.facing.z, cooldownMultiplier, ultimateGainMultiplier, passiveProduct(value, passive -> passive.stunMultiplier(view(value))), ultimateDamageMultiplier(value), criticalRate, criticalDamage, value.definition.criticalEnabled || fieldEffects.hasType("critical_enable") || value.statuses.has(StatusType.CRITICAL_RATE_UP) || passiveCriticalRateModifier(value) != 0f);
     }
 
     public float fieldProjectileCurve() {
@@ -2183,11 +2286,11 @@ public final class BattleController {
      * @return 現在の戦闘状態を反映した待ち時間
      */
     public float skillCooldown(CharacterRuntime owner, float baseSeconds) {
-        return baseSeconds * config.skillCooldownMultiplier * passiveProduct(owner, value -> value.skillCooldownMultiplier(owner)) * owner.statuses.multiplier(StatusType.COOLDOWN_REDUCTION) * fieldEffects.multiplier("cooldown", timer.elapsed(), owner);
+        return baseSeconds * config.skillCooldownMultiplier * passiveProduct(owner, value -> value.skillCooldownMultiplier(view(owner))) * owner.statuses.multiplier(StatusType.COOLDOWN_REDUCTION) * fieldEffects.multiplier("cooldown", timer.elapsed(), owner);
     }
 
     public void addSkillUltimatePoints(CharacterRuntime owner, float basePoints) {
-        owner.addUltimatePoints(basePoints * passiveProduct(owner, value -> value.ultimateGainMultiplier(owner)) * owner.statuses.multiplier(StatusType.ULTIMATE_GAIN_UP) * (owner.awakened() ? awakeningConfig.ultimateGainMultiplier : 1f));
+        owner.addUltimatePoints(basePoints * passiveProduct(owner, value -> value.ultimateGainMultiplier(view(owner))) * owner.statuses.multiplier(StatusType.ULTIMATE_GAIN_UP) * (owner.awakened() ? awakeningConfig.ultimateGainMultiplier : 1f));
     }
 
     /**
@@ -2268,7 +2371,7 @@ public final class BattleController {
         }
     }
 
-    private List<IPassive> passives(CharacterRuntime owner) {
+    private List<PassiveRuntime> passives(CharacterRuntime owner) {
         if (owner.definition.trainingDummy) {
             return List.of();
         }
@@ -2278,14 +2381,14 @@ public final class BattleController {
     }
 
     private void notifySkillActivated(CharacterRuntime owner) {
-        for (IPassive passive : passives(owner)) {
-            passive.onSkillActivated(this, owner);
+        for (PassiveRuntime passive : passives(owner)) {
+            passive.onSkillActivated(ExternalAbilityContexts.create(this, owner));
         }
     }
 
     private void notifyUltimateActivated(CharacterRuntime owner) {
-        for (IPassive passive : passives(owner)) {
-            passive.onUltimateActivated(this, owner);
+        for (PassiveRuntime passive : passives(owner)) {
+            passive.onUltimateActivated(ExternalAbilityContexts.create(this, owner));
         }
     }
 
@@ -2293,27 +2396,37 @@ public final class BattleController {
         if (event.amount() <= 0) {
             return;
         }
-        for (IPassive passive : passives(event.attacker())) {
-            passive.onDamageDealt(this, event.attacker(), event.target(), event.amount());
+        DamageEventContext context = damageContext(event);
+        for (PassiveRuntime passive : passives(event.attacker())) {
+            passive.onDamageDealt(context);
         }
-        for (IPassive passive : passives(event.target())) {
-            passive.onDamageReceived(this, event.attacker(), event.target(), event.amount());
+        for (PassiveRuntime passive : passives(event.target())) {
+            passive.onDamageReceived(context);
         }
         event.target().statuses.consumeDamageReceived();
     }
 
-    private float passiveProduct(CharacterRuntime owner, java.util.function.Function<IPassive, Float> value) {
+    private DamageEventContext damageContext(DamageEvent event) {
+        return new DamageEventContext(new CoreCombatantView(this, event.attacker()),
+                new CoreCombatantView(this, event.target()), event.amount(), new CoreCombatActions(this), elapsedSeconds());
+    }
+
+    private float passiveProduct(CharacterRuntime owner, java.util.function.Function<PassiveRuntime, Float> value) {
         float result = 1f;
 
-        for (IPassive passive : passives(owner)) {
+        for (PassiveRuntime passive : passives(owner)) {
             result *= value.apply(passive);
         }
 
         return result;
     }
 
+    private CoreCombatantView view(CharacterRuntime owner) {
+        return new CoreCombatantView(this, owner);
+    }
+
     private boolean passiveIgnoresDefense(CharacterRuntime owner) {
-        return passives(owner).stream().anyMatch(passive -> passive.ignoresDefense(owner));
+        return passives(owner).stream().anyMatch(passive -> passive.ignoresDefense(view(owner)));
     }
 
     private record NormalAttackProfile(float intervalMultiplier, int projectileCount,
@@ -2324,7 +2437,7 @@ public final class BattleController {
     /** 全パッシブの通常攻撃補正を毎攻撃時に決定的な順序で合成する。 */
     private NormalAttackProfile normalAttackProfile(CharacterRuntime owner) {
         List<NormalAttackModifier> modifiers = passives(owner).stream()
-                .flatMap(passive -> passive.normalAttackModifiers(owner).stream())
+                .flatMap(passive -> passive.normalAttackModifiers(view(owner)).stream())
                 .sorted(Comparator.comparingInt(NormalAttackModifier::priority)
                         .thenComparing(value -> value.id().toString()))
                 .toList();
@@ -2360,7 +2473,7 @@ public final class BattleController {
             throw new IllegalArgumentException("Combatant does not belong to this battle");
         }
         return passives(owner).stream()
-                .flatMap(passive -> passive.stateLines(owner).stream())
+                .flatMap(passive -> passive.stateLines(view(owner)).stream())
                 .sorted(Comparator.comparingInt(AbilityStateLine::priority).reversed()
                         .thenComparing(AbilityStateLine::translationKey))
                 .limit(8)
@@ -2369,10 +2482,10 @@ public final class BattleController {
 
     private float passiveCriticalRateModifier(CharacterRuntime owner) {
         float result = 0f;
-        for (IPassive passive : passives(owner)) {
-            float modifier = passive.criticalRateModifier(owner);
+        for (PassiveRuntime passive : passives(owner)) {
+            float modifier = passive.criticalRateModifier(view(owner));
             if (!Float.isFinite(modifier)) {
-                throw new IllegalArgumentException("Passive critical rate modifier must be finite: " + passive.id());
+                throw new IllegalArgumentException("Passive critical rate modifier must be finite");
             }
             result += modifier;
         }
@@ -2385,14 +2498,14 @@ public final class BattleController {
     }
 
     private float ultimateDamageMultiplier(CharacterRuntime owner) {
-        return passiveProduct(owner, value -> value.ultimateDamageMultiplier(owner));
+        return passiveProduct(owner, value -> value.ultimateDamageMultiplier(view(owner)));
     }
 
     /** 必殺技の反復攻撃へ加算する、装備中パッシブ由来の追加回数を返す。 */
     public long additionalUltimateAttackCount(CharacterRuntime owner) {
         long result = 0L;
-        for (IPassive passive : passives(owner)) {
-            long addition = Math.max(0L, passive.additionalUltimateAttackCount(owner));
+        for (PassiveRuntime passive : passives(owner)) {
+            long addition = Math.max(0L, passive.additionalUltimateAttackCount(view(owner)));
             if (Long.MAX_VALUE - result < addition) {
                 return Long.MAX_VALUE;
             }

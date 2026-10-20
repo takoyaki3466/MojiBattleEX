@@ -8,7 +8,7 @@ import jp.takoa.mojibattle.data.validator.GameDataValidator;
 import jp.takoa.mojibattle.domain.CharacterDefinition;
 import jp.takoa.mojibattle.domain.ability.AbilityConfigs;
 import jp.takoa.mojibattle.domain.support.SupportCharacterDefinition;
-import jp.takoa.mojibattle.registry.BuiltInRegistries;
+import jp.takoa.mojibattle.registry.MojiBattleRegistries;
 import jp.takoa.mojibattle.registry.RegistryId;
 import jp.takoa.mojibattle.resource.ClasspathResourceManager;
 import jp.takoa.mojibattle.resource.ResourceManager;
@@ -23,7 +23,7 @@ import java.util.Map;
  */
 public final class ConfigManager {
     private final JsonDataLoader loader;
-    private final BuiltInRegistries registries;
+    private final MojiBattleRegistries registries;
     public final GameConfig game;
     public final BattleConfig battle;
     public final GraphicsConfig graphics;
@@ -42,23 +42,23 @@ public final class ConfigManager {
      * @param registries 実装Factoryと演出定義が登録済みの組込みレジストリ
      * @throws RuntimeException ファイル欠落、構文不正、ID重複、参照不整合がある場合
      */
-    public ConfigManager(BuiltInRegistries registries) {
+    public ConfigManager(MojiBattleRegistries registries) {
         this(registries, new ClasspathResourceManager(ConfigManager.class.getClassLoader()), List.of());
     }
 
     /** 指定リソース層から設定を読み、実装Registryに対して検証する。 */
-    public ConfigManager(BuiltInRegistries registries, ResourceManager resources) {
+    public ConfigManager(MojiBattleRegistries registries, ResourceManager resources) {
         this(registries, resources, List.of());
     }
 
     /** 標準設定に加えて、MODが公開APIから宣言したキャラクターデータを読み込む。 */
-    public ConfigManager(BuiltInRegistries registries, ResourceManager resources,
+    public ConfigManager(MojiBattleRegistries registries, ResourceManager resources,
                          Collection<CharacterDataRegistration> additionalCharacters) {
         this(registries, resources, additionalCharacters, List.of(), List.of());
     }
 
     /** 標準コンテンツに加え、MODが宣言したメイン・補助・フィールド定義を読み込む。 */
-    public ConfigManager(BuiltInRegistries registries, ResourceManager resources,
+    public ConfigManager(MojiBattleRegistries registries, ResourceManager resources,
                          Collection<CharacterDataRegistration> additionalCharacters,
                          Collection<SupportCharacterDataRegistration> additionalSupports,
                          Collection<FieldEffectDataRegistration> additionalFieldEffects) {

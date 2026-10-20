@@ -14,7 +14,7 @@ import jp.takoa.mojibattle.domain.ability.AbilityRegistry;
 import jp.takoa.mojibattle.i18n.LocalizationManager;
 import jp.takoa.mojibattle.log.GameLog;
 import jp.takoa.mojibattle.event.EventChannels;
-import jp.takoa.mojibattle.registry.BuiltInRegistries;
+import jp.takoa.mojibattle.registry.MojiBattleRegistries;
 import jp.takoa.mojibattle.registry.RegistrySnapshot;
 import jp.takoa.mojibattle.ui.UiFactory;
 import jp.takoa.mojibattle.resource.ResourceManager;
@@ -36,7 +36,7 @@ public final class GameContext implements AutoCloseable {
 
     public final Skin skin;
     public final BattleAudio audio;
-    public final BuiltInRegistries registries;
+    public final MojiBattleRegistries registries;
     public final EventChannels events;
     public final ResourceManager resources;
     private final AutoCloseable modRuntime;

@@ -61,13 +61,12 @@ public final class DiagnosticLog {
     private static synchronized void write(String level, String message, Throwable error) {
         try {
             String entry = formatEntry(level, message, error);
+            safeStderr(entry);
             if (LOG_FILE != null) {
                 Files.createDirectories(LOG_FILE.getParent());
                 Files.writeString(LOG_FILE, entry, StandardCharsets.UTF_8,
                         StandardOpenOption.CREATE, StandardOpenOption.APPEND);
-                return;
             }
-            safeStderr(entry);
         } catch (Throwable ignored) {
             safeStderr("MojiBattleEX diagnostic logging failed\n");
         }

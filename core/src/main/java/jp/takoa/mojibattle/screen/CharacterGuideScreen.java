@@ -112,8 +112,8 @@ public final class CharacterGuideScreen extends StageScreen {
 
         heading.setText((character.uiLabel == null ? character.displayGlyph : character.uiLabel) + "  " + context.i18n.text(character.nameKey) + "  " + (index + 1) + "/" + totalEntries());
 
-        String skillPower = AbilityPresentationFormatter.format(context.registries.skillImplementations.require(skill.implementationId).presentation().apply(skill, context.config.battle.skillCooldownMultiplier), context.i18n);
-        String ultimatePower = AbilityPresentationFormatter.format(context.registries.ultimateImplementations.require(ultimate.implementationId).presentation().apply(ultimate), context.i18n);
+        String skillPower = AbilityPresentationFormatter.format(context.registries.skillImplementations.require(skill.implementationId).presentation().apply(jp.takoa.mojibattle.domain.ability.adapter.MapConfigView.forPresentation(skill), context.config.battle.skillCooldownMultiplier), context.i18n);
+        String ultimatePower = AbilityPresentationFormatter.format(context.registries.ultimateImplementations.require(ultimate.implementationId).presentation().apply(jp.takoa.mojibattle.domain.ability.adapter.MapConfigView.forPresentation(ultimate)), context.i18n);
 
         AbilityConfigs.TimedPassive passive = context.config.passive(character.passiveId);
 

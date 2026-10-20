@@ -29,7 +29,7 @@ import jp.takoa.mojibattle.domain.TrainingStatistics;
 import jp.takoa.mojibattle.domain.debug.CharacterDebugSnapshot;
 import jp.takoa.mojibattle.domain.status.StatusEffect;
 import jp.takoa.mojibattle.domain.support.SupportCharacterRuntime;
-import jp.takoa.mojibattle.ability.AbilityStateLine;
+import jp.takoa.mojibattle.ability.presentation.AbilityStateLine;
 import jp.takoa.mojibattle.resource.GdxTextureLoader;
 
 import java.util.ArrayList;
@@ -52,14 +52,8 @@ public final class BattleHud implements Disposable {
     private final TrainingDebugHud trainingDebugHud;
     private final Image flash;
     private final Image domainOverlay;
-    private final Group cutInPanel;
-    private final Image cutInBackdrop;
-    private final Image cutInImage;
-    private final Image cutInTopBar;
-    private final Image cutInBottomBar;
-    private final Image cutInSlashA;
-    private final Image cutInSlashB;
-    private final Label cutInTitle;
+    private final Group cutInLayer;
+    private final List<CutInView> cutInViews = new ArrayList<>();
     private final GdxTextureLoader textureLoader;
     private final Map<String, Texture> cutInTextures = new HashMap<>();
     private final boolean trainingMode;
@@ -142,30 +136,11 @@ public final class BattleHud implements Disposable {
         }
         stage.addActor(centerTable);
 
-        cutInBackdrop = new Image(context.skin.newDrawable("gauge-empty"));
-        cutInImage = new Image();
-        cutInImage.setScaling(com.badlogic.gdx.utils.Scaling.fill);
-        cutInTitle = new Label("", context.skin, "effect-text");
-        cutInTitle.setWrap(true);
-        cutInTitle.setAlignment(com.badlogic.gdx.utils.Align.center);
-        cutInTitle.setFontScale(1.45f);
-        cutInTopBar = new Image(context.skin.newDrawable("gauge-empty"));
-        cutInBottomBar = new Image(context.skin.newDrawable("gauge-empty"));
-        cutInSlashA = new Image(context.skin.newDrawable("gauge-ultimate"));
-        cutInSlashB = new Image(context.skin.newDrawable("gauge-skill"));
-
-        cutInPanel = new Group();
-        cutInPanel.setTransform(true);
-        cutInPanel.addActor(cutInBackdrop);
-        cutInPanel.addActor(cutInImage);
-        cutInPanel.addActor(cutInSlashA);
-        cutInPanel.addActor(cutInSlashB);
-        cutInPanel.addActor(cutInTopBar);
-        cutInPanel.addActor(cutInBottomBar);
-        cutInPanel.addActor(cutInTitle);
-        cutInPanel.setTouchable(Touchable.disabled);
-        cutInPanel.setVisible(false);
-        stage.addActor(cutInPanel);
+        cutInLayer = new Group();
+        cutInLayer.setTransform(false);
+        cutInLayer.setTouchable(Touchable.disabled);
+        cutInLayer.setVisible(false);
+        stage.addActor(cutInLayer);
     }
 
     /**
@@ -208,63 +183,109 @@ public final class BattleHud implements Disposable {
     }
 
     private void updateCutIn(BattleController battle) {
-        if (battle.cutIn() == null) {
-            cutInPanel.setVisible(false);
+        List<jp.takoa.mojibattle.domain.CutInState> states = battle.cutIns();
+        if (states.isEmpty()) {
+            cutInLayer.setVisible(false);
             return;
         }
-        var state = battle.cutIn();
-        String imageId = state.spec().image().toString();
-        Texture texture = cutInTextures.computeIfAbsent(imageId, id -> textureLoader.load(id, true));
-        cutInImage.setDrawable(new TextureRegionDrawable(new TextureRegion(texture)));
-        cutInTitle.setText(context.i18n.text(state.spec().titleTranslationKey()));
         float width = stage.getViewport().getWorldWidth();
         float height = stage.getViewport().getWorldHeight();
-        float progress = MathUtils.clamp(state.progress(), 0f, 1f);
-        float enter = MathUtils.clamp(progress / .14f, 0f, 1f);
-        float leave = MathUtils.clamp((1f - progress) / .16f, 0f, 1f);
-        float alpha = Math.min(enter, leave);
-        float pulse = .5f + .5f * Math.abs(MathUtils.sin(progress * MathUtils.PI * 13f));
-        boolean horizontal = state.spec().motion() == jp.takoa.mojibattle.battle.CutInMotion.HORIZONTAL_CHARGE;
+        cutInLayer.setBounds(0, 0, width, height);
+        while (cutInViews.size() < states.size()) {
+            CutInView view = new CutInView();
+            cutInViews.add(view);
+            cutInLayer.addActor(view.panel);
+        }
+        while (cutInViews.size() > states.size()) {
+            cutInViews.remove(cutInViews.size() - 1).panel.remove();
+        }
+        float sliceWidth = width / states.size();
+        for (int index = 0; index < states.size(); index++) {
+            cutInViews.get(index).update(states.get(index), index * sliceWidth, sliceWidth, height, states.size());
+        }
+        cutInLayer.setVisible(true);
+    }
 
-        cutInPanel.setBounds(0, 0, width, height);
-        cutInBackdrop.setBounds(0, 0, width, height);
-        cutInBackdrop.setColor(0f, 0f, 0f, alpha * .72f);
+    /** 1件分のカットインを所有し、同時発動数に応じた横スライス内だけへ描画する。 */
+    private final class CutInView {
+        private final Table panel = new Table();
+        private final Image backdrop = new Image(context.skin.newDrawable("gauge-empty"));
+        private final Image image = new Image();
+        private final Image topBar = new Image(context.skin.newDrawable("gauge-empty"));
+        private final Image bottomBar = new Image(context.skin.newDrawable("gauge-empty"));
+        private final Image slashA = new Image(context.skin.newDrawable("gauge-ultimate"));
+        private final Image slashB = new Image(context.skin.newDrawable("gauge-skill"));
+        private final Label title = new Label("", context.skin, "effect-text");
 
-        float imageWidth = width * (1.22f + progress * .12f);
-        float imageHeight = height * (1.18f + progress * .08f);
-        float travelX = horizontal ? MathUtils.lerp(-width * .22f, width * .06f, progress)
-                : MathUtils.lerp(width * .08f, -width * .14f, progress);
-        float travelY = MathUtils.sin(progress * MathUtils.PI) * height * .055f;
-        cutInImage.setBounds((width - imageWidth) * .5f + travelX,
-                (height - imageHeight) * .5f + travelY, imageWidth, imageHeight);
-        cutInImage.setOrigin(imageWidth * .5f, imageHeight * .5f);
-        cutInImage.setRotation((horizontal ? -2.4f : 3.2f) * (1f - progress));
-        cutInImage.setColor(1f + pulse * .15f, 1f, 1f, alpha);
+        private CutInView() {
+            panel.setClip(true);
+            panel.setTransform(true);
+            panel.setTouchable(Touchable.disabled);
+            image.setScaling(com.badlogic.gdx.utils.Scaling.fill);
+            title.setWrap(true);
+            title.setAlignment(com.badlogic.gdx.utils.Align.center);
+            panel.addActor(backdrop);
+            panel.addActor(image);
+            panel.addActor(slashA);
+            panel.addActor(slashB);
+            panel.addActor(topBar);
+            panel.addActor(bottomBar);
+            panel.addActor(title);
+        }
 
-        float barHeight = height * .105f * enter;
-        cutInTopBar.setBounds(0, height - barHeight, width, barHeight);
-        cutInBottomBar.setBounds(0, 0, width, barHeight);
-        cutInTopBar.setColor(0f, 0f, 0f, alpha);
-        cutInBottomBar.setColor(0f, 0f, 0f, alpha);
+        private void update(jp.takoa.mojibattle.domain.CutInState state, float x, float width,
+                            float height, int simultaneousCount) {
+            String imageId = state.spec().image().toString();
+            Texture texture = cutInTextures.computeIfAbsent(imageId, id -> textureLoader.load(id, true));
+            image.setDrawable(new TextureRegionDrawable(new TextureRegion(texture)));
+            title.setText(context.i18n.text(state.spec().titleTranslationKey()));
+            float progress = MathUtils.clamp(state.progress(), 0f, 1f);
+            float enter = MathUtils.clamp(progress / .14f, 0f, 1f);
+            float leave = MathUtils.clamp((1f - progress) / .16f, 0f, 1f);
+            float alpha = Math.min(enter, leave);
+            float pulse = .5f + .5f * Math.abs(MathUtils.sin(progress * MathUtils.PI * 13f));
+            boolean horizontal = state.spec().motion() == jp.takoa.mojibattle.battle.presentation.CutInMotion.HORIZONTAL_CHARGE;
 
-        float streakWidth = width * 1.45f;
-        float streakHeight = Math.max(5f, height * (.008f + pulse * .008f));
-        cutInSlashA.setBounds(-width * .2f + MathUtils.lerp(-width, width * .42f, enter),
-                height * .62f, streakWidth, streakHeight);
-        cutInSlashB.setBounds(width * .45f - MathUtils.lerp(-width, width * .68f, enter),
-                height * .34f, streakWidth, streakHeight * .7f);
-        cutInSlashA.setOrigin(streakWidth * .5f, streakHeight * .5f);
-        cutInSlashB.setOrigin(streakWidth * .5f, streakHeight * .35f);
-        cutInSlashA.setRotation(horizontal ? 0f : -11f);
-        cutInSlashB.setRotation(horizontal ? 0f : 8f);
-        cutInSlashA.setColor(1f, .72f, .08f, alpha * (.45f + pulse * .55f));
-        cutInSlashB.setColor(.12f, .78f, 1f, alpha * (.35f + (1f - pulse) * .65f));
+            panel.setBounds(x, 0, width, height);
+            backdrop.setBounds(0, 0, width, height);
+            backdrop.setColor(0f, 0f, 0f, alpha * .72f);
+            float imageWidth = width * (1.22f + progress * .12f);
+            float imageHeight = height * (1.18f + progress * .08f);
+            float travelX = horizontal ? MathUtils.lerp(-width * .22f, width * .06f, progress)
+                    : MathUtils.lerp(width * .08f, -width * .14f, progress);
+            float travelY = MathUtils.sin(progress * MathUtils.PI) * height * .055f;
+            image.setBounds((width - imageWidth) * .5f + travelX,
+                    (height - imageHeight) * .5f + travelY, imageWidth, imageHeight);
+            image.setOrigin(imageWidth * .5f, imageHeight * .5f);
+            image.setRotation((horizontal ? -2.4f : 3.2f) * (1f - progress));
+            image.setColor(1f + pulse * .15f, 1f, 1f, alpha);
 
-        cutInTitle.setBounds(width * .05f, height * (.11f + .04f * enter), width * .9f, height * .2f);
-        cutInTitle.setFontScale(1.55f + pulse * .42f);
-        cutInTitle.setColor(1f, .12f + .88f * Math.abs(MathUtils.sin(rainbowPhase * MathUtils.degreesToRadians)),
-                .08f, alpha);
-        cutInPanel.setVisible(true);
+            float barHeight = height * .105f * enter;
+            topBar.setBounds(0, height - barHeight, width, barHeight);
+            bottomBar.setBounds(0, 0, width, barHeight);
+            topBar.setColor(0f, 0f, 0f, alpha);
+            bottomBar.setColor(0f, 0f, 0f, alpha);
+            float streakWidth = width * 1.45f;
+            float streakHeight = Math.max(5f, height * (.008f + pulse * .008f));
+            slashA.setBounds(-width * .2f + MathUtils.lerp(-width, width * .42f, enter),
+                    height * .62f, streakWidth, streakHeight);
+            slashB.setBounds(width * .45f - MathUtils.lerp(-width, width * .68f, enter),
+                    height * .34f, streakWidth, streakHeight * .7f);
+            slashA.setOrigin(streakWidth * .5f, streakHeight * .5f);
+            slashB.setOrigin(streakWidth * .5f, streakHeight * .35f);
+            slashA.setRotation(horizontal ? 0f : -11f);
+            slashB.setRotation(horizontal ? 0f : 8f);
+            slashA.setColor(1f, .72f, .08f, alpha * (.45f + pulse * .55f));
+            slashB.setColor(.12f, .78f, 1f, alpha * (.35f + (1f - pulse) * .65f));
+
+            title.setBounds(width * .05f, height * (.11f + .04f * enter), width * .9f, height * .2f);
+            float compactScale = simultaneousCount == 1 ? 1f
+                    : Math.max(.58f, 1f - (simultaneousCount - 1) * .16f);
+            title.setFontScale((1.55f + pulse * .42f) * compactScale);
+            title.setColor(1f, .12f + .88f * Math.abs(MathUtils.sin(rainbowPhase * MathUtils.degreesToRadians)),
+                    .08f, alpha);
+            panel.setVisible(true);
+        }
     }
 
     private void updateCenterAnnouncement(BattleController battle) {
@@ -521,7 +542,7 @@ public final class BattleHud implements Disposable {
                         support.ultimatePoints(),
                         "battle.support_ultimate_available");
                 passiveState.setText(support.stateLines().stream()
-                        .sorted(java.util.Comparator.comparingInt(jp.takoa.mojibattle.ability.AbilityStateLine::priority).reversed())
+                        .sorted(java.util.Comparator.comparingInt(jp.takoa.mojibattle.ability.presentation.AbilityStateLine::priority).reversed())
                         .limit(3)
                         .map(line -> context.i18n.text(line.translationKey(), line.arguments().toArray()))
                         .collect(java.util.stream.Collectors.joining("  ")));
@@ -750,7 +771,7 @@ public final class BattleHud implements Disposable {
         stage.getViewport().update(width, height, true);
         flash.setBounds(trainingMode ? width / 2f : 0, 0, trainingMode ? width / 2f : width, height);
         domainOverlay.setBounds(trainingMode ? width / 2f : 0, 0, trainingMode ? width / 2f : width, height);
-        cutInPanel.setBounds(0, 0, width, height);
+        cutInLayer.setBounds(0, 0, width, height);
     }
 
     public Stage stage() {

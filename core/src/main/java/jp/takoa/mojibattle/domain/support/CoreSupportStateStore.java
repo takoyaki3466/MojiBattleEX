@@ -1,6 +1,6 @@
 package jp.takoa.mojibattle.domain.support;
 
-import jp.takoa.mojibattle.ability.SupportStateStore;
+import jp.takoa.mojibattle.ability.support.SupportStateStore;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;

@@ -120,7 +120,6 @@ flowchart BT
 
     CORE --> API
     ITEM --> API
-    ITEM --> CORE
     LOADER --> API
     DESKTOP --> API
     DESKTOP --> CORE
@@ -135,7 +134,7 @@ Gradle 上の依存は次のとおりです。
 | 呼び出し側 | 依存先 | 種別 | 意図 |
 |---|---|---|---|
 | `core` | `api` | `api` | 公開 ID・Registry・MOD 契約を利用 |
-| `item` | `api`, `core` | `api` | 標準実装は現在まだ core の DTO / 実行型を利用 |
+| `item` | `api` | `api` | 標準コンテンツも公開契約だけで実装 |
 | `mod-loader` | `api` | `api` | 外部 MOD を公開契約だけで生成 |
 | `lwjgl3` | `api`, `core`, `mod-loader` | `implementation` | 起動時に全要素を合成 |
 | `lwjgl3` | `item` | 配布タスクのみ | Java 型を参照せず標準JARを`mods`へ配置 |
@@ -326,7 +325,7 @@ APIの全契約、設計原則、導入手順、用途別サンプル、全公�
 - 配送中に購読を変更しても、現在の配送はスナップショットを使うため次回から反映されます。
 - リスナー例外は `EventDispatchException` でイベント型情報を付けて上位へ送ります。
 - `ResourceId` は小文字へ正規化され、絶対パス、末尾 `/`、`//`、`.`、`..` を拒否します。
-- `ModContext#abilities()`へ登録したFactoryは装備プレイヤーごとに評価され、実行インスタンスの可変状態を共有しません。
+- `DeferredRegister`へ登録したFactoryは装備プレイヤーごとに評価され、実行インスタンスの可変状態を共有しません。
 - `CombatActions#damage(..., DamageType)`はHPを直接変更せず、攻撃・パッシブ・状態・終盤・防御・会心・統計・`DamageEvent`を含む既存計算を通します。
 - `DomainSpec`は重複可能な視覚領域だけを宣言し、キャラクター効果はパッシブ側が`isDomainActive`を参照して実装します。`CutInSpec`、中央吸引パルス、位置交換・中央反転・負状態解除も公開`CombatActions`から利用できます。
 
@@ -338,11 +337,11 @@ APIの全契約、設計原則、導入手順、用途別サンプル、全公�
 |---|---|---|
 | アプリ共有 | `GameApplication`, `GameContext` | libGDX lifecycle、共有サービスとリソースの所有 |
 | 起動 | `bootstrap.GameBootstrap` | MOD 登録 → データ解決 → Factory 化 → freeze |
-| Registry | `BuiltInRegistries`, `RegistrySnapshot` | 9 種の組込み Registry と起動結果 |
+| Registry | APIの`BuiltInRegistries`、coreの`RegistrySnapshot` | 公開Registryと起動結果 |
 | データ | `ConfigManager`, `JsonDataLoader`, `RegistryResolver` | JSON 読込み、旧形式の正規化、ID 解決 |
 | 検証 | `GameDataValidator`, `TranslationDataValidator` | 数値、参照、画像、キー割当、翻訳キーの fail-fast 検証 |
 | ドメイン | `BattleController`, `CharacterRuntime`, `DamageService` | 固定ステップの戦闘状態とルール |
-| Ability | `AbilityRegistry`, `AbilityLoadout`, `IAbility` 系 | 定義からプレイヤー専用実体を生成 |
+| Ability | `AbilityRegistry`, `AbilityLoadout`、API Runtime | 定義からプレイヤー専用実体を生成 |
 | 補助 | `SupportController`, `SupportAbilityService`, `FieldEffectSystem` | 追従 AI、自動攻撃、能力、フィールド効果 |
 | 状態 | `StatusEffectSystem` | 時間制効果と重複規則 |
 | 戦場物 | `domain.combat` | 投射物、範囲 / 直線攻撃、召喚、VFX 等 |
@@ -386,7 +385,7 @@ item/
    └─ services/...GameMod          # ServiceLoader 登録
 ```
 
-`init` と `impl` の分離には、ID の一覧と実装詳細を混ぜず、起動側が個別クラスを知らなくても一括登録できる利点があります。`ItemContentModule#register` は 6 個の `DeferredRegister` を lifecycle bus へ attach するだけです。
+`init` と `impl` の分離には、ID の一覧と実装詳細を混ぜず、起動側が個別クラスを知らなくても一括登録できる利点があります。`ItemContentModule#register` は 7 個の `DeferredRegister` を lifecycle bus へ attach するだけです。
 
 | カタログ | 実装済み ID | 数 |
 |---|---|---:|
@@ -399,8 +398,7 @@ item/
 
 `item` の `sourceSets.main.resources` はルートの `assets/` を指すため、標準設定・画像・音声・翻訳は標準コンテンツ JAR に同梱されます。
 
-> [!IMPORTANT]
-> 分離は移行途中です。`SkillImplementation`、Ability DTO、実行インターフェースなどがまだ `core` にあるため、現在の `item` は `core` に依存します。目標の `item -> api` のみという境界にはまだ到達していません。
+`item`は`api`だけへ依存し、Ability実装、登録要素、Registryキーのいずれも`core`型を参照しません。
 
 ## `mod-loader` — 外部 MOD Loader
 
@@ -430,7 +428,7 @@ flowchart LR
 
 - metadata schema は現在 `1` のみです。
 - MOD ID は正規化済み小文字で、`mojibattle_game` はホスト予約 ID、`mojibattle` は標準コンテンツIDです。
-- API major は `1`、ゲームバージョンは `0.8.1` です。
+- API major は `1`、APIおよびゲームバージョンは `0.8.2` です。
 - semantic version は厳密な `major.minor.patch` のみです。prerelease / build metadata は扱いません。
 - `gameVersion` は完全一致または `>=x.y.z` を受け付けます。
 - dependency range は空文字または `>=x.y.z` のみです。
@@ -488,7 +486,7 @@ glyphs/kabushiki.png
 |---|---|
 | `assets/config/game.json` | 言語、音量、メイン / 補助 / フィールド効果 ID 一覧 |
 | `assets/config/battle.json` | 時間、固定ステップ、アリーナ、全体倍率、カオスモードHP倍率 |
-| `assets/config/graphics.json` | ウィンドウ、カメラ |
+| `assets/config/graphics.json` | ウィンドウ、カメラ、必殺技カットインの初期ON/OFF |
 | `assets/config/controls.json` | 4 プレイヤーのキー |
 | `assets/config/critical.json` | 基本会心率・倍率 |
 | `assets/config/awakening.json` | 覚醒出現時刻、倍率、画像 |
@@ -541,7 +539,7 @@ glyphs/kabushiki.png
 | MOD リソース | ✅ | stream / exists / JAR list、外部Texture変換、標準互換フォールバック |
 | MOD lifecycle | ✅ | `register`、Registry event、`initialize` |
 | 外部 MOD の独自 Java 処理 | ✅ | メイン／補助Ability、固定更新、ダメージhook、汎用攻撃・状態・HUDを公開APIで実装可能 |
-| 外部データパック | ✅ | ContentRegistrarからcharacter / skill / ultimate / passive / 翻訳を統合 |
+| 外部データパック | ✅ | 公開RegistryとDeferredRegisterからcharacter / skill / ultimate / passive / 翻訳を統合 |
 | 外部画像 / 音声の実ゲーム利用 | 🟡 | キャラクター・攻撃・VFX画像は対応。外部音声とUIテーマは未公開 |
 | 公開 API だけのキャラクター追加 | ✅ | 既存Ability実装をJSONから再利用する方式に対応 |
 | MOD ごとの ClassLoader 隔離 | ⛔ | 全外部 MOD が 1 個の共有 ClassLoader |
@@ -561,7 +559,9 @@ glyphs/kabushiki.png
 | 設定 | 解像度、全画面、音量、UI 倍率、カメラ追従、言語 / キー表示 |
 | 結果 | 勝者 / 引き分けとタイトル復帰 |
 
-設定画面は Preferences へ値を保存します。音量は戦闘音声が毎フレーム保存値を参照し、解像度・全画面・カメラ追従は操作中に反映されます。一方、起動時ウィンドウ設定は現在 `graphics.json` を直接読むため、保存済み解像度 / 全画面を launcher が復元する経路は未統合です。UI 倍率も保存 UI はありますが、Skin / viewport へ適用する経路は未統合です。
+設定画面は Preferences へ値を保存します。音量は戦闘音声が毎フレーム保存値を参照し、解像度・全画面・カメラ追従・必殺技演出のON/OFFは操作中または次の戦闘開始時に反映されます。一方、起動時ウィンドウ設定は現在 `graphics.json` を直接読むため、保存済み解像度 / 全画面を launcher が復元する経路は未統合です。UI 倍率も保存 UI はありますが、Skin / viewport へ適用する経路は未統合です。
+
+item内のメイン・補助必殺技は、個別`CutInSpec`がない場合もキャラクター画像と必殺技名を使う標準カットインを自動表示します。同時に複数発動した場合は画面を横方向へ等分し、各カットインを独立した領域へ表示します。
 
 ## 実装済みキャラクター
 
@@ -644,9 +644,8 @@ glyphs/kabushiki.png
 - `GameMod#register` と `GameMod#initialize` の呼出し
 - `RegisterEvent` の購読と、既知 `RegistryKey<T>` に対する `DeferredRegister`
 - `assets/<modid>` / `data/<modid>` の open / exists / list
-- `ContentRegistrar`によるメインキャラクターと3種類のAbility JSONの登録
-- `ContentRegistrar`による補助キャラクターと対象条件付きフィールド効果JSONの登録
-- `AbilityImplementationRegistrar`によるメイン／補助の独自Ability実装登録
+- 公開`BuiltInRegistries`と`DeferredRegister`によるメイン／補助／フィールド効果データ登録
+- 公開Ability登録要素と`DeferredRegister`によるメイン／補助の独自Runtime登録
 - 状態、動的会心、通常攻撃modifier、Projectile、範囲・遅延攻撃、HUD状態行
 - 外部翻訳とキャラクター／攻撃／VFX Textureの読込み
 
@@ -656,7 +655,7 @@ glyphs/kabushiki.png
 1. 外部音声とUIテーマの登録
 2. MOD単位の依存ライブラリ隔離
 
-以下はデータ駆動キャラクターMODの作り方です。APIだけへ`compileOnly`依存する完成例と結合テストは`external-api-test-mod`にあります。
+以下はデータ駆動キャラクターMODの作り方です。登録例の完全版は[`api/README.md`](api/README.md)を参照してください。
 
 ### 1. API をローカル Maven へ発行する
 
@@ -667,7 +666,7 @@ glyphs/kabushiki.png
 現在の座標は次のとおりです。
 
 ```text
-jp.takoa.mojibattle:mojibattle-api:0.8.1
+jp.takoa.mojibattle:mojibattle-api:0.8.2
 ```
 
 ### 2. MOD プロジェクトを作る
@@ -692,7 +691,7 @@ java {
 }
 
 dependencies {
-    compileOnly("jp.takoa.mojibattle:mojibattle-api:0.8.1")
+    compileOnly("jp.takoa.mojibattle:mojibattle-api:0.8.2")
 }
 ```
 
@@ -721,12 +720,12 @@ examplemod.jar
   "name": "Example MOD",
   "version": "1.0.0",
   "apiVersion": "1",
-  "gameVersion": ">=0.8.1",
+  "gameVersion": ">=0.8.2",
   "entrypoint": "com.example.examplemod.ExampleMod",
   "dependencies": {
     "required": {
-      "mojibattle_game": ">=0.8.1",
-      "mojibattle": ">=0.8.1"
+      "mojibattle_game": ">=0.8.2",
+      "mojibattle": ">=0.8.2"
     },
     "optional": {}
   }
@@ -756,6 +755,15 @@ import jp.takoa.mojibattle.content.CharacterDataRegistration;
 import jp.takoa.mojibattle.resource.ResourceId;
 
 public final class ExampleMod implements GameMod {
+    private static final DeferredRegister<CharacterDataRegistration> CHARACTERS =
+            DeferredRegister.create(BuiltInRegistries.CHARACTERS, "examplemod");
+    private static final DeferredRegister<SkillImplementation> SKILLS =
+            DeferredRegister.create(BuiltInRegistries.SKILL_IMPLEMENTATIONS, "examplemod");
+    static {
+        CHARACTERS.register("example", () -> new CharacterDataRegistration(
+                resource("characters/example.json"), resource("abilities/example_skill.json"),
+                resource("abilities/example_ultimate.json"), resource("abilities/example_passive.json"), "i18n"));
+    }
     @Override
     public String id() {
         return "examplemod"; // metadata.id と完全一致させる
@@ -763,25 +771,21 @@ public final class ExampleMod implements GameMod {
 
     @Override
     public void register(ModContext context) {
-        context.content().registerCharacter(new CharacterDataRegistration(
-                resource("characters/example.json"),
-                resource("abilities/example_skill.json"),
-                resource("abilities/example_ultimate.json"),
-                resource("abilities/example_passive.json"),
-                "i18n"));
+        CHARACTERS.attach(context.registrationBus());
+        SKILLS.attach(context.registrationBus());
     }
 
-    private ResourceId resource(String path) {
-        return new ResourceId(id(), path);
+    private static ResourceId resource(String path) {
+        return new ResourceId("examplemod", path);
     }
 }
 ```
 
-独自Abilityは同じ`register`内で実装IDへFactoryを登録します。JSONの`parameters`は
+独自Abilityも公開登録要素を`DeferredRegister`へ宣言し、同じ`register`内でattachします。JSONの公開設定は
 `ConfigView`として渡され、JSONライブラリなどホスト内部実装への依存は不要です。数値、真偽値、文字列、配列、ネストしたオブジェクトを読み取れます。
 
 ```java
-context.abilities().registerSkillImplementation("examplemod:return_to_forest", parameters -> {
+SKILLS.register("return_to_forest", () -> new SkillImplementation("examplemod:return_to_forest", parameters -> {
     float damage = parameters.floatValue("damage", 40f);
     float distance = parameters.floatValue("knockbackDistance", 1.25f);
     return activation -> {
@@ -791,7 +795,7 @@ context.abilities().registerSkillImplementation("examplemod:return_to_forest", p
         activation.actions().knockbackAwayFrom(activation.user(), target, distance);
         return true;
     };
-});
+}, parameters -> { }, (parameters, multiplier) -> AbilityPresentation.of("examplemod.skill.return_to_forest")));
 ```
 
 スキルJSON側では登録した実装IDと固有パラメータを指定します。
@@ -833,7 +837,7 @@ Gradle からゲームを起動する場合は、プロジェクトルートの 
 
 ## ソースツリーへコンテンツを追加する方法
 
-標準コンテンツを本体リポジトリ内で追加する場合は、次の手順を使います。外部MODとして追加する場合は、前節の`ContentRegistrar`方式を使うため本体の再ビルドは不要です。
+標準コンテンツを本体リポジトリ内で追加する場合は、次の手順を使います。外部MODとして追加する場合も同じ`DeferredRegister`方式を使うため本体の再ビルドは不要です。
 
 ### 既存実装を使うメインキャラクター
 
@@ -871,11 +875,11 @@ Gradle からゲームを起動する場合は、プロジェクトルートの 
 
 JSON だけで表現できない挙動は、次の 3 層を追加します。
 
-1. **実行クラス**: `item/impl/ability` に `ISkill` / `IUltimate` / `IPassive` 実装を追加する。
-2. **実装記述子**: `item/impl/registry/*Implementations` で Factory、固有 validator、UI presentation を組にする。
-3. **登録宣言**: `item/init/*RegistryInit` の `DeferredRegister` に安定 ID で登録する。
+1. **実行クラス**: `item/ability` にAPIの`SkillRuntime` / `UltimateRuntime` / `PassiveRuntime`実装を追加する。
+2. **実装記述子**: APIの`SkillImplementation`等でFactory、validator、UI presentationを組にする。
+3. **登録宣言**: `item/init/*RegistryInit` の`DeferredRegister`へ安定IDで登録し、`ItemContentModule`でattachする。
 
-設定 DTO に新しい値が必要なら `core/domain/ability/AbilityConfigs` も変更します。ランタイムで新しい戦場オブジェクトが必要なら `core/domain/combat` と `BattleController#updateObjects`、表示が必要なら `ArenaRenderer` も更新します。
+設定DTOに新しい値が必要ならAPIの`AbilityConfigs`を変更します。新しい戦闘操作が必要ならAPIのSpec/Actionsとcore実装を対で追加します。
 
 ### 補助キャラクター
 
@@ -961,10 +965,9 @@ Java 21 の `jpackage` を使い、Java runtime 同梱の配布物を生成し�
 
 優先度の高い未完了事項は以下です。
 
-1. 標準コンテンツ内部のAbility DTOも公開設定境界へ移し、`item -> core`依存をなくす。
-2. 外部音声とUIテーマの公開登録契約を追加する。
-3. MOD 単位の依存ライブラリ隔離方針を決める。
-4. launcher 起動時に保存済み graphics Preferences を適用し、UI scale を実表示へ反映する。
+1. 外部音声とUIテーマの公開登録契約を追加する。
+2. MOD 単位の依存ライブラリ隔離方針を決める。
+3. launcher 起動時に保存済み graphics Preferences を適用し、UI scale を実表示へ反映する。
 
 現時点では、公開APIとJSONだけでメイン／補助キャラクター、Ability、状態、フィールド効果、通常攻撃変化、HUD状態表示を追加できます。外部音声とUIテーマは安定契約として扱わないでください。
 
@@ -979,5 +982,5 @@ README 単体で全体像が分かるよう内容を統合していますが、�
 - [`docs/MIGRATION_PHASES.md`](docs/MIGRATION_PHASES.md) — Phase 1～9の実装記録
 - [`docs/JAVADOC_AUDIT.md`](docs/JAVADOC_AUDIT.md) — Javadoc 監査
 - [`docs/STATIC_CHECK_REPORT.md`](docs/STATIC_CHECK_REPORT.md) — 静的確認記録
-- [`api/README.md`](api/README.md) — MOD API 0.8.1 完全ガイド、全公開クラス、更新履歴
+- [`api/README.md`](api/README.md) — MOD API 0.8.2 完全ガイド、全公開クラス、更新履歴
 - [`packaging/README.md`](packaging/README.md) — Windows リリース作成

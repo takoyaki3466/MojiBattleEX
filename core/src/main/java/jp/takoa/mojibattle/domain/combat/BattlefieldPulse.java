@@ -1,6 +1,6 @@
 package jp.takoa.mojibattle.domain.combat;
 
-import jp.takoa.mojibattle.battle.BattlefieldPulseSpec;
+import jp.takoa.mojibattle.battle.action.spec.BattlefieldPulseSpec;
 import jp.takoa.mojibattle.domain.CharacterRuntime;
 
 import java.util.Objects;

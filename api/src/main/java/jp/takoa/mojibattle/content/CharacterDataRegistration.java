@@ -2,11 +2,16 @@ package jp.takoa.mojibattle.content;
 
 import jp.takoa.mojibattle.resource.ResourceId;
 
-import java.util.List;
 import java.util.stream.Stream;
 
 /**
  * 1キャラクターと装備Abilityを構成するデータリソース一式。
+ *
+ * @param character キャラクター定義JSONのリソース参照ID（Registry登録IDではない）
+ * @param skill スキル定義JSONのリソース参照ID（Registry登録IDではない）
+ * @param ultimate 必殺技定義JSONのリソース参照ID（Registry登録IDではない）
+ * @param passive パッシブ定義JSONのリソース参照ID（Registry登録IDではない）
+ * @param translationDirectory 翻訳JSONを置くASSET相対ディレクトリ
  */
 public record CharacterDataRegistration(ResourceId character, ResourceId skill, ResourceId ultimate, ResourceId passive, String translationDirectory) {
 

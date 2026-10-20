@@ -22,6 +22,7 @@ import jp.takoa.mojibattle.input.InputBindingManager;
 import jp.takoa.mojibattle.input.PlayerCommand;
 import jp.takoa.mojibattle.render.SplitScreenRenderer;
 import jp.takoa.mojibattle.ui.BattleHud;
+import jp.takoa.mojibattle.ui.UiThemeManager;
 
 import java.util.ArrayList;
 import java.util.EnumMap;
@@ -58,6 +59,9 @@ public final class BattleScreen extends ScreenAdapter {
                     context.config.awakening, context.abilities, mode, teams, context.config.fieldEffects(),
                     context.registries.supportAbilityImplementations, context.registries.supportPassiveImplementations,
                     context.events.gameplay());
+            context.config.graphics.ultimateCutIns = Gdx.app.getPreferences(UiThemeManager.PREFERENCES_NAME)
+                    .getBoolean("ultimateCutIns", context.config.graphics.ultimateCutIns);
+            createdBattle.setCutInsEnabled(context.config.graphics.ultimateCutIns);
             createdInput = new InputBindingManager(context.config.controls);
             createdRenderer = new SplitScreenRenderer(context.config.battle, context.config.graphics, teams,
                     context.config.skills(), context.config.ultimates(), context.config.awakening.texturePath,

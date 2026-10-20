@@ -1,9 +1,9 @@
 package jp.takoa.mojibattle.domain.ability.adapter;
 
 import com.badlogic.gdx.math.Vector3;
-import jp.takoa.mojibattle.battle.CombatantKind;
-import jp.takoa.mojibattle.battle.CombatantPosition;
-import jp.takoa.mojibattle.battle.CombatantView;
+import jp.takoa.mojibattle.battle.combatant.CombatantKind;
+import jp.takoa.mojibattle.battle.combatant.CombatantPosition;
+import jp.takoa.mojibattle.battle.combatant.CombatantView;
 import jp.takoa.mojibattle.domain.BattleController;
 
 /** BattleControllerが所有する任意種別の個体を公開CombatantViewへ射影する。 */

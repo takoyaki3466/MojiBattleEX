@@ -7,6 +7,10 @@ import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
 import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
 import com.badlogic.gdx.utils.Align;
 import jp.takoa.mojibattle.GameContext;
+import jp.takoa.mojibattle.ui.ChaosButton;
+import jp.takoa.mojibattle.ui.ChaosMenuLayout;
+import jp.takoa.mojibattle.ui.UiTheme;
+import jp.takoa.mojibattle.ui.UiThemeManager;
 
 /**
  * ゲーム開始、設定、キャラクター編集への入口を表示するタイトル画面。
@@ -25,36 +29,28 @@ public final class TitleScreen extends StageScreen {
         root.setFillParent(true);
         root.pad(28);
 
-        Table hero = new Table(context.skin);
-        hero.setBackground("panel");
-        hero.pad(32);
-        hero.defaults().growX().height(72).pad(7);
-
         Label title = new Label(context.i18n.text("menu.title"), context.skin, "title");
         title.setAlignment(Align.center);
-        hero.add(title).height(120).row();
 
         Label subtitle = new Label(context.i18n.text("menu.subtitle"), context.skin);
         subtitle.setColor(.62f, 1f, .76f, 1f);
         subtitle.setAlignment(Align.center);
-        hero.add(subtitle).height(54).row();
 
-        TextButton start = new TextButton(context.i18n.text("menu.start"), context.skin);
-        hero.add(start).height(82).row();
+        boolean chaos = UiThemeManager.selected() == UiTheme.CHAOS;
+        TextButton start = chaos
+                ? new ChaosButton(context.i18n.text("menu.start"), context.skin, ChaosButton.Accent.ORANGE)
+                : new TextButton(context.i18n.text("menu.start"), context.skin);
+        TextButton editor = chaos
+                ? new ChaosButton(context.i18n.text("menu.character_editor"), context.skin, ChaosButton.Accent.CYAN)
+                : new TextButton(context.i18n.text("menu.character_editor"), context.skin);
+        TextButton settings = chaos
+                ? new ChaosButton(context.i18n.text("menu.settings"), context.skin, ChaosButton.Accent.LIME)
+                : new TextButton(context.i18n.text("menu.settings"), context.skin);
 
-        TextButton editor = new TextButton(context.i18n.text("menu.character_editor"), context.skin);
-        hero.add(editor).row();
-
-        TextButton settings = new TextButton(context.i18n.text("menu.settings"), context.skin);
-        hero.add(settings).row();
-
-        if (noticeKey != null) {
-            Label saved = new Label(context.i18n.text(noticeKey), context.skin);
-
+        Label saved = noticeKey == null ? null : new Label(context.i18n.text(noticeKey), context.skin);
+        if (saved != null) {
             saved.setColor(.65f, 1f, .72f, 1f);
             saved.setAlignment(Align.center);
-
-            hero.add(saved).height(44).row();
         }
 
         start.addListener(new ChangeListener() {
@@ -75,7 +71,33 @@ public final class TitleScreen extends StageScreen {
             }
         });
 
-        addStandardMenu(root, hero);
+        if (chaos) {
+            title.setFontScale(1.08f);
+            ChaosMenuLayout layout = new ChaosMenuLayout(context.skin)
+                    .header(title, subtitle)
+                    .action(start, 84)
+                    .action(editor, 76)
+                    .action(settings, 76);
+            if (saved != null) {
+                layout.notice(saved);
+            }
+            layout.finish();
+            addMenu(root, layout.table(), .94f, .93f);
+        } else {
+            Table hero = new Table(context.skin);
+            hero.setBackground("panel");
+            hero.pad(32);
+            hero.defaults().growX().height(72).pad(7);
+            hero.add(title).height(120).row();
+            hero.add(subtitle).height(54).row();
+            hero.add(start).height(82).row();
+            hero.add(editor).row();
+            hero.add(settings).row();
+            if (saved != null) {
+                hero.add(saved).height(44).row();
+            }
+            addStandardMenu(root, hero);
+        }
 
         Label aiNotice = new Label(context.i18n.text("menu.ai_notice"), context.skin);
 

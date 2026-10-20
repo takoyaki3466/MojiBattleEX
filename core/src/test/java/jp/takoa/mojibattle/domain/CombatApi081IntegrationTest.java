@@ -1,18 +1,26 @@
 package jp.takoa.mojibattle.domain;
 
-import com.badlogic.gdx.math.Vector3;
-import jp.takoa.mojibattle.ability.SupportSplitMemberSpec;
-import jp.takoa.mojibattle.ability.SupportSplitSpec;
-import jp.takoa.mojibattle.battle.*;
+import jp.takoa.mojibattle.ability.support.SupportSplitMemberSpec;
+import jp.takoa.mojibattle.ability.support.SupportSplitSpec;
+import jp.takoa.mojibattle.battle.action.*;
+import jp.takoa.mojibattle.battle.action.spec.*;
+import jp.takoa.mojibattle.battle.combatant.*;
+import jp.takoa.mojibattle.battle.damage.*;
+import jp.takoa.mojibattle.battle.presentation.*;
+import jp.takoa.mojibattle.battle.rule.*;
+import jp.takoa.mojibattle.battle.status.*;
 import jp.takoa.mojibattle.config.*;
 import jp.takoa.mojibattle.domain.ability.AbilityRegistry;
 import jp.takoa.mojibattle.domain.ability.adapter.CoreCombatActions;
+import jp.takoa.mojibattle.domain.ability.adapter.CoreCombatantView;
 import jp.takoa.mojibattle.domain.ability.adapter.CoreUnifiedCombatantView;
 import jp.takoa.mojibattle.domain.combat.TemporarySupportSummon;
 import jp.takoa.mojibattle.domain.support.*;
 import jp.takoa.mojibattle.event.EventBus;
 import jp.takoa.mojibattle.input.PlayerCommand;
 import jp.takoa.mojibattle.registry.*;
+import jp.takoa.mojibattle.registry.impl.SupportAbilityImpl;
+import jp.takoa.mojibattle.registry.impl.SupportPassiveImpl;
 import jp.takoa.mojibattle.resource.ResourceId;
 import org.junit.jupiter.api.Test;
 
@@ -99,15 +107,70 @@ final class CombatApi081IntegrationTest {
         assertEquals(80f, support.hp(), .0001f);
     }
 
+    @Test void externalCombatActionsAcceptUnifiedMainSupportAndSummonTargets() {
+        Fixture f = fixture();
+        CombatantView source = new CoreCombatantView(f.battle, f.battle.player(PlayerId.ONE));
+        CombatantView enemySupport = f.actions.battlefield().enemiesOf(source).stream()
+                .filter(value -> value.kind() == CombatantKind.SUPPORT).findFirst().orElseThrow();
+
+        assertDoesNotThrow(() -> f.actions.spawnProjectile(source, enemySupport, new ProjectileSpec(
+                DamageRequest.of(10, DamageType.SKILL), 12, .5f, 2, 2, 20, 1,
+                ResourceId.parse("test:glyphs/projectile.png"), ResourceId.parse("test:impact"))));
+        assertDoesNotThrow(() -> f.actions.knockbackAwayFrom(source, enemySupport, 2));
+        assertDoesNotThrow(() -> f.actions.mirrorAcrossArenaCenter(enemySupport));
+        assertDoesNotThrow(() -> f.actions.swapPositions(source, enemySupport));
+
+        DomainSpec domain = new DomainSpec(ResourceId.parse("test:support-domain"), 4,
+                DomainVisualStyle.BLOOM, .8f, ResourceId.parse("test:star"));
+        assertDoesNotThrow(() -> f.actions.activateDomain(enemySupport, domain));
+        assertTrue(f.actions.isDomainActive(enemySupport, domain.id()));
+        assertDoesNotThrow(() -> f.actions.spawnAreaAttack(enemySupport, source, new AreaAttackSpec(
+                0, 5, DamageRequest.of(10, DamageType.ULTIMATE),
+                ResourceId.parse("test:warning"), ResourceId.parse("test:impact"), null, 2)));
+    }
+
+    @Test void cinematicAndBattlefieldPulseActionsRemainValidForMainCharacters() {
+        Fixture f = fixture();
+        CombatantView source = new CoreCombatantView(f.battle, f.battle.player(PlayerId.ONE));
+        assertDoesNotThrow(() -> f.actions.showCutIn(source, new CutInSpec(
+                ResourceId.parse("test:cutins/slash.png"), "test.cutin", 2, 100,
+                CutInMotion.SLASH_RUSH, 1.2f)));
+        assertDoesNotThrow(() -> f.actions.startBattlefieldPulse(source, new BattlefieldPulseSpec(
+                3, .5f, 4, DamageRequest.of(5, DamageType.SKILL),
+                ResourceId.parse("test:slash"), 5)));
+        assertNotNull(f.battle.cutIn());
+    }
+
+    @Test void simultaneousCutInsAreRetainedAndSettingCanDisableThem() {
+        Fixture f = fixture();
+        CombatantView first = new CoreCombatantView(f.battle, f.battle.player(PlayerId.ONE));
+        CombatantView second = new CoreCombatantView(f.battle, f.battle.player(PlayerId.TWO));
+        f.actions.showCutIn(first, new CutInSpec(ResourceId.parse("test:first.png"), "test.first", 2, 10));
+        f.actions.showCutIn(second, new CutInSpec(ResourceId.parse("test:second.png"), "test.second", 2, 10));
+        assertEquals(2, f.battle.cutIns().size());
+
+        f.battle.setCutInsEnabled(false);
+        assertTrue(f.battle.cutIns().isEmpty());
+        f.actions.showCutIn(first, new CutInSpec(ResourceId.parse("test:hidden.png"), "test.hidden", 2, 10));
+        assertTrue(f.battle.cutIns().isEmpty());
+    }
+
+    @Test void defaultUltimateCutInUsesCharacterImage() {
+        Fixture f = fixture();
+        CharacterRuntime source = f.battle.player(PlayerId.ONE);
+        f.battle.showDefaultUltimateCutIn(source, source.definition.glyphTexture, "test.ultimate");
+        assertEquals(ResourceId.parse("test:glyphs/test.png"), f.battle.cutIns().getFirst().spec().image());
+    }
+
     private static EnumMap<PlayerId, PlayerCommand> commands() { return new EnumMap<>(PlayerId.class); }
 
     private static Fixture fixture() { return fixture(false); }
     private static Fixture fixtureSameDefinitions() { return fixture(true); }
     private static Fixture fixture(boolean same) {
         AbilityRegistry abilities = new AbilityRegistry(); abilities.freeze();
-        Registry<SupportAbilityImplementation> supportAbilities = new Registry<>("support ability", SupportAbilityImplementation::id);
-        supportAbilities.register(new SupportAbilityImplementation("test:noop", (context, ultimate) -> true, definition -> {}));
-        Registry<SupportPassiveImplementation> supportPassives = new Registry<>("support passive", SupportPassiveImplementation::id);
+        Registry<SupportAbilityImpl> supportAbilities = new Registry<>("support ability", SupportAbilityImpl::id);
+        supportAbilities.register(new SupportAbilityImpl("test:noop", config -> context -> true, definition -> {}));
+        Registry<SupportPassiveImpl> supportPassives = new Registry<>("support passive", SupportPassiveImpl::id);
         BattleController battle = new BattleController(config(), critical(), awakening(), abilities, BattleMode.VERSUS,
                 List.of(team("test:hero", 200), team(same ? "test:hero" : "test:enemy-high", 300),
                         team(same ? "test:hero" : "test:enemy-low", 150)), List.of(), supportAbilities, supportPassives, new EventBus());
@@ -120,7 +183,7 @@ final class CombatApi081IntegrationTest {
 
     private static BattleTeamDefinition team(String id, float hp) {
         CharacterDefinition main = new CharacterDefinition();
-        main.id=id; main.displayGlyph="字"; main.maxHp=hp; main.baseAttack=1; main.moveSpeed=1; main.collisionRadius=.5f; main.trainingDummy=true;
+        main.id=id; main.displayGlyph="字"; main.glyphTexture="glyphs/test.png"; main.maxHp=hp; main.baseAttack=1; main.moveSpeed=1; main.collisionRadius=.5f; main.trainingDummy=true;
         SupportCharacterDefinition support = new SupportCharacterDefinition();
         support.id="test:group"; support.displayGlyph="㌠"; support.glyphTexture="glyphs/test.png"; support.projectileTexture="glyphs/test.png";
         support.maxHp=100; support.moveSpeed=8; support.followDistance=2; support.attackRange=30; support.attackInterval=100; support.baseDamage=10; support.projectileSpeed=10;

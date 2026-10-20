@@ -1,6 +1,6 @@
 package jp.takoa.mojibattle.domain;
 
-import jp.takoa.mojibattle.battle.CutInSpec;
+import jp.takoa.mojibattle.battle.presentation.CutInSpec;
 
 import java.util.Objects;
 

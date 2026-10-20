@@ -5,6 +5,7 @@ import jp.takoa.mojibattle.event.lifecycle.RegisterEvent;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.function.BiConsumer;
 import java.util.function.Function;
 
 /** Registryの生成、登録イベント配送、失敗状態と一括凍結を管理する。 */
@@ -15,13 +16,23 @@ public final class RegistryManager {
     private boolean failed;
 
     public <T> Registry<T> create(RegistryKey<T> key, String kind, Function<T, String> idExtractor) {
+        return add(key, new Registry<>(kind, idExtractor));
+    }
+
+    /** 値から推定する既定IDと、明示IDの型固有検証を分離したRegistryを作成する。 */
+    public <T> Registry<T> create(RegistryKey<T> key, String kind,
+                                  Function<T, String> idExtractor,
+                                  BiConsumer<RegistryId, T> registrationValidator) {
+        return add(key, new Registry<>(kind, idExtractor, registrationValidator));
+    }
+
+    private <T> Registry<T> add(RegistryKey<T> key, Registry<T> registry) {
         if (registrationStarted || frozen || failed) {
             throw new IllegalStateException("Cannot create registries after registration started");
         }
         if (registries.keySet().stream().anyMatch(existing -> existing.id().equals(key.id()))) {
             throw new IllegalArgumentException("Duplicate registry ID: " + key.id());
         }
-        Registry<T> registry = new Registry<>(kind, idExtractor);
         registries.put(key, registry);
         return registry;
     }

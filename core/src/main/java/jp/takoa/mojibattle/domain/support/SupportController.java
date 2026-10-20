@@ -6,12 +6,12 @@ import jp.takoa.mojibattle.domain.CharacterRuntime;
 import jp.takoa.mojibattle.domain.PlayerTeam;
 import jp.takoa.mojibattle.domain.combat.Projectile;
 import jp.takoa.mojibattle.registry.Registry;
-import jp.takoa.mojibattle.registry.SupportAbilityImplementation;
+import jp.takoa.mojibattle.registry.impl.SupportAbilityImpl;
 import jp.takoa.mojibattle.registry.EffectIds;
-import jp.takoa.mojibattle.registry.SupportPassiveImplementation;
-import jp.takoa.mojibattle.ability.SupportPassiveContext;
-import jp.takoa.mojibattle.battle.NormalAttackEvent;
-import jp.takoa.mojibattle.battle.SupportNormalAttackModifier;
+import jp.takoa.mojibattle.registry.impl.SupportPassiveImpl;
+import jp.takoa.mojibattle.ability.context.SupportPassiveContext;
+import jp.takoa.mojibattle.battle.event.NormalAttackEvent;
+import jp.takoa.mojibattle.battle.modifier.SupportNormalAttackModifier;
 import jp.takoa.mojibattle.domain.ability.adapter.CoreCombatantView;
 import jp.takoa.mojibattle.domain.ability.adapter.CoreSupportView;
 import jp.takoa.mojibattle.domain.ability.adapter.MapConfigView;
@@ -23,13 +23,13 @@ import jp.takoa.mojibattle.domain.ability.adapter.CoreCombatActions;
 public final class SupportController {
     private static final float ARRIVAL_TOLERANCE = .3f;
     private final SupportAbilityService abilities;
-    private final Registry<SupportPassiveImplementation> passives;
+    private final Registry<SupportPassiveImpl> passives;
 
-    public SupportController(Registry<SupportAbilityImplementation> implementations) {
-        this(implementations, new Registry<>("support passive implementation", SupportPassiveImplementation::id));
+    public SupportController(Registry<SupportAbilityImpl> implementations) {
+        this(implementations, new Registry<>("support passive implementation", SupportPassiveImpl::id));
     }
 
-    public SupportController(Registry<SupportAbilityImplementation> implementations, Registry<SupportPassiveImplementation> passives) {
+    public SupportController(Registry<SupportAbilityImpl> implementations, Registry<SupportPassiveImpl> passives) {
         abilities = new SupportAbilityService(implementations);
         this.passives = passives;
     }

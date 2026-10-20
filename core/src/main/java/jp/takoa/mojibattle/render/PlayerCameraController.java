@@ -3,7 +3,7 @@ package jp.takoa.mojibattle.render;
 import com.badlogic.gdx.graphics.PerspectiveCamera;
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Vector3;
-import jp.takoa.mojibattle.battle.CutInMotion;
+import jp.takoa.mojibattle.battle.presentation.CutInMotion;
 import jp.takoa.mojibattle.config.GraphicsConfig;
 import jp.takoa.mojibattle.domain.CharacterRuntime;
 import jp.takoa.mojibattle.domain.CutInState;

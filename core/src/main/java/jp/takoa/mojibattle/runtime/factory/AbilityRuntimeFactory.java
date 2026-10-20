@@ -3,6 +3,7 @@ package jp.takoa.mojibattle.runtime.factory;
 import jp.takoa.mojibattle.config.ConfigManager;
 import jp.takoa.mojibattle.data.RegistryResolver;
 import jp.takoa.mojibattle.domain.ability.AbilityRegistry;
+import jp.takoa.mojibattle.domain.ability.adapter.MapConfigView;
 
 /**
  * 検証済みDefinitionと登録済みType Factoryから、プレイヤー専用インスタンスを生成する
@@ -27,13 +28,17 @@ public final class AbilityRuntimeFactory {
 
         data.skills().forEach(definition -> abilities.registerSkill(
                 definition.id,
-                () -> resolver.skill(definition.implementationId).factory().apply(definition)));
+                () -> new AbilityRegistry.ConfiguredSkill(definition.id, definition.cooldownSeconds,
+                        definition.maximumStocks, definition.initialStocks, definition.stockRechargeSeconds,
+                        definition.healthCostRatio,
+                        resolver.skill(definition.implementationId).factory().create(MapConfigView.of(definition)))));
         data.ultimates().forEach(definition -> abilities.registerUltimate(
                 definition.id,
-                () -> resolver.ultimate(definition.implementationId).factory().apply(definition)));
+                () -> new AbilityRegistry.ConfiguredUltimate(definition.id, definition.nameKey, definition.pointCost,
+                        resolver.ultimate(definition.implementationId).factory().create(MapConfigView.of(definition)))));
         data.passives().forEach(definition -> abilities.registerPassive(
                 definition.id,
-                () -> resolver.passive(definition.implementationId).factory().apply(definition)));
+                () -> resolver.passive(definition.implementationId).factory().create(MapConfigView.of(definition))));
 
         abilities.freeze();
         return abilities;

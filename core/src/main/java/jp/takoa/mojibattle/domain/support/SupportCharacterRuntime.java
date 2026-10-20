@@ -3,9 +3,9 @@ package jp.takoa.mojibattle.domain.support;
 import com.badlogic.gdx.math.Vector3;
 import jp.takoa.mojibattle.domain.PlayerId;
 import jp.takoa.mojibattle.domain.status.StatusEffectSystem;
-import jp.takoa.mojibattle.ability.AbilityStateLine;
-import jp.takoa.mojibattle.ability.SupportPassiveRuntime;
-import jp.takoa.mojibattle.battle.SupportNormalAttackModifier;
+import jp.takoa.mojibattle.ability.presentation.AbilityStateLine;
+import jp.takoa.mojibattle.ability.runtime.SupportPassiveRuntime;
+import jp.takoa.mojibattle.battle.modifier.SupportNormalAttackModifier;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -135,7 +135,7 @@ public final class SupportCharacterRuntime {
     record CountModifier(int priority, float baseMultiplier, float perCombatant) { }
 
     public void close() { modifiers.clear(); countModifiers.clear(); actionStateLines = List.of(); passiveStateLines = List.of(); state.close(); passive = null; hiddenAndDisabled = false; }
-    public jp.takoa.mojibattle.ability.SupportStateStore state() { return state; }
+    public jp.takoa.mojibattle.ability.support.SupportStateStore state() { return state; }
     public SupportPassiveRuntime passive() { return passive; }
     public void passive(SupportPassiveRuntime value) { passive = value; }
     public List<SupportNormalAttackModifier> normalAttackModifiers() { return modifiers.stream().map(TimedModifier::modifier).toList(); }

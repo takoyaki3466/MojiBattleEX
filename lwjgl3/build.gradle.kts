@@ -9,6 +9,8 @@ plugins {
     application
 }
 
+val packageVersion = project.version.toString()
+
 java {
     toolchain.languageVersion.set(JavaLanguageVersion.of(21))
 }
@@ -50,6 +52,7 @@ val prepareRunMods = tasks.register<Sync>("prepareRunMods") {
     from(standardItemJar.flatMap { it.archiveFile })
     from(projectModsDirectory) {
         include("*.jar")
+        exclude { element -> element.file.length() == 0L }
     }
     into(developmentModsDirectory)
     duplicatesStrategy = DuplicatesStrategy.FAIL
@@ -82,7 +85,6 @@ tasks.test {
 val packageName = "MojiBattleEX"
 val packageVendor = "takoa"
 val packageDescription = "A loud local two-player 3D character battle game"
-val packageVersion = project.version.toString()
 val packageIcon = rootProject.layout.projectDirectory.file("packaging/windows/MojiBattleEX.ico")
 val packageRoot = layout.buildDirectory.dir("jpackage")
 val installDistribution = tasks.named<Sync>("installDist")

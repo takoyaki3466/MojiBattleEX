@@ -1,9 +1,9 @@
 package jp.takoa.mojibattle.domain.support;
 
-import jp.takoa.mojibattle.ability.AbilityStateLine;
-import jp.takoa.mojibattle.ability.SupportActions;
-import jp.takoa.mojibattle.ability.SupportSplitSpec;
-import jp.takoa.mojibattle.battle.SupportNormalAttackModifier;
+import jp.takoa.mojibattle.ability.presentation.AbilityStateLine;
+import jp.takoa.mojibattle.ability.support.SupportActions;
+import jp.takoa.mojibattle.ability.support.SupportSplitSpec;
+import jp.takoa.mojibattle.battle.modifier.SupportNormalAttackModifier;
 import jp.takoa.mojibattle.domain.BattleController;
 import jp.takoa.mojibattle.resource.ResourceId;
 
@@ -25,6 +25,10 @@ public final class CoreSupportActions implements SupportActions {
     @Override public List<SupportNormalAttackModifier> normalAttackModifiers() { return runtime.modifiers.stream().map(SupportCharacterRuntime.TimedModifier::modifier).toList(); }
     @Override public boolean removeNormalAttackModifier(ResourceId id) { return runtime.modifiers.removeIf(value -> value.modifier().id().equals(id)); }
     @Override public void setStateLines(List<AbilityStateLine> lines) { runtime.actionStateLines = List.copyOf(lines); }
+    @Override public void refundUltimatePoints(float points) {
+        if (!Float.isFinite(points) || points < 0) throw new IllegalArgumentException("points");
+        runtime.addUltimatePoints(points);
+    }
     @Override public void splitTemporarily(SupportSplitSpec spec) {
         if (battle == null) throw new UnsupportedOperationException("No battle is attached");
         battle.splitSupport(runtime, spec);

@@ -21,7 +21,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.ServiceLoader;
 
-/** デスクトップ向けLWJGL3設定を構築し、ゲームアプリケーションを起動するエントリーポイント。 */
+/**
+ * デスクトップ向けLWJGL3設定を構築し、ゲームアプリケーションを起動するエントリーポイント。
+ */
 public final class Lwjgl3Launcher {
     private static final String GRAPHICS_CONFIG_RESOURCE = "/config/graphics.json";
 
@@ -30,8 +32,7 @@ public final class Lwjgl3Launcher {
 
     public static void main(String[] args) throws Throwable {
         StartupLog.beginSession();
-        Thread.setDefaultUncaughtExceptionHandler(
-                (thread, error) -> StartupLog.error("Uncaught exception in thread " + thread.getName(), error));
+        Thread.setDefaultUncaughtExceptionHandler((thread, error) -> StartupLog.error("Uncaught exception in thread " + thread.getName(), error));
         StartupLog.info("Lwjgl3Launcher.main started; log=" + StartupLog.file());
         ModLoader modLoader = null;
         try {
@@ -44,9 +45,7 @@ public final class Lwjgl3Launcher {
             StartupLog.info("Graphics configuration loaded");
 
             Lwjgl3ApplicationConfiguration configuration = createConfiguration(graphics);
-            Path modsDirectory = Path.of(System.getProperty("mojibattle.modsDir", "mods"))
-                    .toAbsolutePath()
-                    .normalize();
+            Path modsDirectory = Path.of(System.getProperty("mojibattle.modsDir", "mods")).toAbsolutePath().normalize();
             StartupLog.info("MOD directory=" + modsDirectory);
             modLoader = new ModLoader(modsDirectory);
             ModDiscovery discovery = discoverMods(modLoader);
@@ -54,11 +53,7 @@ public final class Lwjgl3Launcher {
 
             ModLoader activeModLoader = modLoader;
             StartupLog.info("Starting LWJGL application");
-            new Lwjgl3Application(
-                    new GameApplication(
-                            () -> createContext(activeModLoader, discovery.mods()),
-                            StartupLog::info),
-                    configuration);
+            new Lwjgl3Application(new GameApplication(() -> createContext(activeModLoader, discovery.mods()), StartupLog::info), configuration);
             StartupLog.info("LWJGL application exited normally");
         } catch (Throwable error) {
             closeAfterFailure(modLoader, error);
@@ -86,17 +81,12 @@ public final class Lwjgl3Launcher {
         StartupLog.info("Discovering built-in MODs from the application classpath");
         ServiceLoader.load(GameMod.class).forEach(mods::add);
         mods.stream().map(mod -> mod.id() + "@classpath").forEach(descriptions::add);
-        StartupLog.info("Built-in MOD discovery complete; count=" + mods.size()
-                + ", ids=" + mods.stream().map(GameMod::id).toList());
+        StartupLog.info("Built-in MOD discovery complete; count=" + mods.size() + ", ids=" + mods.stream().map(GameMod::id).toList());
         StartupLog.info("Calling ModLoader.load() for external MODs");
         List<LoadedMod> externalMods = modLoader.load();
         externalMods.stream().map(LoadedMod::instance).forEach(mods::add);
-        externalMods.stream()
-                .map(mod -> mod.metadata().id + "@" + mod.metadata().version)
-                .forEach(descriptions::add);
-        StartupLog.info("ModLoader.load() complete; external count=" + externalMods.size()
-                + ", external ids=" + externalMods.stream().map(mod -> mod.metadata().id).toList()
-                + ", total count=" + mods.size());
+        externalMods.stream().map(mod -> mod.metadata().id + "@" + mod.metadata().version).forEach(descriptions::add);
+        StartupLog.info("ModLoader.load() complete; external count=" + externalMods.size() + ", external ids=" + externalMods.stream().map(mod -> mod.metadata().id).toList() + ", total count=" + mods.size());
         return new ModDiscovery(List.copyOf(mods), List.copyOf(descriptions));
     }
 
@@ -133,16 +123,12 @@ public final class Lwjgl3Launcher {
     private static GraphicsConfig readGraphicsConfig() {
         InputStream stream = Lwjgl3Launcher.class.getResourceAsStream(GRAPHICS_CONFIG_RESOURCE);
         if (stream == null) {
-            throw new IllegalStateException(
-                    "Cannot load startup graphics config from application resources: "
-                            + GRAPHICS_CONFIG_RESOURCE);
+            throw new IllegalStateException("Cannot load startup graphics config from application resources: " + GRAPHICS_CONFIG_RESOURCE);
         }
         try (InputStreamReader reader = new InputStreamReader(stream, StandardCharsets.UTF_8)) {
             return new Json().fromJson(GraphicsConfig.class, reader);
         } catch (IOException | RuntimeException error) {
-            throw new IllegalStateException(
-                    "Cannot parse startup graphics config: " + GRAPHICS_CONFIG_RESOURCE,
-                    error);
+            throw new IllegalStateException("Cannot parse startup graphics config: " + GRAPHICS_CONFIG_RESOURCE, error);
         }
     }
 

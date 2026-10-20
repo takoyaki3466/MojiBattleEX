@@ -9,4 +9,5 @@ public final class GraphicsConfig {
     public float cameraHeight;
     public float cameraFollowSpeed;
     public float fieldOfView;
+    public boolean ultimateCutIns = true;
 }

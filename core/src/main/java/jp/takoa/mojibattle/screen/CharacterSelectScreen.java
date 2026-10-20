@@ -25,6 +25,10 @@ import jp.takoa.mojibattle.domain.ability.AbilityConfigs;
 import jp.takoa.mojibattle.log.DiagnosticLog;
 import jp.takoa.mojibattle.registry.AbilityPresentationFormatter;
 import jp.takoa.mojibattle.resource.GdxTextureLoader;
+import jp.takoa.mojibattle.ui.ChaosButton;
+import jp.takoa.mojibattle.ui.ChaosMenuLayout;
+import jp.takoa.mojibattle.ui.UiTheme;
+import jp.takoa.mojibattle.ui.UiThemeManager;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -45,6 +49,7 @@ public final class CharacterSelectScreen extends StageScreen {
     private final BattleMode mode;
     private final int playerCount;
     private final int mainCount;
+    private final boolean chaosUi;
     private final GdxTextureLoader textureLoader;
     private final Label prompt;
     private final Label chosen;
@@ -73,6 +78,7 @@ public final class CharacterSelectScreen extends StageScreen {
     public CharacterSelectScreen(GameContext context, ScreenManager screens, BattleMode mode, int playerCount) {
         super(context, screens);
         this.mode = mode;
+        chaosUi = UiThemeManager.selected() == UiTheme.CHAOS;
         textureLoader = new GdxTextureLoader(context.resources);
         this.playerCount = mode == BattleMode.TRAINING ? 1 : Math.max(2, Math.min(4, playerCount));
         mainCount = mode == BattleMode.CHAOS ? 3 : 1;
@@ -98,8 +104,12 @@ public final class CharacterSelectScreen extends StageScreen {
         roster.add(chosen).left().padBottom(4).row();
 
         Label supportCountLabel = new Label(context.i18n.text("select.support_count"), context.skin);
-        TextButton oneSupport = new TextButton(context.i18n.text("select.support_count_one"), context.skin);
-        TextButton twoSupports = new TextButton(context.i18n.text("select.support_count_two"), context.skin);
+        TextButton oneSupport = chaosUi
+                ? new ChaosButton(context.i18n.text("select.support_count_one"), context.skin, ChaosButton.Accent.CYAN)
+                : new TextButton(context.i18n.text("select.support_count_one"), context.skin);
+        TextButton twoSupports = chaosUi
+                ? new ChaosButton(context.i18n.text("select.support_count_two"), context.skin, ChaosButton.Accent.MAGENTA)
+                : new TextButton(context.i18n.text("select.support_count_two"), context.skin);
 
         supportCountControls.add(supportCountLabel).padRight(8);
         supportCountControls.add(oneSupport).width(150).height(42).padRight(4);
@@ -119,8 +129,12 @@ public final class CharacterSelectScreen extends StageScreen {
         });
 
         Table tabs = new Table();
-        existingTab = new TextButton(context.i18n.text("select.existing"), context.skin);
-        customTab = new TextButton(context.i18n.text("select.custom"), context.skin);
+        existingTab = chaosUi
+                ? new ChaosButton(context.i18n.text("select.existing"), context.skin, ChaosButton.Accent.YELLOW)
+                : new TextButton(context.i18n.text("select.existing"), context.skin);
+        customTab = chaosUi
+                ? new ChaosButton(context.i18n.text("select.custom"), context.skin, ChaosButton.Accent.CYAN)
+                : new TextButton(context.i18n.text("select.custom"), context.skin);
 
         tabs.add(existingTab).width(230).height(44).padRight(4);
         tabs.add(customTab).width(230).height(44).padLeft(4);
@@ -150,8 +164,12 @@ public final class CharacterSelectScreen extends StageScreen {
         showDetailHint();
 
         Table decisions = new Table();
-        cancel = new TextButton(context.i18n.text("select.cancel"), context.skin);
-        confirm = new TextButton(context.i18n.text("select.confirm"), context.skin);
+        cancel = chaosUi
+                ? new ChaosButton(context.i18n.text("select.cancel"), context.skin, ChaosButton.Accent.CYAN)
+                : new TextButton(context.i18n.text("select.cancel"), context.skin);
+        confirm = chaosUi
+                ? new ChaosButton(context.i18n.text("select.confirm"), context.skin, ChaosButton.Accent.ORANGE)
+                : new TextButton(context.i18n.text("select.confirm"), context.skin);
 
         confirm.setDisabled(true);
 
@@ -171,16 +189,21 @@ public final class CharacterSelectScreen extends StageScreen {
             }
         });
 
-        Table upper = new Table();
-        upper.add(roster).grow().minWidth(0).minHeight(0).top().padRight(3);
-        upper.add(information).width(com.badlogic.gdx.scenes.scene2d.ui.Value.percentWidth(.31f, upper))
-                .growY().minWidth(330).minHeight(0).top().padLeft(3);
+        Table shell;
+        if (chaosUi) {
+            shell = ChaosMenuLayout.selection(context.skin, roster, information, playerPreviews);
+        } else {
+            Table upper = new Table();
+            upper.add(roster).grow().minWidth(0).minHeight(0).top().padRight(3);
+            upper.add(information).width(com.badlogic.gdx.scenes.scene2d.ui.Value.percentWidth(.31f, upper))
+                    .growY().minWidth(330).minHeight(0).top().padLeft(3);
 
-        Table shell = new Table(context.skin);
-        shell.setBackground("bar-bg");
-        shell.pad(3);
-        shell.add(upper).grow().minWidth(0).minHeight(0).top().row();
-        shell.add(playerPreviews).growX().height(112).padTop(3);
+            shell = new Table(context.skin);
+            shell.setBackground("bar-bg");
+            shell.pad(3);
+            shell.add(upper).grow().minWidth(0).minHeight(0).top().row();
+            shell.add(playerPreviews).growX().height(112).padTop(3);
+        }
 
         addMenu(root, shell, MENU_WIDTH_RATIO, MENU_HEIGHT_RATIO);
 
@@ -266,7 +289,9 @@ public final class CharacterSelectScreen extends StageScreen {
 
     private void addCard(String id, String texturePath, String glyph, String summary, Runnable detailsAction) {
         Table card = new Table(context.skin);
-        card.setBackground("button");
+        String cardBackground = chaosUi ? ChaosButton.cardBackground(id) : "button";
+        card.setBackground(cardBackground);
+        card.setUserObject(cardBackground);
         card.pad(6);
         card.setTouchable(Touchable.enabled);
 
@@ -290,11 +315,11 @@ public final class CharacterSelectScreen extends StageScreen {
             @Override
             public boolean touchDown(InputEvent event, float x, float y, int pointer, int button) {
                 if (selectedCard != null) {
-                    selectedCard.setBackground("button");
+                    selectedCard.setBackground((String) selectedCard.getUserObject());
                 }
 
                 selectedCard = card;
-                card.setBackground("button-down");
+                card.setBackground(chaosUi ? ChaosButton.selectedCardBackground() : "button-down");
                 pendingId = id;
                 confirm.setDisabled(false);
                 updateDiagnostics();
@@ -421,11 +446,11 @@ public final class CharacterSelectScreen extends StageScreen {
     }
 
     private String skillDetail(AbilityConfigs.ProjectileSkill skill) {
-        return AbilityPresentationFormatter.format(context.registries.skillImplementations.require(skill.implementationId).presentation().apply(skill, context.config.battle.skillCooldownMultiplier), context.i18n);
+        return AbilityPresentationFormatter.format(context.registries.skillImplementations.require(skill.implementationId).presentation().apply(jp.takoa.mojibattle.domain.ability.adapter.MapConfigView.forPresentation(skill), context.config.battle.skillCooldownMultiplier), context.i18n);
     }
 
     private String ultimateDetail(AbilityConfigs.AreaUltimate ultimate) {
-        return AbilityPresentationFormatter.format(context.registries.ultimateImplementations.require(ultimate.implementationId).presentation().apply(ultimate), context.i18n);
+        return AbilityPresentationFormatter.format(context.registries.ultimateImplementations.require(ultimate.implementationId).presentation().apply(jp.takoa.mojibattle.domain.ability.adapter.MapConfigView.forPresentation(ultimate)), context.i18n);
     }
 
     private void confirmCandidate() {
@@ -454,7 +479,7 @@ public final class CharacterSelectScreen extends StageScreen {
 
     private void clearCandidate() {
         if (selectedCard != null) {
-            selectedCard.setBackground("button");
+            selectedCard.setBackground((String) selectedCard.getUserObject());
         }
 
         selectedCard = null;

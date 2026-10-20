@@ -1,9 +1,9 @@
-# MojiBattleEX MOD API 0.8.1
+# MojiBattleEX MOD API 0.8.2
 
 MojiBattleEX MOD APIは、外部MODとゲーム本体を分離する公開Java契約です。MODはこのAPIだけへコンパイル時依存し、`core`、`item`、libGDX、JSON・描画実装へ依存せず、コンテンツ登録、Ability実装、戦闘操作、リソース参照を行えます。
 
-- Maven: `jp.takoa.mojibattle:mojibattle-api:0.8.1`
-- Java 21 / API major 1 / game 0.8.1 / metadata schema 1
+- Maven: `jp.takoa.mojibattle:mojibattle-api:0.8.2`
+- Java 21 / API 0.8.2 / API major 1 / game 0.8.2 / metadata schema 1
 - APIはゲームが実行時に供給するため、MODでは必ず`compileOnly`にします。
 
 ## 目次
@@ -41,7 +41,7 @@ repositories { mavenLocal(); mavenCentral() }
 java { toolchain.languageVersion.set(JavaLanguageVersion.of(21)) }
 
 dependencies {
-    compileOnly("jp.takoa.mojibattle:mojibattle-api:0.8.1")
+    compileOnly("jp.takoa.mojibattle:mojibattle-api:0.8.2")
 }
 ```
 
@@ -56,40 +56,47 @@ dependencies {
   "name": "Example MOD",
   "version": "1.0.0",
   "apiVersion": "1",
-  "gameVersion": ">=0.8.1",
+  "gameVersion": ">=0.8.2",
   "entrypoint": "com.example.examplemod.ExampleMod",
   "dependencies": {
-    "required": { "mojibattle_game": ">=0.8.1" },
+    "required": { "mojibattle_game": ">=0.8.2" },
     "optional": {}
   }
 }
 ```
 
-標準コンテンツを前提にする場合はrequiredへ`"mojibattle": ">=0.8.1"`も追加します。
+標準コンテンツを前提にする場合はrequiredへ`"mojibattle": ">=0.8.2"`も追加します。
 
 ### 最小エントリーポイント
 
 ```java
+@ModEntry()
 public final class ExampleMod implements GameMod {
-    @Override public String id() { return "examplemod"; }
+    private static final MojiBattleRegister<CharacterDataRegistration> CHARACTERS = MojiBattleRegister.create(MojiBattleRegistries.CHARACTERS, "examplemod");
+    private static final MojiBattleRegister<SkillImplementation> SKILLS = MojiBattleRegister.create(MojiBattleRegistries.SKILL_IMPLEMENTATIONS, "examplemod");
 
-    @Override public void register(ModContext context) {
-        context.content().registerCharacter(new CharacterDataRegistration(
-                resource("characters/example.json"),
-                resource("abilities/example_skill.json"),
-                resource("abilities/example_ultimate.json"),
-                resource("abilities/example_passive.json"),
-                "i18n"));
+    static {
+        CHARACTERS.register("example", () -> new CharacterDataRegistration(
+                resource("characters/example.json"), resource("abilities/example_skill.json"),
+                resource("abilities/example_ultimate.json"), resource("abilities/example_passive.json"), "i18n"));
 
-        context.abilities().registerSkillImplementation("examplemod:strike", config -> activation -> {
+        SKILLS.register("strike", () -> new SkillImplementation("examplemod:strike", config -> activation -> {
             if (activation.target() == null) return false;
             activation.actions().damage(activation.user(), activation.target(),
                     DamageRequest.of(config.floatValue("damage", 40f), DamageType.SKILL));
             return true;
-        });
+        }, config -> { }, (config, multiplier) -> AbilityPresentation.of("examplemod.skill.strike")));
+
     }
 
-    private ResourceId resource(String path) { return new ResourceId(id(), path); }
+    @Override public String id() { return "examplemod"; }
+
+    @Override public void register(ModContext context) {
+        CHARACTERS.attach(context.registrationBus());
+        SKILLS.attach(context.registrationBus());
+    }
+
+    private static ResourceId resource(String path) { return new ResourceId("examplemod", path); }
 }
 ```
 
@@ -122,12 +129,10 @@ flowchart LR
     JAR[MOD JAR] --> META[metadata検証]
     META --> MOD[GameMod]
     MOD --> REG[register]
-    REG --> CONTENT[ContentRegistrar]
-    REG --> IMPL[AbilityImplementationRegistrar]
-    REG --> BUS[RegistrationBus]
+    REG --> DECLARE[MojiBattleRegister]
+    DECLARE --> BUS[RegistrationBus]
     BUS --> FREEZE[Registry解決・凍結]
-    CONTENT --> BATTLE[core戦闘]
-    IMPL --> FACTORY[個体別Runtime]
+    DECLARE --> FACTORY[個体別Runtime]
     FACTORY --> BATTLE
     BATTLE --> VIEW[CombatantView / BattlefieldView]
     VIEW --> RUNTIME[MOD Runtime]
@@ -149,7 +154,7 @@ flowchart LR
 
 1. loaderが全metadata、バージョン、依存関係を検証する。
 2. 依存順に`GameMod`を生成する。
-3. `GameMod#register`でコンテンツ、Runtime Factory、DeferredRegisterを宣言する。
+3. `GameMod#register`でコンテンツ、Runtime Factory、MojiBattleRegisterを宣言する。
 4. `RegisterEvent<T>`をRegistry作成順に同期配送する。
 5. データ解決後にRegistryを凍結する。
 6. `GameMod#initialize`を1回呼ぶ。
@@ -182,38 +187,33 @@ try (InputStream in = context.resources().open(ResourceKind.ASSET, texture)) {
 ### データ登録
 
 ```java
-context.content().registerCharacter(new CharacterDataRegistration(
+MojiBattleRegister<CharacterDataRegistration> characters = MojiBattleRegister.create(MojiBattleRegistries.CHARACTERS, "examplemod");
+characters.register("group", () -> new CharacterDataRegistration(
         id("characters/group.json"), id("abilities/group_skill.json"),
         id("abilities/group_ultimate.json"), id("abilities/group_passive.json"), "i18n"));
-
-context.content().registerSupportCharacter(
-        new SupportCharacterDataRegistration(id("support/group.json"), "i18n"));
-
-context.content().registerFieldEffect(
-        new FieldEffectDataRegistration(id("field_effects/group_aura.json")));
+characters.attach(context.registrationBus());
 ```
 
 `CharacterDataRegistration`の4 DATAリソースは同じnamespaceである必要があります。translation directoryが`i18n`なら`assets/<modid>/i18n/<language>.json`を参照します。補助JSONでは外観、移動、通常攻撃、スキル、必殺、パッシブ、parametersに加え、0.8.1では`maxHp`と`defense`を指定できます。未指定maxHpは100です。
 
 ## Ability実装
 
-| 登録メソッド | Runtime | 生成単位 |
+| Registry要素 | Runtime | 生成単位 |
 |---|---|---|
-| `registerSkillImplementation` | `SkillRuntime` | メイン個体 |
-| `registerUltimateImplementation` | `UltimateRuntime` | メイン個体 |
-| `registerPassiveImplementation` | `PassiveRuntime` | 装備個体 |
-| `registerSupportSkillImplementation` | `SupportSkillRuntime` | 補助個体 |
-| `registerSupportUltimateImplementation` | `SupportUltimateRuntime` | 補助個体 |
-| `registerSupportPassiveImplementation` | `SupportPassiveRuntime` | 補助個体 |
+| `SkillImplementation` | `SkillRuntime` | メイン個体 |
+| `UltimateImplementation` | `UltimateRuntime` | メイン個体 |
+| `PassiveImplementation` | `PassiveRuntime` | 装備個体 |
+| `SupportAbilityImplementation` | `SupportAbilityRuntime` | 補助個体 |
+| `SupportPassiveImplementation` | `SupportPassiveRuntime` | 補助個体 |
 
 登録IDとJSONの`implementationId`または補助Abilityの`type`を一致させます。
 
 ### ConfigView
 
-FactoryにはJSON `parameters`が`ConfigView`として渡されます。`stringValue`、`floatValue`、`intValue`、`booleanValue`、`objectValue`、`listValue`を利用できます。値は`String`、`Number`、`Boolean`、`ConfigView`、`List`、`null`だけです。
+FactoryにはAbility定義の公開フィールドとJSON `parameters`を統合した`ConfigView`が渡されます。`stringValue`、`floatValue`、`intValue`、`booleanValue`、`objectValue`、`listValue`を利用できます。
 
 ```java
-context.abilities().registerSkillImplementation("examplemod:burst", config -> {
+SKILLS.register("burst", () -> new SkillImplementation("examplemod:burst", config -> {
     float damage = config.floatValue("damage", 30f);
     int count = config.intValue("count", 3);
     return activation -> {
@@ -226,7 +226,7 @@ context.abilities().registerSkillImplementation("examplemod:burst", config -> {
                         ResourceId.parse("mojibattle:wind")));
         return true;
     };
-});
+}, config -> { }, (config, multiplier) -> AbilityPresentation.of("examplemod.skill.burst")));
 ```
 
 `SkillRuntime#activateFromUltimate`は既定で`tryActivate`へ委譲します。発動成立時は`true`、対象不在などで不成立なら`false`を返します。
@@ -236,7 +236,7 @@ context.abilities().registerSkillImplementation("examplemod:burst", config -> {
 `update`、スキル・必殺通知、必殺倍率、会心率加算、防御無視、通常攻撃Modifier、HUD状態行、与ダメージ・被ダメージ通知を実装できます。各倍率・一覧は利用時に再評価されます。
 
 ```java
-context.abilities().registerPassiveImplementation("examplemod:growing", config -> new PassiveRuntime() {
+PASSIVES.register("growing", () -> new PassiveImplementation("examplemod:growing", config -> new PassiveRuntime() {
     private float elapsed;
     @Override public void update(PassiveUpdateContext c) { elapsed += c.deltaSeconds(); }
     @Override public float ultimateDamageMultiplier(CombatantView owner) {
@@ -245,7 +245,7 @@ context.abilities().registerPassiveImplementation("examplemod:growing", config -
     @Override public List<AbilityStateLine> stateLines(CombatantView owner) {
         return List.of(AbilityStateLine.of("examplemod.growing", 50, Math.round(elapsed)));
     }
-});
+}, config -> { }, config -> AbilityPresentation.of("examplemod.passive.growing")));
 ```
 
 HUD状態行はpriority降順、翻訳キー順で最大8件表示されます。`DamageEventContext.dealtDamage()`は基礎値ではなくHPへ実際に入った確定値です。
@@ -299,9 +299,10 @@ CombatantView supportCombatant = context.actions().battlefield().livingCombatant
 | 戦場 | `battlefield`, `alliesOf`, `enemiesOf` |
 | ダメージ | 3種の`damage`、`DamageRequest`、`DamageResult` |
 | 回復・ゲージ | `heal`, `healRatio`, `addUltimatePoints`, `refundUltimatePoints` |
-| 状態 | `applyStatus`, `cleanseNegativeStatuses` |
-| 攻撃生成 | `spawnDelayedStrike`, `spawnProjectile`, `spawnAreaAttack`, `startBattlefieldPulse` |
-| 位置 | `knockbackAwayFrom`, `swapPositions`, `mirrorAcrossArenaCenter` |
+| 状態 | `applyStatus`, `cleanseNegativeStatuses`, `stun`, `bind` |
+| 攻撃生成 | `spawnDelayedStrike`, `spawnProjectile`, `spawnProjectilePattern`, `spawnAreaAttack`, `spawnFallingStrike`, `spawnLineAttack`, `spawnMovingHazards`, `spawnSpinningAttack`, `startSkillBarrage`, `startProjectileBarrage`, `startBattlefieldPulse` |
+| 召喚・設置 | `summonCompanions`, `spawnDetonatableMarker`, `detonateOwnedMarkers` |
+| 位置 | `knockbackAwayFrom`, `pullToward`, `teleportBesideTarget`, `swapPositions`, `mirrorAcrossArenaCenter`, `gatherMainCombatantsAtCenter` |
 | 演出 | `emitEffect`, `activateDomain`, `isDomainActive`, `showCutIn` |
 | 特殊戦闘 | `startDuel`, `lockNormalAttackTarget` |
 
@@ -309,7 +310,10 @@ CombatantView supportCombatant = context.actions().battlefield().livingCombatant
 
 - `DelayedStrikeSpec`: 対象を追跡し指定時間後に1回攻撃
 - `ProjectileSpec`: 速度、半径、寿命、弾数、扇角、hit数、texture、effect
+- `ProjectilePatternSpec` / `ProjectileShotSpec`: 弾ごとの文字、画像、配置、ダメージ、拘束と追撃・ブーメラン・落下追撃
 - `AreaAttackSpec`: 生成時の対象位置を固定し、遅延後に範囲攻撃
+- `FallingStrikeSpec`, `LineAttackSpec`, `MovingHazardSpec`, `SpinningAttackSpec`: 標準コンテンツと外部MODが共有できる特殊攻撃
+- `SkillBarrageSpec`, `ProjectileBarrageSpec`, `CompanionSummonSpec`, `DetonationSpec`: 連続発動、召喚、設置物起爆
 - `BattlefieldPulseSpec`: 一定時間の中央吸引と周期ダメージ
 
 演出Spec:
@@ -342,7 +346,7 @@ actions.applyStatus(source, target, StatusSpec.multiplier(
 - `ULTIMATE_GAIN_MULTIPLIER`, `SKILL_COOLDOWN_MULTIPLIER`
 - `NORMAL_ATTACK_INTERVAL_MULTIPLIER`
 - `DAMAGE_OVER_TIME`, `HEAL_OVER_TIME`
-- `NEXT_INCOMING_DAMAGE_MULTIPLIER`
+- `NEXT_INCOMING_DAMAGE_MULTIPLIER`, `BONUS_DAMAGE_MULTIPLIER`
 
 期間は`StatusDuration.seconds`または`permanent`です。Infinityを使いません。再付与は`REPLACE`、`REFRESH`、`ADD_STACK`、消費契機は`NONE`または`ON_DAMAGE_RECEIVED`です。
 
@@ -368,7 +372,7 @@ actions.applyStatus(source, target, StatusSpec.multiplier(
 `NormalAttackEvent`は多段数・弾数に関係なく攻撃動作1回につき1回通知されます。観測補助から見たALLY/ENEMYと、MAIN/SUPPORT/SUMMONを持ちます。
 
 ```java
-context.abilities().registerSupportPassiveImplementation("examplemod:counter", config ->
+SUPPORT_PASSIVES.register("counter", () -> new SupportPassiveImplementation("examplemod:counter", config ->
         new SupportPassiveRuntime() {
             @Override public void onNormalAttack(SupportPassiveContext c, NormalAttackEvent e) {
                 if (e.attackerInstanceId().equals(c.support().instanceId()))
@@ -378,7 +382,7 @@ context.abilities().registerSupportPassiveImplementation("examplemod:counter", c
                 return List.of(AbilityStateLine.of("examplemod.count", 100,
                         c.state().getInt("count", 0)));
             }
-        });
+        }));
 ```
 
 人数連動攻撃倍率:
@@ -433,10 +437,10 @@ context.supportActions().splitTemporarily(new SupportSplitSpec(
 
 ## Registryとイベント
 
-`RegistryKey<T>`はRegistry種別、`RegistryId`は要素IDです。`DeferredRegister<T>`は宣言と登録確定を分離し、`RegistryHandle<T>`は登録完了後だけ値を返します。
+`RegistryKey<T>`はRegistry種別、`RegistryId`は要素IDです。`MojiBattleRegister<T>`は宣言と登録確定を分離し、`RegistryHandle<T>`は登録完了後だけ値を返します。
 
 ```java
-DeferredRegister<MyType> values = DeferredRegister.create(KEY, "examplemod");
+MojiBattleRegister<MyType> values = MojiBattleRegister.create(KEY, "examplemod");
 RegistryHandle<MyType> sample = values.register("sample", () -> new MyType("examplemod:sample"));
 
 @Override public void register(ModContext context) {
@@ -455,19 +459,19 @@ RegistryHandle<MyType> sample = values.register("sample", () -> new MyType("exam
 | クラス | 役割 |
 |---|---|
 | `GameMod` | エントリーポイント |
-| `ModContext` | 登録Bus、Resource、Content、Ability境界 |
-| `GameApiVersion` | API major・ゲーム版定数 |
-| `ContentRegistrar` | データコンテンツ登録 |
+| `ModContext` | 登録Bus、Resource境界 |
+| `GameApiVersion` | API版・API major・ゲーム版定数 |
 | `CharacterDataRegistration` | メインと3 Ability、翻訳 |
 | `SupportCharacterDataRegistration` | 補助JSON、翻訳 |
 | `FieldEffectDataRegistration` | フィールド効果JSON |
 
-### ability
+### ability（役割別サブパッケージ）
+
+`config`は設定、`context`は呼出し引数、`presentation`はHUDモデル、`runtime`は実行契約、`support`は補助固有機能を収録します。
 
 | クラス | 役割 |
 |---|---|
 | `AbilityFactory<T>` | parametersから個体Runtime生成 |
-| `AbilityImplementationRegistrar` | Runtime Factory登録 |
 | `ConfigView` | JSON非依存設定View |
 | `AbilityActivationContext` | メインAbilityコンテキスト |
 | `SkillRuntime`, `UltimateRuntime`, `PassiveRuntime` | メイン実装 |
@@ -475,24 +479,30 @@ RegistryHandle<MyType> sample = values.register("sample", () -> new MyType("exam
 | `AbilityStateLine` | 翻訳可能HUD行 |
 | `SupportView` | 補助制御・ゲージView |
 | `SupportAbilityActivationContext` | 補助スキル・必殺コンテキスト |
-| `SupportSkillRuntime`, `SupportUltimateRuntime` | 補助Ability実装 |
+| `SupportAbilityRuntime` | 補助スキル・必殺の共通実装 |
 | `SupportPassiveRuntime`, `SupportPassiveContext` | 補助パッシブ |
 | `SupportActions` | 呼出元補助の変更 |
 | `SupportStateStore` | 補助個体状態 |
 | `SupportSplitSpec`, `SupportSplitMemberSpec` | 一時分裂設定 |
 
-### battle
+### battle（役割別サブパッケージ）
+
+`action`は操作境界、`action.spec`は生成物の仕様、`combatant`は読取りView、`damage`はダメージ入出力、
+`event`は通知、`modifier`は通常攻撃補正、`presentation`は視覚演出、`rule`は決闘、`status`は状態効果を収録します。
 
 | クラス | 役割 |
 |---|---|
 | `CombatantView`, `CombatantKind`, `CombatantPosition` | 統一戦闘個体 |
 | `BattlefieldView` | 全個体・味方・敵列挙 |
 | `CombatActions` | 戦闘操作境界 |
-| `AbilityContext` | 初期API互換の最小コンテキスト |
 | `DamageType`, `DamageRequest`, `DamageResult` | ダメージ |
 | `StatusSpec`, `StatusDuration`, `StatusEffectType` | 状態定義 |
 | `StatusStacking`, `StatusConsumption` | 再付与・消費規則 |
-| `DelayedStrikeSpec`, `ProjectileSpec`, `AreaAttackSpec` | 攻撃生成 |
+| `DelayedStrikeSpec`, `ProjectileSpec`, `ProjectilePatternSpec`, `ProjectileShotSpec` | 単体・編隊投射物 |
+| `AreaAttackSpec`, `FallingStrikeSpec`, `LineAttackSpec`, `SpinningAttackSpec` | 範囲・座標・直線攻撃 |
+| `MovingHazardSpec`, `DetonationSpec` | 移動ハザード・設置物起爆 |
+| `ProjectileBarrageSpec`, `SkillBarrageSpec` | 時間制御された連射・連続発動 |
+| `CompanionSummonSpec` | 味方召喚 |
 | `BattlefieldPulseSpec` | 中央吸引・周期攻撃 |
 | `NormalAttackModifier`, `SupportNormalAttackModifier` | 通常攻撃補正 |
 | `NormalAttackEvent` | 通常攻撃動作通知 |
@@ -506,8 +516,12 @@ RegistryHandle<MyType> sample = values.register("sample", () -> new MyType("exam
 |---|---|
 | `RegistryId`, `RegistryKey<T>` | 要素ID・型付きRegistryキー |
 | `Registry<T>`, `RegistryState` | 登録・検索・凍結・状態 |
-| `RegistryHandle<T>`, `DeferredRegister<T>` | 遅延登録・参照 |
+| `RegistryHandle<T>`, `MojiBattleRegister<T>` | 遅延登録・参照 |
 | `RegistryManager` | Registry群とイベント管理 |
+| `MojiBattleRegistries` | 公開Registryキーとホスト側Registry集合 |
+| `SkillImplementation`, `UltimateImplementation`, `PassiveImplementation` | メインAbility登録要素 |
+| `SupportAbilityImplementation`, `SupportPassiveImplementation` | 補助Ability登録要素 |
+| `CombatEffectDefinition`, `FieldEffectImplementation` | 演出・フィールド効果登録要素 |
 | `RegistrationBus`, `EventSubscription` | 購読境界・解除 |
 | `EventBus`, `EventDispatchException` | 同期Bus実装・失敗 |
 | `lifecycle.RegisterEvent<T>` | Registry登録通知 |
@@ -529,7 +543,7 @@ RegistryHandle<MyType> sample = values.register("sample", () -> new MyType("exam
 
 ### 後方互換性
 
-API majorは1のままです。0.8.1は追加リリースで主要契約を削除していません。追加defaultの旧ホストfallback:
+API majorは1のままですが、0.8.2では登録経路を`MojiBattleRegister`へ一本化しました。0.8.1以前の`ContentRegistrar`、`AbilityImplementationRegistrar`、4/5引数`ModContext`は削除されています。
 
 - `instanceId()` → `id()`
 - `kind()` → `MAIN`
@@ -539,7 +553,7 @@ API majorは1のままです。0.8.1は追加リリースで主要契約を削�
 - `battlefield()` → 空View
 - 未対応操作 → `UnsupportedOperationException`
 
-旧4引数`ModContext`は非推奨ながら保持されていますが、Ability登録は利用できません。0.8.1機能を必須とするMODはmetadataを`gameVersion: ">=0.8.1"`にしてください。
+0.8.2の公開Registry要素を使うMODはmetadataを`gameVersion: ">=0.8.2"`にしてください。
 
 ### 現在の制約
 
@@ -549,6 +563,13 @@ API majorは1のままです。0.8.1は追加リリースで主要契約を削�
 - 一部の標準戦闘オブジェクトはcoreの具象実装です。公開Specだけを使用してください。
 
 ## 更新履歴
+
+### 0.8.2
+
+- Registryキー、登録要素、Ability DTOをAPIへ集約
+- 標準`item`の`core`依存を削除
+- `IAbility`系とAPI Runtimeの二重抽象を廃止し、API Runtimeへ統一
+- コンテンツとAbilityの登録をすべて`MojiBattleRegister#attach`経由へ統一
 
 ### 0.8.1
 
@@ -627,5 +648,5 @@ MOD側では次を確認してください。
 - [ ] 同一定義でもinstanceIdごとに状態が分離
 - [ ] target null・死亡を安全に処理
 - [ ] 永続状態に`StatusDuration.permanent()`を使用
-- [ ] 0.8.1機能使用時はgameVersion `>=0.8.1`
+- [ ] 0.8.2 Registry登録方式使用時はgameVersion `>=0.8.2`
 - [ ] 単体テストと実ゲーム起動を確認

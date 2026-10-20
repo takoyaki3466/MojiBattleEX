@@ -5,7 +5,9 @@ import jp.takoa.mojibattle.domain.BattleController;
 import jp.takoa.mojibattle.domain.PlayerTeam;
 import jp.takoa.mojibattle.registry.EffectIds;
 import jp.takoa.mojibattle.registry.Registry;
-import jp.takoa.mojibattle.registry.SupportAbilityImplementation;
+import jp.takoa.mojibattle.registry.impl.SupportAbilityImpl;
+import jp.takoa.mojibattle.domain.ability.adapter.ExternalSupportAbilityContexts;
+import jp.takoa.mojibattle.domain.ability.adapter.MapConfigView;
 
 /**
  * 登録済み補助能力を解決し、発動条件・消費・共通演出だけを制御する。
@@ -13,9 +15,9 @@ import jp.takoa.mojibattle.registry.SupportAbilityImplementation;
 public final class SupportAbilityService {
     private static final String[] SKILL_EFFECTS = {EffectIds.WIND, EffectIds.KANA};
     private static final String[] ULTIMATE_EFFECTS = {EffectIds.STAR, EffectIds.FAMILY, EffectIds.NEUTRAL, EffectIds.STOCK};
-    private final Registry<SupportAbilityImplementation> implementations;
+    private final Registry<SupportAbilityImpl> implementations;
 
-    public SupportAbilityService(Registry<SupportAbilityImplementation> implementations) {
+    public SupportAbilityService(Registry<SupportAbilityImpl> implementations) {
         this.implementations = implementations;
     }
 
@@ -46,8 +48,12 @@ public final class SupportAbilityService {
             return false;
         }
 
+        long previousCutInRevision = battle.cutInRevision();
         if (execute(battle, team, support, ability, true)) {
             support.spendUltimate(ability.pointCost);
+            if (battle.cutInRevision() == previousCutInRevision) {
+                battle.showDefaultUltimateCutIn(team.main(), support.definition.glyphTexture, ability.nameKey);
+            }
             battle.announceUltimate(team.main().playerId, ability.nameKey);
             return true;
         }
@@ -59,8 +65,9 @@ public final class SupportAbilityService {
      */
     private boolean execute(BattleController battle, PlayerTeam team, SupportCharacterRuntime support,
                             SupportAbilityDefinition ability, boolean ultimate) {
-        SupportAbilityImplementation implementation = implementations.require(ability.type);
-        if (!implementation.handler().apply(new SupportAbilityContext(battle, team, support, ability), ultimate)) {
+        SupportAbilityImpl implementation = implementations.require(ability.type);
+        var runtime = implementation.factory().create(MapConfigView.of(ability));
+        if (runtime == null || !runtime.activate(ExternalSupportAbilityContexts.create(battle, team, support, ability))) {
             return false;
         }
         battle.emitSound(BattleSoundCue.SUPPORT);
