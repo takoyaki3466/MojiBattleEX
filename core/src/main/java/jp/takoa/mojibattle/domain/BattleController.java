@@ -1696,6 +1696,39 @@ public final class BattleController {
         target.addUltimatePoints(points);
     }
 
+    /** 必殺ゲージを持つメイン・補助へ、各Runtimeの通常獲得規則でポイントを加算する。 */
+    public void addCombatantUltimatePoints(Object target, float points) {
+        requireActiveFiniteAmount(target, points, "Ultimate points");
+        if (target instanceof CharacterRuntime main) {
+            addExternalUltimatePoints(main, points);
+        } else if (target instanceof SupportCharacterRuntime support) {
+            support.addUltimatePoints(points);
+        } else {
+            throw new IllegalArgumentException("This combatant does not have ultimate points");
+        }
+    }
+
+    /** 必殺ゲージを持つメイン・補助へ、獲得倍率なしでポイントを返す。 */
+    public void refundCombatantUltimatePoints(Object target, float points) {
+        requireActiveFiniteAmount(target, points, "Ultimate point refund");
+        if (target instanceof CharacterRuntime main) {
+            refundUltimatePoints(main, points);
+        } else if (target instanceof SupportCharacterRuntime support) {
+            support.addUltimatePoints(points);
+        } else {
+            throw new IllegalArgumentException("This combatant does not have ultimate points");
+        }
+    }
+
+    private void requireActiveFiniteAmount(Object target, float amount, String name) {
+        if (!isActiveBattleCombatant(target)) {
+            throw new IllegalArgumentException("Combatant does not belong to this battle or is no longer active");
+        }
+        if (!Float.isFinite(amount) || amount < 0) {
+            throw new IllegalArgumentException(name + " must be finite and non-negative");
+        }
+    }
+
     /** 対象を追跡する固定ステップ遅延攻撃を生成する。 */
     public void spawnDelayedStrike(CharacterRuntime source, CharacterRuntime target, DelayedStrikeSpec spec) {
         if (!containsCombatant(source) || !containsCombatant(target)) {
@@ -1831,6 +1864,38 @@ public final class BattleController {
                 MathUtils.clamp(targetPosition.z, -limit, limit));
     }
 
+    /** 任意種別の生存戦闘個体を、別の個体へ向けて指定距離まで移動する。 */
+    public void pullToward(Object target, Object destination, float maximumDistance, float remainingDistance) {
+        if (!isActiveBattleCombatant(target) || !isActiveBattleCombatant(destination)) {
+            throw new IllegalArgumentException("Pull combatants must be active in this battle");
+        }
+        if (!Float.isFinite(maximumDistance) || maximumDistance < 0
+                || !Float.isFinite(remainingDistance) || remainingDistance < 0) {
+            throw new IllegalArgumentException("Pull distances must be finite and non-negative");
+        }
+        Vector3 moving = positionOf(target);
+        Vector3 direction = new Vector3(positionOf(destination)).sub(moving);
+        direction.y = 0;
+        float distance = direction.len();
+        if (distance > 0) {
+            moving.mulAdd(direction.scl(1f / distance),
+                    Math.min(maximumDistance, Math.max(0, distance - remainingDistance)));
+            clampBattleCombatantToArena(target);
+        }
+    }
+
+    /** 状態管理を持つ個体の負の状態を解除し、メインでは行動不能も解除する。 */
+    public void cleanseNegativeStatuses(Object target) {
+        if (!isActiveBattleCombatant(target)) {
+            throw new IllegalArgumentException("Cleanse target must be active in this battle");
+        }
+        if (target instanceof CharacterRuntime main) {
+            main.clearNegativeStatuses();
+        } else {
+            statusesOf(target).clearNegative();
+        }
+    }
+
     /** 任意種別の戦闘個体を、当たり半径を考慮した戦場内座標へ収める。 */
     private void clampBattleCombatantToArena(Object target) {
         Vector3 position = positionOf(target);
@@ -1897,6 +1962,12 @@ public final class BattleController {
             return teams.values().stream().flatMap(team -> team.supports().stream()).anyMatch(candidate -> candidate == support);
         }
         return (objects.contains(value) || pendingObjects.contains(value)) && isLivingSummon(value);
+    }
+
+    /** 戦闘が継続中で、公開操作の対象として現在戦場に存在する個体かを返す。 */
+    public boolean isActiveBattleCombatant(Object value) {
+        if (closed || result != null || !containsBattleCombatant(value) || !alive(value)) return false;
+        return !(value instanceof SupportCharacterRuntime support) || !support.hiddenAndDisabled();
     }
 
     public List<Object> alliedBattleCombatants(Object source) {

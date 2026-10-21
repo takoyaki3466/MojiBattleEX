@@ -64,12 +64,12 @@ public interface CombatActions {
         heal(target, target.maximumHp() * maximumHpRatio);
     }
 
-    /** 通常の獲得として必殺ポイントを加算する。 */
+    /** 必殺ゲージを持つ生存中のメインまたは補助へ、通常の獲得としてポイントを加算する。 */
     default void addUltimatePoints(CombatantView target, float points) {
         throw new UnsupportedOperationException("Ultimate point changes are not supported by this combat host");
     }
 
-    /** 直前の消費を取り消す用途で、獲得倍率を適用せず必殺ポイントを返す。 */
+    /** 必殺ゲージを持つ生存中のメインまたは補助へ、獲得倍率を適用せずポイントを返す。 */
     default void refundUltimatePoints(CombatantView target, float points) {
         throw new UnsupportedOperationException("Ultimate point refunds are not supported by this combat host");
     }
@@ -98,6 +98,21 @@ public interface CombatActions {
     /** 生存中の味方から、現在状態を付与できる個体だけを登録順で返す。 */
     default List<CombatantView> statusEffectAlliesOf(CombatantView source) {
         return alliesOf(source).stream().filter(this::canApplyStatus).toList();
+    }
+
+    /** 現在の対象へスタンを適用できるかを返す。既定では生存中のメインだけを対象とする。 */
+    default boolean canStun(CombatantView target) {
+        return target != null && target.alive() && target.kind() == CombatantKind.MAIN;
+    }
+
+    /** 生存中の敵から、現在スタン可能な個体だけを登録順で返す。 */
+    default List<CombatantView> stunnableEnemiesOf(CombatantView source) {
+        return enemiesOf(source).stream().filter(this::canStun).toList();
+    }
+
+    /** 現在の対象へ拘束を適用できるかを返す。既定では生存中のメインだけを対象とする。 */
+    default boolean canBind(CombatantView target) {
+        return target != null && target.alive() && target.kind() == CombatantKind.MAIN;
     }
 
     /** 指定時間後に対象へ攻撃する戦闘オブジェクトを生成する。 */
@@ -154,15 +169,17 @@ public interface CombatActions {
         throw new UnsupportedOperationException("Detonatable markers are not supported by this combat host");
     }
 
-    /** Applies action lock directly; status duration multipliers remain host-controlled. */
+    /** 生存中のメインへ行動不能を直接適用する。状態時間倍率はホストが管理する。 */
     default void stun(CombatantView target, float durationSeconds) {
         throw new UnsupportedOperationException("Stun is not supported by this combat host");
     }
 
+    /** 生存中のメインへ移動不能を直接適用する。 */
     default void bind(CombatantView target, float durationSeconds) {
         throw new UnsupportedOperationException("Bind is not supported by this combat host");
     }
 
+    /** 生存中のメイン・補助・召喚を、別の戦闘個体へ向けて移動する。 */
     default void pullToward(CombatantView target, CombatantView destination, float maximumDistance,
                             float remainingDistance) {
         throw new UnsupportedOperationException("Pull movement is not supported by this combat host");
@@ -248,7 +265,7 @@ public interface CombatActions {
         throw new UnsupportedOperationException("Arena mirroring is not supported by this combat host");
     }
 
-    /** 対象へ付与されている負の状態と行動不能を解除する。 */
+    /** 状態管理を持つ対象の負の状態を解除し、メインの場合は行動不能も解除する。 */
     default void cleanseNegativeStatuses(CombatantView target) {
         throw new UnsupportedOperationException("Status cleansing is not supported by this combat host");
     }

@@ -11,6 +11,22 @@ plugins {
 
 val packageVersion = project.version.toString()
 
+fun toJpackageVersion(version: String): String {
+    val pattern = Regex("""^v?(\d+)\.(\d+)(?:\.(\d+))?(?:-beta-(\d+))?$""")
+    val match = pattern.matchEntire(version) ?: throw GradleException("Unsupported package version: $version")
+
+    val major = match.groupValues[1]
+    val minor = match.groupValues[2]
+    val patch = match.groupValues[3]
+    val beta = match.groupValues[4]
+
+    val revision = beta.ifEmpty { patch.ifEmpty { "0" } }
+
+    return "$major.$minor.$revision"
+}
+
+val jpackageVersion = toJpackageVersion(packageVersion)
+
 java {
     toolchain.languageVersion.set(JavaLanguageVersion.of(21))
 }
@@ -106,7 +122,7 @@ fun jpackageBaseArguments(destination: File): List<String> {
         "--name",
         packageName,
         "--app-version",
-        packageVersion,
+        jpackageVersion,
         "--vendor",
         packageVendor,
         "--description",

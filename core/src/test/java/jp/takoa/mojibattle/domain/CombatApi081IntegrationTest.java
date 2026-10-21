@@ -2,6 +2,7 @@ package jp.takoa.mojibattle.domain;
 
 import jp.takoa.mojibattle.ability.support.SupportSplitMemberSpec;
 import jp.takoa.mojibattle.ability.support.SupportSplitSpec;
+import jp.takoa.mojibattle.ability.context.PassiveUpdateContext;
 import jp.takoa.mojibattle.battle.action.*;
 import jp.takoa.mojibattle.battle.action.spec.*;
 import jp.takoa.mojibattle.battle.combatant.*;
@@ -22,6 +23,7 @@ import jp.takoa.mojibattle.domain.support.*;
 import jp.takoa.mojibattle.event.EventBus;
 import jp.takoa.mojibattle.input.PlayerCommand;
 import jp.takoa.mojibattle.item.ability.NewSupportAbilities;
+import jp.takoa.mojibattle.item.ability.StandardPassives;
 import jp.takoa.mojibattle.registry.*;
 import jp.takoa.mojibattle.registry.impl.SupportAbilityImpl;
 import jp.takoa.mojibattle.registry.impl.SupportPassiveImpl;
@@ -135,15 +137,15 @@ final class CombatApi081IntegrationTest {
                     StatusEffectType.ATTACK_MULTIPLIER, .5f, StatusDuration.seconds(.1f)));
         }
         assertEquals(.5f, f.battle.statusesOf(f.battle.player(PlayerId.TWO))
-                .multiplier(StatusType.ATTACK_UP), .0001f);
+                .multiplier(StatusType.ATTACK_DOWN), .0001f);
         assertEquals(.5f, f.battle.statusesOf(f.battle.support(PlayerId.TWO))
-                .multiplier(StatusType.ATTACK_UP), .0001f);
+                .multiplier(StatusType.ATTACK_DOWN), .0001f);
 
         f.battle.update(.2f, commands());
         assertEquals(1f, f.battle.statusesOf(f.battle.player(PlayerId.TWO))
-                .multiplier(StatusType.ATTACK_UP), .0001f);
+                .multiplier(StatusType.ATTACK_DOWN), .0001f);
         assertEquals(1f, f.battle.statusesOf(f.battle.support(PlayerId.TWO))
-                .multiplier(StatusType.ATTACK_UP), .0001f);
+                .multiplier(StatusType.ATTACK_DOWN), .0001f);
     }
 
     @Test void deadAndRemovedCombatantsRejectStatusApplication() {
@@ -185,7 +187,7 @@ final class CombatApi081IntegrationTest {
                     .5f, StatusDuration.seconds(1)));
         }
         for (SupportCharacterRuntime support : multiple.battle.supports(PlayerId.TWO)) {
-            assertEquals(.5f, support.statuses.multiplier(StatusType.ATTACK_UP), .0001f);
+            assertEquals(.5f, support.statuses.multiplier(StatusType.ATTACK_DOWN), .0001f);
         }
 
         Fixture mainOnly = fixture(List.of(team("test:hero", 200, 0), team("test:enemy-high", 300, 0),
@@ -218,6 +220,106 @@ final class CombatApi081IntegrationTest {
         assertDoesNotThrow(() -> f.actions.spawnAreaAttack(enemySupport, source, new AreaAttackSpec(
                 0, 5, DamageRequest.of(10, DamageType.ULTIMATE),
                 ResourceId.parse("test:warning"), ResourceId.parse("test:impact"), null, 2)));
+    }
+
+    @Test void unifiedMainSupportsActionLocksAndDifficultKanjiSelectsOnlyCapableTargets() {
+        Fixture f = fixture();
+        CombatantView enemySupport = f.actions.enemiesOf(f.one).stream()
+                .filter(value -> value.kind() == CombatantKind.SUPPORT).findFirst().orElseThrow();
+        FamilySummon family = new FamilySummon(PlayerId.TWO, new com.badlogic.gdx.math.Vector3(2, 0, 2),
+                "glyphs/test.png", 100, 0, 1, 10, 10, "test:impact", 0, 2);
+        f.battle.spawn(family);
+        CombatantView familyView = f.actions.enemiesOf(f.one).stream()
+                .filter(value -> value.id().equals("mojibattle:family_summon")).findFirst().orElseThrow();
+
+        assertTrue(f.actions.canStun(f.two));
+        assertTrue(f.actions.canBind(f.two));
+        assertFalse(f.actions.canStun(enemySupport));
+        assertFalse(f.actions.canBind(familyView));
+        assertThrows(IllegalArgumentException.class, () -> f.actions.stun(enemySupport, .1f));
+        assertThrows(IllegalArgumentException.class, () -> f.actions.bind(familyView, .1f));
+
+        StandardPassives.DifficultKanji passive = new StandardPassives.DifficultKanji(
+                new StandardPassives.DifficultKanji.Config(1f, 1f, .1f, 0f));
+        assertDoesNotThrow(() -> passive.update(new PassiveUpdateContext(f.one, f.actions, .01f, 0f)));
+        assertTrue(f.battle.player(PlayerId.TWO).isStunned());
+        assertFalse(f.battle.player(PlayerId.THREE).isStunned());
+
+        f.battle.update(.2f, commands());
+        assertFalse(f.battle.player(PlayerId.TWO).isStunned());
+        f.actions.bind(f.two, .1f);
+        assertTrue(f.battle.player(PlayerId.TWO).movementLocked());
+        f.battle.update(.2f, commands());
+        assertFalse(f.battle.player(PlayerId.TWO).movementLocked());
+    }
+
+    @Test void resolverRejectsForeignRemovedAndClosedBattleCombatants() {
+        Fixture f = fixture();
+        Fixture foreign = fixture();
+        assertFalse(f.actions.canApplyStatus(foreign.two));
+        assertFalse(f.actions.canStun(foreign.two));
+        assertThrows(IllegalArgumentException.class, () -> f.actions.damage(f.one, foreign.two, 1));
+
+        TemporarySupportSummon temporary = new TemporarySupportSummon(PlayerId.TWO, "two:support:0",
+                "two:support:0:split:resolver", "test:group", "㌠", "glyphs/test.png",
+                new com.badlogic.gdx.math.Vector3(2, 0, 2), 100, 1, 10, 1, null, .1f, false);
+        f.battle.spawn(temporary);
+        CombatantView temporaryView = f.actions.enemiesOf(f.one).stream()
+                .filter(value -> value.instanceId().equals(temporary.instanceId)).findFirst().orElseThrow();
+        f.battle.update(.01f, commands());
+        f.battle.update(.2f, commands());
+        assertThrows(IllegalArgumentException.class, () -> f.actions.enemiesOf(temporaryView));
+
+        f.battle.close();
+        assertFalse(f.actions.canStun(f.two));
+        assertThrows(IllegalArgumentException.class, () -> f.actions.enemiesOf(f.one));
+    }
+
+    @Test void genericMovementCleanseAndUltimatePointsFollowCombatantCapabilities() {
+        Fixture f = fixture();
+        CombatantView support = f.actions.enemiesOf(f.one).stream()
+                .filter(value -> value.kind() == CombatantKind.SUPPORT).findFirst().orElseThrow();
+        float distanceBefore = distance(support.position(), f.one.position());
+        f.actions.pullToward(support, f.one, 4f, 0f);
+        assertTrue(distance(support.position(), f.one.position()) < distanceBefore);
+
+        f.actions.applyStatus(f.one, support, StatusSpec.multiplier(ResourceId.parse("test:cleanse"),
+                StatusEffectType.ATTACK_MULTIPLIER, .5f, StatusDuration.seconds(3)));
+        assertEquals(.5f, f.battle.statusesOf(f.battle.support(PlayerId.TWO))
+                .multiplier(StatusType.ATTACK_DOWN), .0001f);
+        f.actions.cleanseNegativeStatuses(support);
+        assertEquals(1f, f.battle.statusesOf(f.battle.support(PlayerId.TWO))
+                .multiplier(StatusType.ATTACK_DOWN), .0001f);
+
+        f.actions.stun(f.two, 1f);
+        f.actions.bind(f.two, 1f);
+        f.actions.cleanseNegativeStatuses(f.two);
+        assertFalse(f.battle.player(PlayerId.TWO).isStunned());
+        assertFalse(f.battle.player(PlayerId.TWO).movementLocked());
+
+        f.actions.addUltimatePoints(support, 12f);
+        assertEquals(12f, support.ultimatePoints(), .0001f);
+        FamilySummon family = new FamilySummon(PlayerId.TWO, new com.badlogic.gdx.math.Vector3(2, 0, 2),
+                "glyphs/test.png", 100, 0, 1, 10, 10, "test:impact", 0, 2);
+        f.battle.spawn(family);
+        CombatantView familyView = f.actions.enemiesOf(f.one).stream()
+                .filter(value -> value.id().equals("mojibattle:family_summon")).findFirst().orElseThrow();
+        float familyDistanceBefore = distance(familyView.position(), f.one.position());
+        f.actions.pullToward(familyView, f.one, 1f, 0f);
+        assertTrue(distance(familyView.position(), f.one.position()) < familyDistanceBefore);
+        assertThrows(IllegalArgumentException.class, () -> f.actions.addUltimatePoints(familyView, 1f));
+        assertThrows(IllegalArgumentException.class, () -> f.actions.cleanseNegativeStatuses(familyView));
+
+        TemporarySupportSummon temporary = new TemporarySupportSummon(PlayerId.TWO, "two:support:0",
+                "two:support:0:split:cleanse", "test:group", "㌠", "glyphs/test.png",
+                new com.badlogic.gdx.math.Vector3(2, 0, 2), 100, 1, 10, 1, null, 3f, false);
+        f.battle.spawn(temporary);
+        CombatantView temporaryView = f.actions.enemiesOf(f.one).stream()
+                .filter(value -> value.instanceId().equals(temporary.instanceId)).findFirst().orElseThrow();
+        f.actions.applyStatus(f.one, temporaryView, StatusSpec.multiplier(ResourceId.parse("test:temporary-cleanse"),
+                StatusEffectType.MOVE_SPEED_MULTIPLIER, .5f, StatusDuration.seconds(3)));
+        f.actions.cleanseNegativeStatuses(temporaryView);
+        assertEquals(1f, temporary.statuses.multiplier(StatusType.MOVE_DOWN), .0001f);
     }
 
     @Test void cinematicAndBattlefieldPulseActionsRemainValidForMainCharacters() {
@@ -306,6 +408,12 @@ final class CombatApi081IntegrationTest {
     }
 
     private static EnumMap<PlayerId, PlayerCommand> commands() { return new EnumMap<>(PlayerId.class); }
+
+    private static float distance(CombatantPosition first, CombatantPosition second) {
+        float x = first.x() - second.x();
+        float z = first.z() - second.z();
+        return (float) Math.sqrt(x * x + z * z);
+    }
 
     private static Fixture fixture() { return fixture(false); }
     private static Fixture fixtureSameDefinitions() { return fixture(true); }

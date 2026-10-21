@@ -43,7 +43,9 @@ import jp.takoa.mojibattle.resource.ResourceId;
 
 import java.util.List;
 
-/** 公開CombatActionsをBattleControllerの検証済み操作へ接続する。 */
+/**
+ * 公開CombatActionsをBattleControllerの検証済み操作へ接続する。
+ */
 public final class CoreCombatActions implements CombatActions {
     private final BattleController battle;
 
@@ -51,7 +53,10 @@ public final class CoreCombatActions implements CombatActions {
         this.battle = battle;
     }
 
-    @Override public BattlefieldView battlefield() { return new CoreBattlefieldView(battle); }
+    @Override
+    public BattlefieldView battlefield() {
+        return new CoreBattlefieldView(battle);
+    }
 
     @Override
     public void damage(CombatantView source, CombatantView target, float amount) {
@@ -82,13 +87,13 @@ public final class CoreCombatActions implements CombatActions {
     @Override
     public void addUltimatePoints(CombatantView target, float points) {
         requireNonNegative(points, "Ultimate points");
-        battle.addExternalUltimatePoints(runtime(target), points);
+        battle.addCombatantUltimatePoints(combatant(target), points);
     }
 
     @Override
     public void refundUltimatePoints(CombatantView target, float points) {
         requireNonNegative(points, "Ultimate point refund");
-        battle.refundUltimatePoints(runtime(target), points);
+        battle.refundCombatantUltimatePoints(combatant(target), points);
     }
 
     @Override
@@ -104,7 +109,7 @@ public final class CoreCombatActions implements CombatActions {
             case ADD_STACK -> StatusStackRule.STACK;
         };
         StatusEffect effect = new StatusEffect(spec.id().toString(), battle.ownerOf(sourceRuntime),
-                statusType(spec.type()), spec.magnitude(), spec.duration().seconds(), stacking,
+                statusType(spec.type(), spec.magnitude()), spec.magnitude(), spec.duration().seconds(), stacking,
                 spec.maximumStacks()).tickEvery(spec.tickIntervalSeconds());
         if (spec.duration().permanentFlag()) {
             effect.permanent();
@@ -117,12 +122,18 @@ public final class CoreCombatActions implements CombatActions {
 
     @Override
     public boolean canApplyStatus(CombatantView target) {
-        if (target == null) return false;
-        try {
-            return battle.canApplyStatusTo(combatant(target));
-        } catch (IllegalArgumentException ignored) {
-            return false;
-        }
+        Object combatant = CoreCombatantResolver.find(battle, target);
+        return combatant != null && battle.canApplyStatusTo(combatant);
+    }
+
+    @Override
+    public boolean canStun(CombatantView target) {
+        return CoreCombatantResolver.find(battle, target) instanceof CharacterRuntime;
+    }
+
+    @Override
+    public boolean canBind(CombatantView target) {
+        return canStun(target);
     }
 
     @Override
@@ -151,28 +162,20 @@ public final class CoreCombatActions implements CombatActions {
             battle.emitEffect(new Vector3(owner.position).add(0, 1, 0), spec.activationEffectId().toString(), 2.8f, .32f);
         }
         if (spec.activationTexture() != null) {
-            battle.emitImageEffect(new Vector3(owner.position).add(0, 1.4f, 0), spec.activationTexture().toString(),
-                    string(spec.activationEffectId()), spec.activationEffectScale(), .8f);
+            battle.emitImageEffect(new Vector3(owner.position).add(0, 1.4f, 0), spec.activationTexture().toString(), string(spec.activationEffectId()), spec.activationEffectScale(), .8f);
         }
         long attackId = battle.nextAttackId();
         Vector3 forward = new Vector3(owner.facing).nor();
         Vector3 right = new Vector3(-forward.z, 0, forward.x);
         for (int index = 0; index < spec.shots().size(); index++) {
             var shot = spec.shots().get(index);
-            Vector3 direction = spec.radial() ? new Vector3(
-                    MathUtils.sin(MathUtils.PI2 * index / spec.shots().size()), 0,
-                    MathUtils.cos(MathUtils.PI2 * index / spec.shots().size())) : new Vector3(forward);
+            Vector3 direction = spec.radial() ? new Vector3(MathUtils.sin(MathUtils.PI2 * index / spec.shots().size()), 0, MathUtils.cos(MathUtils.PI2 * index / spec.shots().size())) : new Vector3(forward);
             Vector3 start = new Vector3(owner.position).mulAdd(direction, 1f);
             if (!spec.radial()) start.mulAdd(right, shot.lateralOffset());
             start.y += 1.1f + shot.verticalOffset();
-            Projectile projectile = new Projectile(attackId, owner.playerId, shot.glyph(), string(shot.texture()),
-                    string(spec.hitEffectId()), start, direction.scl(spec.speed() * 1.3f), spec.radius(),
-                    shot.baseDamage() * .55f, shot.stunSeconds(), shot.bindSeconds(), spec.lifetimeSeconds(),
-                    spec.boomerang(), spec.boomerangDistance(), spec.pointsOnHit() ? spec.ultimatePointsPerHit() : 0)
-                    .attackTraits(spec.ultimateAttack(), false).source(owner);
+            Projectile projectile = new Projectile(attackId, owner.playerId, shot.glyph(), string(shot.texture()), string(spec.hitEffectId()), start, direction.scl(spec.speed() * 1.3f), spec.radius(), shot.baseDamage() * .55f, shot.stunSeconds(), shot.bindSeconds(), spec.lifetimeSeconds(), spec.boomerang(), spec.boomerangDistance(), spec.pointsOnHit() ? spec.ultimatePointsPerHit() : 0).attackTraits(spec.ultimateAttack(), false).source(owner);
             if (spec.followUpTexture() != null) {
-                projectile.followUp(spec.followUpGlyph(), spec.followUpTexture().toString(),
-                        spec.followUpDamage() * .55f, spec.followUpRadius(), spec.followUpSpeed());
+                projectile.followUp(spec.followUpGlyph(), spec.followUpTexture().toString(), spec.followUpDamage() * .55f, spec.followUpRadius(), spec.followUpSpeed());
             }
             battle.spawn(projectile);
         }
@@ -191,11 +194,7 @@ public final class CoreCombatActions implements CombatActions {
     public void spawnFallingStrike(CombatantView source, FallingStrikeSpec spec) {
         CharacterRuntime owner = runtime(source);
         var p = spec.position();
-        UltimateStrike strike = new UltimateStrike(owner.playerId, new Vector3(p.x(), p.y(), p.z()),
-                spec.radius(), spec.damage().baseDamage(), spec.warningSeconds(), spec.effectSeconds(),
-                spec.spawnHeight(), string(spec.warningEffectId()), string(spec.impactEffectId()),
-                spec.dropStyle(), string(spec.objectTexture()), spec.horizontalOffset(), spec.burnDuration(),
-                spec.burnDamage(), spec.burnTickInterval(), spec.burnUltimatePointsPerTick());
+        UltimateStrike strike = new UltimateStrike(owner.playerId, new Vector3(p.x(), p.y(), p.z()), spec.radius(), spec.damage().baseDamage(), spec.warningSeconds(), spec.effectSeconds(), spec.spawnHeight(), string(spec.warningEffectId()), string(spec.impactEffectId()), spec.dropStyle(), string(spec.objectTexture()), spec.horizontalOffset(), spec.burnDuration(), spec.burnDamage(), spec.burnTickInterval(), spec.burnUltimatePointsPerTick());
         strike.startAfter(spec.startDelaySeconds());
         if (spec.damage().type() == DamageType.SKILL) strike.skillAttack();
         battle.spawn(strike);
@@ -205,12 +204,8 @@ public final class CoreCombatActions implements CombatActions {
     public void spawnLineAttack(CombatantView source, LineAttackSpec spec) {
         CharacterRuntime owner = runtime(source);
         for (int index = 0; index < spec.directions(); index++) {
-            Vector3 direction = spec.directions() == 1 ? new Vector3(owner.facing) : new Vector3(
-                    MathUtils.cos(MathUtils.PI2 * index / spec.directions()), 0,
-                    MathUtils.sin(MathUtils.PI2 * index / spec.directions()));
-            battle.spawn(new LineStrike(owner.playerId, owner.position, direction, spec.length(), spec.width(),
-                    spec.damage().baseDamage(), spec.warningSeconds() + index * .035f, spec.effectSeconds(),
-                    string(spec.warningEffectId()), string(spec.impactEffectId()), string(spec.objectTexture())).mainUltimate());
+            Vector3 direction = spec.directions() == 1 ? new Vector3(owner.facing) : new Vector3(MathUtils.cos(MathUtils.PI2 * index / spec.directions()), 0, MathUtils.sin(MathUtils.PI2 * index / spec.directions()));
+            battle.spawn(new LineStrike(owner.playerId, owner.position, direction, spec.length(), spec.width(), spec.damage().baseDamage(), spec.warningSeconds() + index * .035f, spec.effectSeconds(), string(spec.warningEffectId()), string(spec.impactEffectId()), string(spec.objectTexture())).mainUltimate());
         }
     }
 
@@ -221,11 +216,8 @@ public final class CoreCombatActions implements CombatActions {
         for (int index = 0; index < spec.count(); index++) {
             float angle = phase + MathUtils.PI2 * index / spec.count();
             float radius = 2.2f + (index % 2) * .8f;
-            Vector3 spawn = new Vector3(owner.position).add(MathUtils.cos(angle) * radius, 0,
-                    MathUtils.sin(angle) * radius);
-            battle.spawn(new FamilySummon(owner.playerId, spawn, string(spec.texture()), spec.maximumHp(),
-                    spec.defense(), spec.attackDamage(), spec.attackInterval(), spec.projectileSpeed(),
-                    string(spec.impactEffectId()), angle, radius));
+            Vector3 spawn = new Vector3(owner.position).add(MathUtils.cos(angle) * radius, 0, MathUtils.sin(angle) * radius);
+            battle.spawn(new FamilySummon(owner.playerId, spawn, string(spec.texture()), spec.maximumHp(), spec.defense(), spec.attackDamage(), spec.attackInterval(), spec.projectileSpeed(), string(spec.impactEffectId()), angle, radius));
         }
     }
 
@@ -236,33 +228,26 @@ public final class CoreCombatActions implements CombatActions {
             float angle = -27f + index * 18f;
             Vector3 direction = new Vector3(owner.facing).rotate(Vector3.Y, angle);
             Vector3 start = new Vector3(owner.position).mulAdd(direction, index * .45f);
-            battle.spawn(new CarHazard(owner.playerId, start, direction, spec.speed(), spec.radius(),
-                    spec.damage().baseDamage(), spec.stunSeconds(), spec.lifetimeSeconds(),
-                    battle.arenaHalfExtent(), string(spec.texture()), string(spec.impactEffectId())).mainUltimate());
+            battle.spawn(new CarHazard(owner.playerId, start, direction, spec.speed(), spec.radius(), spec.damage().baseDamage(), spec.stunSeconds(), spec.lifetimeSeconds(), battle.arenaHalfExtent(), string(spec.texture()), string(spec.impactEffectId())).mainUltimate());
         }
     }
 
     @Override
     public void spawnSpinningAttack(CombatantView source, SpinningAttackSpec spec) {
         CharacterRuntime owner = runtime(source);
-        battle.spawn(new SpinningOne(owner.playerId, owner.position, spec.length(), spec.width(),
-                spec.damage().baseDamage(), spec.healOnHit(), spec.missingHealthBonus(), spec.lifetimeSeconds(),
-                string(spec.texture()), string(spec.impactEffectId())));
+        battle.spawn(new SpinningOne(owner.playerId, owner.position, spec.length(), spec.width(), spec.damage().baseDamage(), spec.healOnHit(), spec.missingHealthBonus(), spec.lifetimeSeconds(), string(spec.texture()), string(spec.impactEffectId())));
     }
 
     @Override
     public void startSkillBarrage(CombatantView source, SkillBarrageSpec spec) {
         CharacterRuntime owner = runtime(source);
-        battle.spawn(new jp.takoa.mojibattle.domain.combat.SkillBarrage(
-                owner, spec.skillId(), spec.count(), spec.intervalSeconds(), owner.position));
+        battle.spawn(new jp.takoa.mojibattle.domain.combat.SkillBarrage(owner, spec.skillId(), spec.count(), spec.intervalSeconds(), owner.position));
     }
 
     @Override
     public void startProjectileBarrage(CombatantView source, ProjectileBarrageSpec spec) {
         CharacterRuntime owner = runtime(source);
-        battle.spawn(new SushiBarrage(owner, spec.count(), spec.intervalSeconds(), spec.damage().baseDamage(),
-                spec.speed(), spec.lifetimeSeconds(), spec.radius(), string(spec.texture()),
-                string(spec.impactEffectId()), spec.damage().ignoreDefense()));
+        battle.spawn(new SushiBarrage(owner, spec.count(), spec.intervalSeconds(), spec.damage().baseDamage(), spec.speed(), spec.lifetimeSeconds(), spec.radius(), string(spec.texture()), string(spec.impactEffectId()), spec.damage().ignoreDefense()));
         if (spec.enhancedNormalGlyph() != null && spec.texture() != null) {
             owner.enhanceNormalAttack(spec.enhancedNormalGlyph(), spec.texture().toString(), spec.enhancedNormalScale());
         }
@@ -270,24 +255,19 @@ public final class CoreCombatActions implements CombatActions {
 
     @Override
     public void detonateOwnedMarkers(CombatantView source, DetonationSpec spec) {
-        battle.detonateCashBundles(runtime(source), spec.damage().baseDamage(), spec.radius(),
-                spec.warningSeconds(), spec.effectSeconds(), spec.incomingDamageMultiplier(),
-                spec.debuffDurationSeconds(), string(spec.texture()), string(spec.warningEffectId()),
-                string(spec.impactEffectId()));
+        battle.detonateCashBundles(runtime(source), spec.damage().baseDamage(), spec.radius(), spec.warningSeconds(), spec.effectSeconds(), spec.incomingDamageMultiplier(), spec.debuffDurationSeconds(), string(spec.texture()), string(spec.warningEffectId()), string(spec.impactEffectId()));
     }
 
     @Override
     public boolean spawnDetonatableMarker(CombatantView source, ResourceId texture, int maximumOwned) {
         CharacterRuntime owner = runtime(source);
         if (texture == null || maximumOwned < 1) return false;
-        long count = battle.objects().stream()
-                .filter(object -> object instanceof CashBundle cash && cash.owner == owner.playerId).count();
+        long count = battle.objects().stream().filter(object -> object instanceof CashBundle cash && cash.owner == owner.playerId).count();
         if (count >= maximumOwned) return false;
         long interval = (long) Math.floor(battle.elapsedSeconds());
         float angle = Math.floorMod(interval * 137L + owner.playerId.ordinal() * 71L, 360L);
         float radius = 3f + Math.floorMod(interval, 4L) * 1.3f;
-        Vector3 position = new Vector3(owner.position).add(MathUtils.cosDeg(angle) * radius, 0,
-                MathUtils.sinDeg(angle) * radius);
+        Vector3 position = new Vector3(owner.position).add(MathUtils.cosDeg(angle) * radius, 0, MathUtils.sinDeg(angle) * radius);
         float edge = battle.arenaHalfExtent() - .8f;
         position.x = MathUtils.clamp(position.x, -edge, edge);
         position.z = MathUtils.clamp(position.z, -edge, edge);
@@ -308,16 +288,10 @@ public final class CoreCombatActions implements CombatActions {
     }
 
     @Override
-    public void pullToward(CombatantView target, CombatantView destination, float maximumDistance,
-                           float remainingDistance) {
+    public void pullToward(CombatantView target, CombatantView destination, float maximumDistance, float remainingDistance) {
         requireNonNegative(maximumDistance, "Pull distance");
         requireNonNegative(remainingDistance, "Remaining distance");
-        CharacterRuntime moving = runtime(target);
-        Vector3 direction = new Vector3(battle.positionOf(combatant(destination))).sub(moving.position);
-        direction.y = 0;
-        float distance = direction.len();
-        if (distance > 0) moving.position.mulAdd(direction.scl(1f / distance),
-                Math.min(maximumDistance, Math.max(0, distance - remainingDistance)));
+        battle.pullToward(combatant(target), combatant(destination), maximumDistance, remainingDistance);
     }
 
     @Override
@@ -326,7 +300,10 @@ public final class CoreCombatActions implements CombatActions {
         return battle.teleportRight(runtime(mover).playerId, distance);
     }
 
-    @Override public void halveAllSkillCooldowns() { battle.halveAllSkillCooldowns(); }
+    @Override
+    public void halveAllSkillCooldowns() {
+        battle.halveAllSkillCooldowns();
+    }
 
     @Override
     public void gatherMainCombatantsAtCenter(float centerScale) {
@@ -339,7 +316,10 @@ public final class CoreCombatActions implements CombatActions {
         }
     }
 
-    @Override public float arenaHalfExtent() { return battle.arenaHalfExtent(); }
+    @Override
+    public float arenaHalfExtent() {
+        return battle.arenaHalfExtent();
+    }
 
     @Override
     public long additionalUltimateAttackCount(CombatantView source) {
@@ -364,12 +344,14 @@ public final class CoreCombatActions implements CombatActions {
         return battlefield().alliesOf(source);
     }
 
-    @Override public void startDuel(DuelSpec spec) {
+    @Override
+    public void startDuel(DuelSpec spec) {
         if (spec == null) throw new IllegalArgumentException("Duel specification is required");
         battle.startDuel(spec, spec.allies().stream().map(this::combatant).toList(), combatant(spec.enemy()));
     }
 
-    @Override public void lockNormalAttackTarget(CombatantView attacker, CombatantView target, float durationSeconds) {
+    @Override
+    public void lockNormalAttackTarget(CombatantView attacker, CombatantView target, float durationSeconds) {
         battle.lockNormalAttackTarget(combatant(attacker), combatant(target), durationSeconds);
     }
 
@@ -410,20 +392,22 @@ public final class CoreCombatActions implements CombatActions {
 
     @Override
     public void cleanseNegativeStatuses(CombatantView target) {
-        runtime(target).clearNegativeStatuses();
+        battle.cleanseNegativeStatuses(combatant(target));
     }
 
     private CharacterRuntime runtime(CombatantView view) {
-        if (!(view instanceof CoreCombatantView core) || !battle.containsCombatant(core.runtime())) {
-            throw new IllegalArgumentException("Combatant does not belong to this battle");
+        Object target = combatant(view);
+
+        if (target instanceof CharacterRuntime runtime) {
+            return runtime;
         }
-        return core.runtime();
+
+        throw new IllegalArgumentException("Combatant is not a main character: " + view.instanceId());
     }
 
+
     private Object combatant(CombatantView view) {
-        if (view instanceof CoreUnifiedCombatantView core && core.battle() == battle) return core.combatant();
-        if (view instanceof CoreCombatantView core && battle.containsCombatant(core.runtime())) return core.runtime();
-        throw new IllegalArgumentException("Combatant does not belong to this battle");
+        return CoreCombatantResolver.require(battle, view);
     }
 
     private static void requireNonNegative(float value, String name) {
@@ -436,11 +420,12 @@ public final class CoreCombatActions implements CombatActions {
         return id == null ? null : id.toString();
     }
 
-    private static StatusType statusType(StatusEffectType type) {
+    private static StatusType statusType(StatusEffectType type, float magnitude) {
         return switch (type) {
-            case ATTACK_MULTIPLIER -> StatusType.ATTACK_UP;
-            case INCOMING_DAMAGE_MULTIPLIER -> StatusType.DAMAGE_TAKEN_UP;
-            case MOVE_SPEED_MULTIPLIER -> StatusType.MOVE_UP;
+            case ATTACK_MULTIPLIER -> magnitude < 1f ? StatusType.ATTACK_DOWN : StatusType.ATTACK_UP;
+            case INCOMING_DAMAGE_MULTIPLIER -> magnitude > 1f
+                    ? StatusType.DAMAGE_TAKEN_UP : StatusType.DAMAGE_TAKEN_DOWN;
+            case MOVE_SPEED_MULTIPLIER -> magnitude < 1f ? StatusType.MOVE_DOWN : StatusType.MOVE_UP;
             case CRITICAL_RATE_ADDITION -> StatusType.CRITICAL_RATE_UP;
             case CRITICAL_DAMAGE_MULTIPLIER -> StatusType.CRITICAL_DAMAGE_UP;
             case ULTIMATE_GAIN_MULTIPLIER -> StatusType.ULTIMATE_GAIN_UP;

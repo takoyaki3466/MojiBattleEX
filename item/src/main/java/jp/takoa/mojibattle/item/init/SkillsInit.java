@@ -12,10 +12,11 @@ import jp.takoa.mojibattle.item.ability.skill.standard.RandomEconomySkill;
 import jp.takoa.mojibattle.item.ability.skill.standard.SelfAttackBuffSkill;
 import jp.takoa.mojibattle.registry.MojiBattleRegister;
 
-/** メインキャラクターのスキルだけを登録する。 */
+/**
+ * メインキャラクターのスキルだけを登録する。
+ */
 public final class SkillsInit {
-    public static final MojiBattleRegister.Skill REGISTER =
-            MojiBattleRegister.createSkill(ItemContentModule.MOD_ID);
+    public static final MojiBattleRegister.Skill REGISTER = MojiBattleRegister.createSkill(ItemContentModule.MOD_ID);
 
     static {
         register("projectile", ProjectileSkill.class);
@@ -31,9 +32,7 @@ public final class SkillsInit {
     private SkillsInit() {
     }
 
-    private static <R extends SkillRuntime> void register(
-            String path, Class<R> runtimeType) {
-        REGISTER.registerWithPresentation(path, runtimeType,
-                (config, multiplier) -> AbilityRegistrationSupport.presentation(config));
+    private static <R extends SkillRuntime> void register(String path, Class<R> runtimeType) {
+        REGISTER.registerWithPresentation(path, runtimeType, (config, multiplier) -> AbilityRegistrationSupport.presentation(config));
     }
 }

@@ -24,8 +24,6 @@ public final class CoreBattlefieldView implements BattlefieldView {
     }
     public CoreUnifiedCombatantView view(Object value) { return new CoreUnifiedCombatantView(battle, value); }
     Object resolve(CombatantView value) {
-        if (value instanceof CoreUnifiedCombatantView core && core.battle() == battle) return core.combatant();
-        if (value instanceof CoreCombatantView main && battle.containsCombatant(main.runtime())) return main.runtime();
-        throw new IllegalArgumentException("Combatant does not belong to this battle");
+        return CoreCombatantResolver.require(battle, value);
     }
 }

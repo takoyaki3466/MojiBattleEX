@@ -17,7 +17,9 @@ public final class WindPullSupportSkill
     public boolean activate(SupportAbilityActivationContext context) {
         for (CombatantView enemy : context.actions().enemiesOf(context.owner())) {
             context.actions().pullToward(enemy, context.owner(), getConfig().range(), 2f);
-            context.actions().bind(enemy, getConfig().duration());
+            if (context.actions().canBind(enemy)) {
+                context.actions().bind(enemy, getConfig().duration());
+            }
         }
         return true;
     }

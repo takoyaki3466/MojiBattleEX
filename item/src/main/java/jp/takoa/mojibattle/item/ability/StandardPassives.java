@@ -199,7 +199,7 @@ public final class StandardPassives {
             long interval = (long) Math.floor(context.battleElapsedSeconds() / config.intervalSeconds());
             long roll = Math.floorMod(interval * 3701L + context.owner().instanceId().hashCode() * 1709L, 10000L);
             if (procCooldown <= 0f && roll < config.chance() * 10000f) {
-                List<CombatantView> enemies = context.actions().enemiesOf(context.owner());
+                List<CombatantView> enemies = context.actions().stunnableEnemiesOf(context.owner());
                 if (!enemies.isEmpty()) {
                     context.actions().stun(enemies.getFirst(), config.stunSeconds());
                 }
