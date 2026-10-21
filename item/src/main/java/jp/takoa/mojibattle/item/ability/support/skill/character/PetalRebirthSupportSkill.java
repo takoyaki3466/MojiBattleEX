@@ -19,7 +19,7 @@ public final class PetalRebirthSupportSkill
 
     @Override
     public boolean activate(SupportAbilityActivationContext context) {
-        for (CombatantView ally : context.actions().alliesOf(context.owner())) {
+        for (CombatantView ally : context.actions().statusEffectAlliesOf(context.owner())) {
             context.actions().applyStatus(context.owner(), ally, new StatusSpec(
                     new ResourceId("mojibattle", "petal_rebirth_hot"), StatusEffectType.HEAL_OVER_TIME,
                     15f, StatusDuration.seconds(7f), StatusStacking.ADD_STACK, 3, 1f));

@@ -21,7 +21,7 @@ public final class RandomEconomySkill extends AbstractRuntime<RandomEconomySkill
     @Override
     public boolean tryActivate(AbilityActivationContext context) {
         roll(context, context.user());
-        for (CombatantView target : context.actions().enemiesOf(context.user())) {
+        for (CombatantView target : context.actions().statusEffectEnemiesOf(context.user())) {
             roll(context, target);
         }
         context.actions().addUltimatePoints(context.user(), getConfig().ultimatePoints());

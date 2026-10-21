@@ -6,6 +6,7 @@ import jp.takoa.mojibattle.battle.action.*;
 import jp.takoa.mojibattle.battle.action.spec.*;
 import jp.takoa.mojibattle.battle.combatant.*;
 import jp.takoa.mojibattle.battle.damage.*;
+import jp.takoa.mojibattle.battle.modifier.SupportNormalAttackModifier;
 import jp.takoa.mojibattle.battle.presentation.*;
 import jp.takoa.mojibattle.battle.rule.*;
 import jp.takoa.mojibattle.battle.status.*;
@@ -15,9 +16,12 @@ import jp.takoa.mojibattle.domain.ability.adapter.CoreCombatActions;
 import jp.takoa.mojibattle.domain.ability.adapter.CoreCombatantView;
 import jp.takoa.mojibattle.domain.ability.adapter.CoreUnifiedCombatantView;
 import jp.takoa.mojibattle.domain.combat.TemporarySupportSummon;
+import jp.takoa.mojibattle.domain.combat.FamilySummon;
+import jp.takoa.mojibattle.domain.status.StatusType;
 import jp.takoa.mojibattle.domain.support.*;
 import jp.takoa.mojibattle.event.EventBus;
 import jp.takoa.mojibattle.input.PlayerCommand;
+import jp.takoa.mojibattle.item.ability.NewSupportAbilities;
 import jp.takoa.mojibattle.registry.*;
 import jp.takoa.mojibattle.registry.impl.SupportAbilityImpl;
 import jp.takoa.mojibattle.registry.impl.SupportPassiveImpl;
@@ -107,6 +111,93 @@ final class CombatApi081IntegrationTest {
         assertEquals(80f, support.hp(), .0001f);
     }
 
+    @Test void statusTargetSelectionExcludesUnsupportedFamilySummons() {
+        Fixture f = fixture();
+        FamilySummon family = new FamilySummon(PlayerId.TWO, new com.badlogic.gdx.math.Vector3(2, 0, 2),
+                "glyphs/test.png", 100, 0, 1, 10, 10, "test:impact", 0, 2);
+        f.battle.spawn(family);
+
+        List<CombatantView> allEnemies = f.actions.enemiesOf(f.one);
+        CombatantView familyView = allEnemies.stream()
+                .filter(value -> value.id().equals("mojibattle:family_summon")).findFirst().orElseThrow();
+        List<CombatantView> statusTargets = f.actions.statusEffectEnemiesOf(f.one);
+
+        assertFalse(f.actions.canApplyStatus(familyView));
+        assertFalse(statusTargets.stream().anyMatch(value -> value.instanceId().equals(familyView.instanceId())));
+        assertTrue(statusTargets.stream().anyMatch(value -> value.kind() == CombatantKind.MAIN));
+        assertTrue(statusTargets.stream().anyMatch(value -> value.kind() == CombatantKind.SUPPORT));
+        assertThrows(IllegalArgumentException.class, () -> f.actions.applyStatus(f.one, familyView,
+                StatusSpec.multiplier(ResourceId.parse("test:invalid-family-status"),
+                        StatusEffectType.ATTACK_MULTIPLIER, .5f, StatusDuration.seconds(1))));
+
+        for (CombatantView target : statusTargets) {
+            f.actions.applyStatus(f.one, target, StatusSpec.multiplier(ResourceId.parse("test:attack-down"),
+                    StatusEffectType.ATTACK_MULTIPLIER, .5f, StatusDuration.seconds(.1f)));
+        }
+        assertEquals(.5f, f.battle.statusesOf(f.battle.player(PlayerId.TWO))
+                .multiplier(StatusType.ATTACK_UP), .0001f);
+        assertEquals(.5f, f.battle.statusesOf(f.battle.support(PlayerId.TWO))
+                .multiplier(StatusType.ATTACK_UP), .0001f);
+
+        f.battle.update(.2f, commands());
+        assertEquals(1f, f.battle.statusesOf(f.battle.player(PlayerId.TWO))
+                .multiplier(StatusType.ATTACK_UP), .0001f);
+        assertEquals(1f, f.battle.statusesOf(f.battle.support(PlayerId.TWO))
+                .multiplier(StatusType.ATTACK_UP), .0001f);
+    }
+
+    @Test void deadAndRemovedCombatantsRejectStatusApplication() {
+        Fixture f = fixture();
+        CombatantView support = f.actions.enemiesOf(f.one).stream()
+                .filter(value -> value.kind() == CombatantKind.SUPPORT).findFirst().orElseThrow();
+        f.actions.damage(f.one, support, DamageRequest.of(support.maximumHp() * 10, DamageType.NORMAL));
+
+        assertFalse(support.alive());
+        assertFalse(f.actions.statusEffectEnemiesOf(f.one).stream()
+                .anyMatch(value -> value.instanceId().equals(support.instanceId())));
+        assertThrows(IllegalArgumentException.class, () -> f.actions.applyStatus(f.one, support,
+                StatusSpec.multiplier(ResourceId.parse("test:dead-status"),
+                        StatusEffectType.ATTACK_MULTIPLIER, .5f, StatusDuration.seconds(1))));
+
+        TemporarySupportSummon temporary = new TemporarySupportSummon(PlayerId.TWO, "two:support:0",
+                "two:support:0:split:test", "test:group", "㌠", "glyphs/test.png",
+                new com.badlogic.gdx.math.Vector3(2, 0, 2), 100, 1, 10, 1, null, .1f, false);
+        f.battle.spawn(temporary);
+        CombatantView temporaryView = f.actions.enemiesOf(f.one).stream()
+                .filter(value -> value.instanceId().equals(temporary.instanceId)).findFirst().orElseThrow();
+        assertTrue(f.actions.canApplyStatus(temporaryView));
+        f.battle.update(.01f, commands());
+        f.battle.update(.2f, commands());
+        assertFalse(f.actions.canApplyStatus(temporaryView));
+        assertThrows(IllegalArgumentException.class, () -> f.actions.applyStatus(f.one, temporaryView,
+                StatusSpec.multiplier(ResourceId.parse("test:removed-status"),
+                        StatusEffectType.ATTACK_MULTIPLIER, .5f, StatusDuration.seconds(1))));
+    }
+
+    @Test void statusTargetSelectionSupportsMultipleSupportsAndMainOnlyTeams() {
+        Fixture multiple = fixture(List.of(team("test:hero", 200, 1), team("test:enemy-high", 300, 2),
+                team("test:enemy-low", 150, 0)));
+        List<CombatantView> multipleTargets = multiple.actions.statusEffectEnemiesOf(multiple.one);
+        assertEquals(2, multipleTargets.stream().filter(value -> value.kind() == CombatantKind.SUPPORT).count());
+        for (CombatantView target : multipleTargets) {
+            multiple.actions.applyStatus(multiple.one, target, StatusSpec.multiplier(
+                    ResourceId.parse("test:multi-support-status"), StatusEffectType.ATTACK_MULTIPLIER,
+                    .5f, StatusDuration.seconds(1)));
+        }
+        for (SupportCharacterRuntime support : multiple.battle.supports(PlayerId.TWO)) {
+            assertEquals(.5f, support.statuses.multiplier(StatusType.ATTACK_UP), .0001f);
+        }
+
+        Fixture mainOnly = fixture(List.of(team("test:hero", 200, 0), team("test:enemy-high", 300, 0),
+                team("test:enemy-low", 150, 0)));
+        List<CombatantView> mainTargets = mainOnly.actions.statusEffectEnemiesOf(mainOnly.one);
+        assertEquals(2, mainTargets.size());
+        assertTrue(mainTargets.stream().allMatch(value -> value.kind() == CombatantKind.MAIN));
+        assertDoesNotThrow(() -> mainTargets.forEach(target -> mainOnly.actions.applyStatus(mainOnly.one, target,
+                StatusSpec.multiplier(ResourceId.parse("test:main-only-status"),
+                        StatusEffectType.ATTACK_MULTIPLIER, .5f, StatusDuration.seconds(1)))));
+    }
+
     @Test void externalCombatActionsAcceptUnifiedMainSupportAndSummonTargets() {
         Fixture f = fixture();
         CombatantView source = new CoreCombatantView(f.battle, f.battle.player(PlayerId.ONE));
@@ -159,7 +250,59 @@ final class CombatApi081IntegrationTest {
         Fixture f = fixture();
         CharacterRuntime source = f.battle.player(PlayerId.ONE);
         f.battle.showDefaultUltimateCutIn(source, source.definition.glyphTexture, "test.ultimate");
-        assertEquals(ResourceId.parse("test:glyphs/test.png"), f.battle.cutIns().getFirst().spec().image());
+        assertEquals(ResourceId.parse("mojibattle:glyphs/test.png"), f.battle.cutIns().getFirst().spec().image());
+    }
+
+    @Test void supportCutInKeepsTheSupportImageNamespaceIndependentFromTheMainCharacter() {
+        Fixture f = fixture(List.of(team("expansion_mod:sigma", 200), team("test:enemy-high", 300),
+                team("test:enemy-low", 150)));
+        SupportCharacterRuntime south = f.battle.support(PlayerId.ONE);
+        south.definition.id = "south";
+        south.definition.glyphTexture = "glyphs/south.png";
+        south.maximizeUltimate();
+        Registry<SupportAbilityImpl> abilities = new Registry<>("support ability", SupportAbilityImpl::id);
+        abilities.register(new SupportAbilityImpl("test:noop", config -> context -> true, definition -> {}));
+
+        assertTrue(new SupportAbilityService(abilities).useUltimate(
+                f.battle, f.battle.team(PlayerId.ONE), south));
+
+        assertEquals(ResourceId.parse("mojibattle:glyphs/south.png"),
+                f.battle.cutIns().getFirst().spec().image());
+    }
+
+    @Test void floweringCycleAddsMaintainsAndRemovesItsModifierPerSupportInstance() {
+        SupportCharacterDefinition flower = flower();
+        Fixture f = fixture(List.of(
+                        team("mojibattle:biang", 200, List.of(flower, flower)),
+                        team("test:enemy-high", 300, List.of()),
+                        team("test:enemy-low", 150, List.of())),
+                standardSupportPassives());
+        SupportCharacterRuntime first = f.battle.supports(PlayerId.ONE).get(0);
+        SupportCharacterRuntime second = f.battle.supports(PlayerId.ONE).get(1);
+        assertTrue(first.normalAttackModifiers().isEmpty());
+        assertTrue(second.normalAttackModifiers().isEmpty());
+
+        ResourceId domainId = ResourceId.parse("mojibattle:everbloom_garden");
+        f.battle.activateDomain(f.battle.player(PlayerId.ONE), new DomainSpec(
+                domainId, .1f, DomainVisualStyle.BLOOM, .9f, null));
+        f.battle.update(.01f, commands());
+
+        var modifier = first.normalAttackModifiers().getFirst();
+        assertEquals(SupportNormalAttackModifier.Stacking.ADD, modifier.stacking());
+        assertEquals(-.15f, modifier.damageMultiplier(), .0001f);
+        assertEquals(-.35f, modifier.intervalMultiplier(), .0001f);
+        assertEquals(4, modifier.projectileCount());
+        assertEquals(0, modifier.hitsPerAttack());
+        assertEquals(120f, modifier.spreadAngle(), .0001f);
+        assertEquals(1, second.normalAttackModifiers().size());
+
+        f.battle.update(.01f, commands());
+        assertEquals(1, first.normalAttackModifiers().size());
+        assertEquals(1, second.normalAttackModifiers().size());
+
+        f.battle.update(.1f, commands());
+        assertTrue(first.normalAttackModifiers().isEmpty());
+        assertTrue(second.normalAttackModifiers().isEmpty());
     }
 
     private static EnumMap<PlayerId, PlayerCommand> commands() { return new EnumMap<>(PlayerId.class); }
@@ -167,13 +310,21 @@ final class CombatApi081IntegrationTest {
     private static Fixture fixture() { return fixture(false); }
     private static Fixture fixtureSameDefinitions() { return fixture(true); }
     private static Fixture fixture(boolean same) {
+        return fixture(List.of(team("test:hero", 200), team(same ? "test:hero" : "test:enemy-high", 300),
+                team(same ? "test:hero" : "test:enemy-low", 150)));
+    }
+
+    private static Fixture fixture(List<BattleTeamDefinition> teams) {
+        return fixture(teams, new Registry<>("support passive", SupportPassiveImpl::id));
+    }
+
+    private static Fixture fixture(List<BattleTeamDefinition> teams,
+                                   Registry<SupportPassiveImpl> supportPassives) {
         AbilityRegistry abilities = new AbilityRegistry(); abilities.freeze();
         Registry<SupportAbilityImpl> supportAbilities = new Registry<>("support ability", SupportAbilityImpl::id);
         supportAbilities.register(new SupportAbilityImpl("test:noop", config -> context -> true, definition -> {}));
-        Registry<SupportPassiveImpl> supportPassives = new Registry<>("support passive", SupportPassiveImpl::id);
         BattleController battle = new BattleController(config(), critical(), awakening(), abilities, BattleMode.VERSUS,
-                List.of(team("test:hero", 200), team(same ? "test:hero" : "test:enemy-high", 300),
-                        team(same ? "test:hero" : "test:enemy-low", 150)), List.of(), supportAbilities, supportPassives, new EventBus());
+                teams, List.of(), supportAbilities, supportPassives, new EventBus());
         CoreCombatActions actions = new CoreCombatActions(battle);
         return new Fixture(battle, actions,
                 new CoreUnifiedCombatantView(battle, battle.player(PlayerId.ONE)),
@@ -182,13 +333,47 @@ final class CombatApi081IntegrationTest {
     }
 
     private static BattleTeamDefinition team(String id, float hp) {
+        return team(id, hp, 1);
+    }
+
+    private static BattleTeamDefinition team(String id, float hp, int supportCount) {
+        SupportCharacterDefinition support = support("test:group");
+        return team(id, hp, java.util.Collections.nCopies(supportCount, support));
+    }
+
+    private static BattleTeamDefinition team(String id, float hp, List<SupportCharacterDefinition> supports) {
         CharacterDefinition main = new CharacterDefinition();
         main.id=id; main.displayGlyph="字"; main.glyphTexture="glyphs/test.png"; main.maxHp=hp; main.baseAttack=1; main.moveSpeed=1; main.collisionRadius=.5f; main.trainingDummy=true;
+        return new BattleTeamDefinition(main, List.of(), supports);
+    }
+
+    private static SupportCharacterDefinition support(String id) {
         SupportCharacterDefinition support = new SupportCharacterDefinition();
-        support.id="test:group"; support.displayGlyph="㌠"; support.glyphTexture="glyphs/test.png"; support.projectileTexture="glyphs/test.png";
+        support.id=id; support.displayGlyph="㌠"; support.glyphTexture="glyphs/test.png"; support.projectileTexture="glyphs/test.png";
         support.maxHp=100; support.moveSpeed=8; support.followDistance=2; support.attackRange=30; support.attackInterval=100; support.baseDamage=10; support.projectileSpeed=10;
         support.skill=ability("test:noop-skill", 100); support.ultimate=ability("test:noop-ultimate", 0);
-        return new BattleTeamDefinition(main, List.of(), List.of(support));
+        return support;
+    }
+
+    private static SupportCharacterDefinition flower() {
+        SupportCharacterDefinition flower = support("flower");
+        flower.supportPassiveImplementationId = "mojibattle:flowering_cycle";
+        return flower;
+    }
+
+    private static Registry<SupportPassiveImpl> standardSupportPassives() {
+        MojiBattleRegister.SupportPassive deferred = MojiBattleRegister.createSupportPassive("mojibattle");
+        NewSupportAbilities.registerPassives(deferred);
+        RegistryManager manager = new RegistryManager();
+        Registry<SupportPassiveImpl> registry = manager.create(
+                MojiBattleRegistries.SUPPORT_PASSIVE_IMPLEMENTATIONS,
+                "support passive implementation", SupportPassiveImpl::id);
+        EventBus lifecycle = new EventBus();
+        deferred.attach(lifecycle);
+        manager.publishRegistrationEvents(lifecycle);
+        manager.freezeAll();
+        lifecycle.close();
+        return registry;
     }
 
     private static SupportAbilityDefinition ability(String id, float cooldown) {

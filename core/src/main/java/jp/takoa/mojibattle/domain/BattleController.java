@@ -639,7 +639,9 @@ public final class BattleController {
                 recombine.add(temporary.sourceSupportInstanceId);
             }
         }
-        objects.removeIf(CombatObject::expired);
+        List<CombatObject> expiredObjects = objects.stream().filter(CombatObject::expired).toList();
+        objects.removeAll(expiredObjects);
+        expiredObjects.forEach(summonInstanceIds::remove);
         objects.addAll(pendingObjects);
 
         pendingObjects.clear();
@@ -1546,7 +1548,25 @@ public final class BattleController {
         else if (target instanceof TemporarySupportSummon temporary) temporary.heal(amount);
     }
 
+    /** 現在この戦闘に存在し、生存していて状態管理を持つ個体かを返す。 */
+    public boolean canApplyStatusTo(Object target) {
+        return containsBattleCombatant(target) && alive(target)
+                && (target instanceof CharacterRuntime
+                || target instanceof SupportCharacterRuntime
+                || target instanceof TemporarySupportSummon);
+    }
+
+    /**
+     * 状態付与可能な戦闘個体の状態管理を返す。
+     * 所属外・破棄済み・死亡済みと、仕様上状態非対応の個体は区別して拒否する。
+     */
     public StatusEffectSystem statusesOf(Object target) {
+        if (!containsBattleCombatant(target)) {
+            throw new IllegalArgumentException("Combatant does not belong to this battle or is no longer active");
+        }
+        if (!alive(target)) {
+            throw new IllegalArgumentException("Status target must be alive");
+        }
         if (target instanceof CharacterRuntime main) return main.statuses;
         if (target instanceof SupportCharacterRuntime support) return support.statuses;
         if (target instanceof TemporarySupportSummon temporary) return temporary.statuses;
@@ -1595,14 +1615,15 @@ public final class BattleController {
         cutInRevision++;
     }
 
-    /** 個別カットインを持たない必殺技へ、キャラクター画像を使った標準演出を追加する。 */
+    /**
+     * 個別カットインを持たない必殺技へ、キャラクター画像を使った標準演出を追加する。
+     * 名前空間なしの旧形式パスは、他の画像読込みと同じく標準コンテンツのリソースとして解釈する。
+     */
     public void showDefaultUltimateCutIn(CharacterRuntime source, String imagePath, String titleTranslationKey) {
         if (imagePath == null || imagePath.isBlank() || titleTranslationKey == null || titleTranslationKey.isBlank()) {
             return;
         }
-        String namespace = source.definition.id != null && source.definition.id.contains(":")
-                ? source.definition.id.substring(0, source.definition.id.indexOf(':')) : "mojibattle";
-        ResourceId image = imagePath.contains(":") ? ResourceId.parse(imagePath) : new ResourceId(namespace, imagePath);
+        ResourceId image = ResourceId.parse(imagePath);
         showCutIn(source, new CutInSpec(image, titleTranslationKey, 2.2f, 10));
     }
 

@@ -79,6 +79,27 @@ public interface CombatActions {
         throw new UnsupportedOperationException("Statuses are not supported by this combat host");
     }
 
+    /**
+     * 現在の対象へ状態を付与できるかを返す。
+     *
+     * <p>既定実装は生存中のメイン・補助を対象とする。召喚の状態対応はホストごとに異なるため、
+     * 対応するホストはこのメソッドを上書きする。{@link #applyStatus(CombatantView, CombatantView, StatusSpec)}
+     * はこの照会結果にかかわらず不正な対象を検証し、例外として通知しなければならない。</p>
+     */
+    default boolean canApplyStatus(CombatantView target) {
+        return target != null && target.alive() && target.kind() != CombatantKind.SUMMON;
+    }
+
+    /** 生存中の敵から、現在状態を付与できる個体だけを登録順で返す。 */
+    default List<CombatantView> statusEffectEnemiesOf(CombatantView source) {
+        return enemiesOf(source).stream().filter(this::canApplyStatus).toList();
+    }
+
+    /** 生存中の味方から、現在状態を付与できる個体だけを登録順で返す。 */
+    default List<CombatantView> statusEffectAlliesOf(CombatantView source) {
+        return alliesOf(source).stream().filter(this::canApplyStatus).toList();
+    }
+
     /** 指定時間後に対象へ攻撃する戦闘オブジェクトを生成する。 */
     default void spawnDelayedStrike(CombatantView source, CombatantView target, DelayedStrikeSpec spec) {
         throw new UnsupportedOperationException("Delayed strikes are not supported by this combat host");

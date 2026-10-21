@@ -9,6 +9,7 @@ import java.util.Objects;
  * REPLACE同士はpriority最大、同値ならID辞書順が後のものを採用する。画像と演出も同じ規則で選ぶ。
  * projectileCount/hitsPerAttackは合成後に1以上へクランプされる。
  * ADDの中立値は数値0、MULTIPLYの中立値は数値1。REPLACEは全数値を指定値へ置換する。
+ * ADDの攻撃間隔は基準倍率1への差分であり、合成後の倍率を正に保つため-1より大きい値を指定する。
  *
  * <h2>関係</h2>
  * <p>{@link jp.takoa.mojibattle.ability.support.SupportActions#addNormalAttackModifier}へ渡され、
@@ -42,9 +43,14 @@ public record SupportNormalAttackModifier(ResourceId id, int priority, Stacking 
     public SupportNormalAttackModifier {
         Objects.requireNonNull(id, "id");
         Objects.requireNonNull(stacking, "stacking");
+        boolean invalidInterval = stacking == Stacking.ADD
+                ? intervalMultiplier <= -1f
+                : intervalMultiplier < 0f;
         if (!Float.isFinite(damageMultiplier) || !Float.isFinite(intervalMultiplier)
-                || !Float.isFinite(spreadAngle) || intervalMultiplier < 0 || spreadAngle < 0) {
-            throw new IllegalArgumentException("Invalid support normal attack modifier");
+                || !Float.isFinite(spreadAngle) || invalidInterval || spreadAngle < 0) {
+            throw new IllegalArgumentException("Invalid support normal attack modifier: stacking=" + stacking
+                    + ", damage=" + damageMultiplier + ", interval=" + intervalMultiplier
+                    + ", spread=" + spreadAngle);
         }
     }
     /** 補助通常攻撃補正を既存値へ合成する方式。 */

@@ -116,6 +116,16 @@ public final class CoreCombatActions implements CombatActions {
     }
 
     @Override
+    public boolean canApplyStatus(CombatantView target) {
+        if (target == null) return false;
+        try {
+            return battle.canApplyStatusTo(combatant(target));
+        } catch (IllegalArgumentException ignored) {
+            return false;
+        }
+    }
+
+    @Override
     public void spawnDelayedStrike(CombatantView source, CombatantView target, DelayedStrikeSpec spec) {
         if (spec == null) {
             throw new IllegalArgumentException("Delayed strike specification is required");

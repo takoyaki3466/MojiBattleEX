@@ -154,7 +154,7 @@ public final class StandardSupportAbilities {
 
     private static void applyEnemies(SupportAbilityActivationContext context, StatusEffectType type,
                                      float value, float seconds) {
-        for (CombatantView target : context.actions().enemiesOf(context.owner())) {
+        for (CombatantView target : context.actions().statusEffectEnemiesOf(context.owner())) {
             apply(context, target, type, value, seconds);
         }
     }

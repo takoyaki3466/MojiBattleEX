@@ -20,7 +20,7 @@ public final class SouthernMarkSupportSkill
 
     @Override
     public boolean activate(SupportAbilityActivationContext context) {
-        for (CombatantView enemy : context.actions().enemiesOf(context.owner())) {
+        for (CombatantView enemy : context.actions().statusEffectEnemiesOf(context.owner())) {
             context.actions().applyStatus(context.owner(), enemy, new StatusSpec(
                     id("southern_mark_status"), StatusEffectType.NEXT_INCOMING_DAMAGE_MULTIPLIER,
                     1.65f, StatusDuration.seconds(8f), StatusStacking.REFRESH, 1, 1f,
