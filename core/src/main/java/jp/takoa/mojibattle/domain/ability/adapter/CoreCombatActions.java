@@ -357,7 +357,8 @@ public final class CoreCombatActions implements CombatActions {
 
     @Override
     public void knockbackAwayFrom(CombatantView source, CombatantView target, float distance) {
-        battle.knockbackAwayFrom(combatant(source), combatant(target), distance);
+        battle.knockbackAwayFrom(combatant(source),
+                CoreCombatantResolver.requirePresent(battle, target), distance);
     }
 
     @Override

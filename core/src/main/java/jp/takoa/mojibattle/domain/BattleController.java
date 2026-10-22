@@ -1824,7 +1824,7 @@ public final class BattleController {
      * 対象をsourceから離す候補を境界内で探し、他の生存メインと重ならない最遠点へ移動する。
      */
     public void knockbackAwayFrom(Object source, Object target, float distance) {
-        if (!containsBattleCombatant(source) || !containsBattleCombatant(target)) {
+        if (!isActiveBattleCombatant(source) || !isResolvableBattleCombatant(target)) {
             throw new IllegalArgumentException("Knockback combatants must belong to this battle");
         }
         if (!Float.isFinite(distance) || distance < 0) {
@@ -1964,10 +1964,25 @@ public final class BattleController {
         return (objects.contains(value) || pendingObjects.contains(value)) && isLivingSummon(value);
     }
 
+    /**
+     * 公開Viewが指す個体が、この戦闘へ登録されたままかを返す。
+     * 同一アクション中に死亡した個体は、更新終了時に除去されるまでは所属を維持する。
+     */
+    public boolean isResolvableBattleCombatant(Object value) {
+        if (closed || result != null) return false;
+        if (value instanceof CharacterRuntime main) return containsCombatant(main);
+        if (value instanceof SupportCharacterRuntime support) {
+            return !support.hiddenAndDisabled()
+                    && teams.values().stream().flatMap(team -> team.supports().stream())
+                    .anyMatch(candidate -> candidate == support);
+        }
+        return (value instanceof FamilySummon || value instanceof TemporarySupportSummon)
+                && (objects.contains(value) || pendingObjects.contains(value));
+    }
+
     /** 戦闘が継続中で、公開操作の対象として現在戦場に存在する個体かを返す。 */
     public boolean isActiveBattleCombatant(Object value) {
-        if (closed || result != null || !containsBattleCombatant(value) || !alive(value)) return false;
-        return !(value instanceof SupportCharacterRuntime support) || !support.hiddenAndDisabled();
+        return isResolvableBattleCombatant(value) && alive(value);
     }
 
     public List<Object> alliedBattleCombatants(Object source) {

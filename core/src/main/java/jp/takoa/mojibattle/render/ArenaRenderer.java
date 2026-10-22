@@ -226,8 +226,8 @@ public final class ArenaRenderer implements Disposable {
     }
 
     /** 名前空間付きAPI参照と、旧来の相対パスキーを同じ描画モデルへ解決する。 */
-    private static ModelInstance modelForResource(Map<String, ModelInstance> models, String reference) {
-        ModelInstance value = models.get(reference);
+    static <T> T modelForResource(Map<String, T> models, String reference) {
+        T value = models.get(reference);
         if (value == null && reference != null) {
             int separator = reference.indexOf(':');
             if (separator >= 0 && separator + 1 < reference.length()) {
@@ -243,6 +243,13 @@ public final class ArenaRenderer implements Disposable {
         }
         Texture objectTexture = texture(texturePath);
         objectModels.put(texturePath, texturedRect(builder, objectTexture, Math.max(.5f, (float) objectTexture.getWidth() / objectTexture.getHeight()), 1f, Color.WHITE));
+    }
+
+    /** 実行時に初めて現れる画像をRenderer所有のキャッシュへ一度だけ追加する。 */
+    private void ensureObjectModel(String texturePath) {
+        if (texturePath != null && modelForResource(objectModels, texturePath) == null) {
+            addObjectModel(new ModelBuilder(), texturePath);
+        }
     }
 
     private void addProjectileModel(ModelBuilder builder, String texturePath, Color tint) {
@@ -302,6 +309,11 @@ public final class ArenaRenderer implements Disposable {
             };
         }
         environment.set(new ColorAttribute(ColorAttribute.AmbientLight, ambient));
+        for (CombatObject object : battle.objects()) {
+            if (object instanceof LineStrike line) {
+                ensureObjectModel(line.objectTexture);
+            }
+        }
         batch.begin(camera);
         ModelInstance[] activeScenery = battle.fieldEffectIds().contains("matsudo") ? matsudoScenery : scenery;
 
@@ -364,7 +376,7 @@ public final class ArenaRenderer implements Disposable {
                     batch.render(glyph, environment);
                 }
             } else if (object instanceof CashBundle cash) {
-                ModelInstance image = objectModels.get(cash.texturePath);
+                ModelInstance image = modelForResource(objectModels, cash.texturePath);
                 if (image != null) {
                     tempPosition.set(cash.position()).add(0, .55f + MathUtils.sin(animationTime * 5f) * .08f, 0);
                     billboard(image, tempPosition, camera, 2.4f);
@@ -387,7 +399,7 @@ public final class ArenaRenderer implements Disposable {
                 float side = strike.owner.ordinal() % 2 == 0 ? -1 : 1;
 
                 tempPosition.set(strike.position()).add(strike.fallHorizontalOffset * easedRemaining * side, y, -strike.fallHorizontalOffset * easedRemaining * .3f);
-                ModelInstance image = objectModels.get(strike.objectTexture);
+                ModelInstance image = modelForResource(objectModels, strike.objectTexture);
 
                 if (image != null) {
                     float fallScale = Math.max(4f, strike.radius * 1.4f) * (1f + MathUtils.sin(animationTime * 11f) * .04f);
@@ -454,7 +466,7 @@ public final class ArenaRenderer implements Disposable {
                 renderSpinningOne(one, camera);
 
             } else if (object instanceof AwakeningItem item) {
-                ModelInstance image = objectModels.get(item.texturePath);
+                ModelInstance image = modelForResource(objectModels, item.texturePath);
 
                 if (image == null) {
                     continue;
@@ -512,21 +524,28 @@ public final class ArenaRenderer implements Disposable {
         float yaw = -(float) Math.toDegrees(Math.atan2(line.direction.z, line.direction.x));
         float warningPulse = 1f + MathUtils.sin(animationTime * 14f) * .16f;
 
-        ModelInstance warning = effectModels.get(line.warningEffectId);
-        warning.transform.setToTranslation(tempPosition).rotate(Vector3.Y, yaw).rotate(Vector3.X, -90).scale(line.length * 1.3f, line.width * 5.2f * warningPulse, 1);
-        batch.render(warning, environment);
+        ModelInstance warning = modelForResource(effectModels, line.warningEffectId);
+        if (warning != null) {
+            warning.transform.setToTranslation(tempPosition).rotate(Vector3.Y, yaw).rotate(Vector3.X, -90).scale(line.length * 1.3f, line.width * 5.2f * warningPulse, 1);
+            batch.render(warning, environment);
+        }
 
         if (line.impacting()) {
-            ModelInstance lance = objectModels.get(line.objectTexture);
+            ModelInstance lance = modelForResource(objectModels, line.objectTexture);
+            if (lance == null) {
+                lance = modelForResource(effectModels, line.impactEffectId);
+            }
             float surge = 1f + MathUtils.sin(animationTime * 22f) * .1f;
 
-            lance.transform.setToTranslation(tempPosition.x, 1.2f + MathUtils.sin(animationTime * 18f) * .12f, tempPosition.z).rotate(Vector3.Y, yaw).scale(line.length * 1.15f * surge, line.width * 4.4f * surge, 1);
-            batch.render(lance, environment);
+            if (lance != null) {
+                lance.transform.setToTranslation(tempPosition.x, 1.2f + MathUtils.sin(animationTime * 18f) * .12f, tempPosition.z).rotate(Vector3.Y, yaw).scale(line.length * 1.15f * surge, line.width * 4.4f * surge, 1);
+                batch.render(lance, environment);
+            }
         }
     }
 
     private void renderCar(CarHazard car, Camera camera) {
-        ModelInstance image = objectModels.get(car.texturePath);
+        ModelInstance image = modelForResource(objectModels, car.texturePath);
         if (image == null) {
             return;
         }
@@ -546,7 +565,7 @@ public final class ArenaRenderer implements Disposable {
     }
 
     private void renderSpinningOne(SpinningOne one, Camera camera) {
-        ModelInstance image = objectModels.get(one.texturePath);
+        ModelInstance image = modelForResource(objectModels, one.texturePath);
         if (image == null) {
             return;
         }
@@ -567,8 +586,8 @@ public final class ArenaRenderer implements Disposable {
 
         tempPosition.set(family.position()).add(0, 1.15f, 0);
 
-        ModelInstance outline = projectileOutlines.get(family.texturePath);
-        ModelInstance glyph = projectileGlyphs.get(family.texturePath);
+        ModelInstance outline = modelForResource(projectileOutlines, family.texturePath);
+        ModelInstance glyph = modelForResource(projectileGlyphs, family.texturePath);
 
         if (outline != null) {
             tempDirection.set(camera.position).sub(tempPosition).nor();
