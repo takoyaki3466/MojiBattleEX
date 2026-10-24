@@ -13,25 +13,23 @@ import jp.takoa.mojibattle.resource.ResourceManager;
 /**
  * itemの初期化結果をcoreの実行環境へ受け渡す、変更不能な基本データ。
  */
-public record RegistrySnapshot(BuiltInRegistries registries, ConfigManager config, LocalizationManager i18n,
-                               CharacterRegistry characters, SupportRegistry supports, AbilityRegistry abilities,
-                               CustomCharacterStore customCharacters, EventChannels events,
-                               ResourceManager resources) {
+public record RegistrySnapshot(
+        MojiBattleRegistries registries, ConfigManager config, LocalizationManager i18n,
+        CharacterRegistry characters, SupportRegistry supports, AbilityRegistry abilities,
+        CustomCharacterStore customCharacters, EventChannels events, ResourceManager resources) {
     /**
      * 旧7引数コンストラクタを維持し、イベントチャネルだけを補完する。
      */
     @Deprecated
-    public RegistrySnapshot(BuiltInRegistries registries, ConfigManager config, LocalizationManager i18n, CharacterRegistry characters, SupportRegistry supports, AbilityRegistry abilities, CustomCharacterStore customCharacters) {
-        this(registries, config, i18n, characters, supports, abilities, customCharacters, new EventChannels(),
-                new ClasspathResourceManager(RegistrySnapshot.class.getClassLoader()));
+    public RegistrySnapshot(MojiBattleRegistries registries, ConfigManager config, LocalizationManager i18n, CharacterRegistry characters, SupportRegistry supports, AbilityRegistry abilities, CustomCharacterStore customCharacters) {
+        this(registries, config, i18n, characters, supports, abilities, customCharacters, new EventChannels(), new ClasspathResourceManager(RegistrySnapshot.class.getClassLoader()));
     }
 
-    /** リソース層追加前の8引数呼出しを維持する互換コンストラクタ。 */
+    /**
+     * リソース層追加前の8引数呼出しを維持する互換コンストラクタ。
+     */
     @Deprecated
-    public RegistrySnapshot(BuiltInRegistries registries, ConfigManager config, LocalizationManager i18n,
-                            CharacterRegistry characters, SupportRegistry supports, AbilityRegistry abilities,
-                            CustomCharacterStore customCharacters, EventChannels events) {
-        this(registries, config, i18n, characters, supports, abilities, customCharacters, events,
-                new ClasspathResourceManager(RegistrySnapshot.class.getClassLoader()));
+    public RegistrySnapshot(MojiBattleRegistries registries, ConfigManager config, LocalizationManager i18n, CharacterRegistry characters, SupportRegistry supports, AbilityRegistry abilities, CustomCharacterStore customCharacters, EventChannels events) {
+        this(registries, config, i18n, characters, supports, abilities, customCharacters, events, new ClasspathResourceManager(RegistrySnapshot.class.getClassLoader()));
     }
 }

@@ -1,6 +1,8 @@
 package jp.takoa.mojibattle.input;
 
-/** キー割当からゲーム内入力へ変換されるプレイヤー操作。 */
+/**
+ * キー割当からゲーム内入力へ変換されるプレイヤー操作。
+ */
 public enum PlayerAction {
     MOVE_FORWARD,
     MOVE_BACKWARD,

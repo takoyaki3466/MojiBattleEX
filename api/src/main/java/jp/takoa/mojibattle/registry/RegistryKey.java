@@ -1,6 +1,8 @@
 package jp.takoa.mojibattle.registry;
 
-/** Registry種別をIDと要素型の組で表す型付きキー。 */
+/**
+ * Registry種別をIDと要素型の組で表す型付きキー。
+ */
 public record RegistryKey<T>(RegistryId id, Class<T> elementType) {
     public RegistryKey {
         if (id == null || elementType == null) {

@@ -12,9 +12,10 @@ import jp.takoa.mojibattle.domain.support.SupportCharacterDefinition;
 import jp.takoa.mojibattle.domain.support.SupportRegistry;
 import jp.takoa.mojibattle.domain.ability.AbilityRegistry;
 import jp.takoa.mojibattle.i18n.LocalizationManager;
+import jp.takoa.mojibattle.input.JoyConInputManager;
 import jp.takoa.mojibattle.log.GameLog;
 import jp.takoa.mojibattle.event.EventChannels;
-import jp.takoa.mojibattle.registry.BuiltInRegistries;
+import jp.takoa.mojibattle.registry.MojiBattleRegistries;
 import jp.takoa.mojibattle.registry.RegistrySnapshot;
 import jp.takoa.mojibattle.ui.UiFactory;
 import jp.takoa.mojibattle.resource.ResourceManager;
@@ -36,9 +37,10 @@ public final class GameContext implements AutoCloseable {
 
     public final Skin skin;
     public final BattleAudio audio;
-    public final BuiltInRegistries registries;
+    public final MojiBattleRegistries registries;
     public final EventChannels events;
     public final ResourceManager resources;
+    public final JoyConInputManager joyCons;
     private final AutoCloseable modRuntime;
 
     /**
@@ -57,6 +59,7 @@ public final class GameContext implements AutoCloseable {
         events = bootstrap.events();
         resources = bootstrap.resources();
         config = bootstrap.config();
+        joyCons = new JoyConInputManager();
 
         GameLog.info("Config", "Configuration loaded and validated");
 
@@ -111,15 +114,15 @@ public final class GameContext implements AutoCloseable {
         }
     }
 
-    /** 一つの解放失敗で後続リソースの解放を省略せず、追加失敗をsuppressedへ保持する。 */
+    /**
+     * 一つの解放失敗で後続リソースの解放を省略せず、追加失敗をsuppressedへ保持する。
+     */
     private static RuntimeException closeStep(RuntimeException failure, CloseStep step) {
         try {
             step.close();
             return failure;
         } catch (Exception error) {
-            RuntimeException wrapped = error instanceof RuntimeException runtime
-                    ? runtime
-                    : new IllegalStateException("Cannot close game resource", error);
+            RuntimeException wrapped = error instanceof RuntimeException runtime ? runtime : new IllegalStateException("Cannot close game resource", error);
             if (failure == null) {
                 return wrapped;
             }

@@ -105,7 +105,9 @@ public final class StatusEffectSystem {
         return List.copyOf(effects);
     }
 
-    /** 被ダメージ成立後、該当する一度きり状態をすべて消費する。 */
+    /**
+     * 被ダメージ成立後、該当する一度きり状態をすべて消費する。
+     */
     public void consumeDamageReceived() {
         effects.removeIf(effect -> effect.consumeOnDamageReceived);
     }

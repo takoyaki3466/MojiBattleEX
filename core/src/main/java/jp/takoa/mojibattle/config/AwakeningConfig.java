@@ -1,6 +1,8 @@
 package jp.takoa.mojibattle.config;
 
-/** 覚醒アイテムの出現条件、取得判定および適用する能力補正を保持する設定DTO。 */
+/**
+ * 覚醒アイテムの出現条件、取得判定および適用する能力補正を保持する設定DTO。
+ */
 public final class AwakeningConfig {
     public float spawnAtRemainingSeconds;
     public float attackMultiplier;

@@ -4,7 +4,9 @@ import jp.takoa.mojibattle.log.DiagnosticLog;
 
 import java.nio.file.Path;
 
-/** A dependency-free startup log that is safe to use before libGDX is initialized. */
+/**
+ * libGDXの初期化前に使用しても安全な、依存関係のない起動ログ。
+ */
 final class StartupLog {
     private StartupLog() {
     }

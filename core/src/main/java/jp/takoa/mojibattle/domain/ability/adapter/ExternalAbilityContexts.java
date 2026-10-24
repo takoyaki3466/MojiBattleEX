@@ -1,18 +1,24 @@
 package jp.takoa.mojibattle.domain.ability.adapter;
 
-import jp.takoa.mojibattle.ability.AbilityActivationContext;
+import jp.takoa.mojibattle.ability.context.AbilityActivationContext;
 import jp.takoa.mojibattle.domain.BattleController;
 import jp.takoa.mojibattle.domain.CharacterRuntime;
 
-final class ExternalAbilityContexts {
+public final class ExternalAbilityContexts {
     private ExternalAbilityContexts() {
     }
 
-    static AbilityActivationContext create(BattleController battle, CharacterRuntime user) {
+    public static AbilityActivationContext create(BattleController battle, CharacterRuntime user) {
         CharacterRuntime target = battle.targetOf(user.playerId);
+        return create(battle, user, target);
+    }
+
+    /** 指定済みの対象を保持した発動コンテキストを生成する。 */
+    public static AbilityActivationContext create(BattleController battle, CharacterRuntime user,
+                                                   CharacterRuntime target) {
         return new AbilityActivationContext(
-                new CoreCombatantView(user),
-                target == null ? null : new CoreCombatantView(target),
+                new CoreCombatantView(battle, user),
+                target == null ? null : new CoreCombatantView(battle, target),
                 new CoreCombatActions(battle));
     }
 }

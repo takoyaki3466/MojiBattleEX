@@ -7,7 +7,9 @@ package jp.takoa.mojibattle.domain;
  * @param reason 試合が終了した理由
  */
 public record BattleResult(PlayerId winner, Reason reason) {
-    /** 試合の終了理由。 */
+    /**
+     * 試合の終了理由。
+     */
     public enum Reason {
         KNOCKOUT,
         TIMEOUT,

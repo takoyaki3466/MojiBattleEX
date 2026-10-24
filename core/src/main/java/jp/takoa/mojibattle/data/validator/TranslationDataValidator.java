@@ -1,6 +1,8 @@
 package jp.takoa.mojibattle.data.validator;
 
 import jp.takoa.mojibattle.config.ConfigManager;
+import jp.takoa.mojibattle.domain.CharacterDefinition;
+import jp.takoa.mojibattle.domain.support.SupportCharacterDefinition;
 import jp.takoa.mojibattle.i18n.LocalizationManager;
 
 /**
@@ -11,11 +13,11 @@ public final class TranslationDataValidator {
      * キャラクター選択画面で表示される名前・能力・スタイルの翻訳キーを検証する。
      *
      * @param config 検証対象のゲームデータ
-     * @param i18n ロード済みの翻訳辞書
+     * @param i18n   ロード済みの翻訳辞書
      * @throws IllegalArgumentException 必須キーが欠落している場合
      */
     public void validate(ConfigManager config, LocalizationManager i18n) {
-        for (var character : config.characters()) {
+        for (CharacterDefinition character : config.characters()) {
             require(i18n, character.nameKey);
             require(i18n, config.skill(character.skillId).nameKey);
             require(i18n, config.skill(character.skillId).descriptionKey);
@@ -24,7 +26,8 @@ public final class TranslationDataValidator {
             require(i18n, config.passive(character.passiveId).nameKey);
             require(i18n, config.passive(character.passiveId).descriptionKey);
         }
-        for (var support : config.supports()) {
+
+        for (SupportCharacterDefinition support : config.supports()) {
             require(i18n, support.nameKey);
             require(i18n, support.skill.nameKey);
             require(i18n, support.ultimate.nameKey);

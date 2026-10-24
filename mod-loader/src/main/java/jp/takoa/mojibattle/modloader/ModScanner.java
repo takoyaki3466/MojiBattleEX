@@ -16,16 +16,12 @@ import java.util.Set;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 
-/** modsディレクトリの直下JARからmetadataを読み、API同梱を事前に拒否する。 */
+/**
+ * modsディレクトリの直下JARからmetadataを読み、API同梱を事前に拒否する。
+ */
 final class ModScanner {
     private static final String METADATA_PATH = "META-INF/mojibattle/mod.json";
-    private static final List<String> API_PREFIXES = List.of(
-            "jp/takoa/mojibattle/battle/",
-            "jp/takoa/mojibattle/content/",
-            "jp/takoa/mojibattle/event/",
-            "jp/takoa/mojibattle/mod/",
-            "jp/takoa/mojibattle/registry/",
-            "jp/takoa/mojibattle/resource/");
+    private static final List<String> API_PREFIXES = List.of("jp/takoa/mojibattle/battle/", "jp/takoa/mojibattle/content/", "jp/takoa/mojibattle/event/", "jp/takoa/mojibattle/mod/", "jp/takoa/mojibattle/registry/", "jp/takoa/mojibattle/resource/");
     private final Json json = new Json();
 
     List<DiscoveredMod> scan(Path modsDirectory) {
@@ -38,11 +34,7 @@ final class ModScanner {
         try {
             List<Path> jars;
             try (var paths = Files.list(modsDirectory)) {
-                jars = paths
-                        .filter(path -> Files.isRegularFile(path) && !Files.isSymbolicLink(path))
-                        .filter(path -> path.getFileName().toString().toLowerCase().endsWith(".jar"))
-                        .sorted(Comparator.comparing(path -> path.getFileName().toString()))
-                        .toList();
+                jars = paths.filter(path -> Files.isRegularFile(path) && !Files.isSymbolicLink(path)).filter(path -> path.getFileName().toString().toLowerCase().endsWith(".jar")).sorted(Comparator.comparing(path -> path.getFileName().toString())).toList();
             }
             List<DiscoveredMod> result = new ArrayList<>();
             Set<Path> realPaths = new HashSet<>();

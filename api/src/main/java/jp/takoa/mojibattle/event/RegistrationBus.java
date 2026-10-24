@@ -9,6 +9,13 @@ import java.util.function.Consumer;
  */
 public interface RegistrationBus {
     /**
+     * この購読境界を所有するMOD namespace。ホスト内部Busではnull。
+     */
+    default String ownerNamespace() {
+        return null;
+    }
+
+    /**
      * 指定したイベント型のリスナーを登録する。
      *
      * @param eventType 完全一致で受信するイベント型

@@ -1,8 +1,8 @@
 package jp.takoa.mojibattle.item.init;
 
-import jp.takoa.mojibattle.registry.BuiltInRegistries;
+import jp.takoa.mojibattle.registry.MojiBattleRegistries;
 import jp.takoa.mojibattle.registry.CombatEffectDefinition;
-import jp.takoa.mojibattle.registry.DeferredRegister;
+import jp.takoa.mojibattle.registry.MojiBattleRegister;
 import jp.takoa.mojibattle.registry.RegistryHandle;
 
 import java.util.Set;
@@ -11,7 +11,8 @@ import java.util.Set;
  * 旧0～15番VFXを安定した名前空間IDへ結び付ける登録宣言。
  */
 public final class EffectRegistryInit {
-    public static final DeferredRegister<CombatEffectDefinition> REGISTER = DeferredRegister.create(BuiltInRegistries.EFFECTS, "mojibattle");
+    public static final MojiBattleRegister<CombatEffectDefinition> REGISTER = MojiBattleRegister.create(MojiBattleRegistries.EFFECTS, "mojibattle");
+
     public static final RegistryHandle<CombatEffectDefinition> NEUTRAL = effect("neutral", 0);
     public static final RegistryHandle<CombatEffectDefinition> STOCK = effect("stock", 1);
     public static final RegistryHandle<CombatEffectDefinition> FORMULA = effect("formula", 2);
@@ -28,6 +29,7 @@ public final class EffectRegistryInit {
     public static final RegistryHandle<CombatEffectDefinition> CASH = effect("cash", 13);
     public static final RegistryHandle<CombatEffectDefinition> STAR = effect("star", 14);
     public static final RegistryHandle<CombatEffectDefinition> FAMILY = effect("family", 15);
+
 
     private EffectRegistryInit() {
     }

@@ -32,6 +32,7 @@ public final class CharacterRuntime {
     private float normalAttackIntervalMultiplier = 1f;
     private String normalAttackGlyph;
     private String normalAttackTexture;
+    private float normalAttackEnhancementRemaining;
     public final StatusEffectSystem statuses;
 
     public CharacterRuntime(PlayerId playerId, CharacterDefinition definition, Vector3 spawn) {
@@ -44,6 +45,7 @@ public final class CharacterRuntime {
     public CharacterRuntime(PlayerId playerId, CharacterDefinition definition, Vector3 spawn, float healthMultiplier) {
         this.playerId = playerId;
         this.definition = definition;
+
         statuses = new StatusEffectSystem(playerId);
         position.set(spawn);
         maxHp = definition.maxHp * Math.max(0.01f, healthMultiplier);
@@ -60,6 +62,12 @@ public final class CharacterRuntime {
         stunRemaining = Math.max(0, stunRemaining - delta);
         bindRemaining = Math.max(0, bindRemaining - delta);
         normalAttackCooldown = Math.max(0, normalAttackCooldown - delta);
+
+        if (normalAttackEnhancementRemaining > 0f && (normalAttackEnhancementRemaining -= delta) <= 0f) {
+            normalAttackGlyph = null;
+            normalAttackTexture = null;
+            normalAttackIntervalMultiplier = 1f;
+        }
 
         statuses.update(delta);
 
@@ -317,7 +325,9 @@ public final class CharacterRuntime {
         return normalAttackCooldown <= 0;
     }
 
-    /** 通常攻撃の次回発射までの時間を、現在の攻撃間隔倍率込みで設定する。 */
+    /**
+     * 通常攻撃の次回発射までの時間を、現在の攻撃間隔倍率込みで設定する。
+     */
     public void resetNormalAttack(float baseInterval) {
         normalAttackCooldown = Math.max(0, baseInterval * normalAttackIntervalMultiplier);
     }
@@ -329,7 +339,16 @@ public final class CharacterRuntime {
         normalAttackGlyph = glyph;
         normalAttackTexture = texture;
         normalAttackIntervalMultiplier = Math.max(.1f, intervalMultiplier);
+        normalAttackEnhancementRemaining = 0f;
         normalAttackCooldown = Math.min(normalAttackCooldown, normalAttackIntervalMultiplier);
+    }
+
+    /**
+     * 通常攻撃強化を指定秒数だけ適用し、終了時にキャラクター固有値へ戻す。
+     */
+    public void enhanceNormalAttack(String glyph, String texture, float intervalMultiplier, float durationSeconds) {
+        enhanceNormalAttack(glyph, texture, intervalMultiplier);
+        normalAttackEnhancementRemaining = Math.max(0f, durationSeconds);
     }
 
     public String normalAttackGlyph() {

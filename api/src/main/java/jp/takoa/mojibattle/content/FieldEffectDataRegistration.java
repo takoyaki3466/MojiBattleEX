@@ -6,7 +6,8 @@ import java.util.Objects;
 
 /**
  * 外部フィールド効果JSONの登録単位。
- * @param fieldEffect MOD自身の名前空間にあるDATAリソース
+ *
+ * @param fieldEffect MOD自身の名前空間にあるDATAリソース参照ID（Registry登録IDではない）
  */
 public record FieldEffectDataRegistration(ResourceId fieldEffect) {
     public FieldEffectDataRegistration {

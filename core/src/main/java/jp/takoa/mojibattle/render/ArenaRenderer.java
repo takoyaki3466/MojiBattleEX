@@ -19,21 +19,12 @@ import com.badlogic.gdx.math.Vector3;
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.utils.Disposable;
 import jp.takoa.mojibattle.config.BattleConfig;
-import jp.takoa.mojibattle.domain.combat.AwakeningItem;
+import jp.takoa.mojibattle.domain.combat.*;
 import jp.takoa.mojibattle.domain.BattleController;
 import jp.takoa.mojibattle.domain.BattleTeamDefinition;
-import jp.takoa.mojibattle.domain.combat.CarHazard;
-import jp.takoa.mojibattle.domain.combat.CashBundle;
 import jp.takoa.mojibattle.domain.CharacterDefinition;
 import jp.takoa.mojibattle.domain.CharacterRuntime;
-import jp.takoa.mojibattle.domain.combat.CombatObject;
-import jp.takoa.mojibattle.domain.combat.FamilySummon;
-import jp.takoa.mojibattle.domain.combat.LineStrike;
 import jp.takoa.mojibattle.domain.PlayerId;
-import jp.takoa.mojibattle.domain.combat.Projectile;
-import jp.takoa.mojibattle.domain.combat.SpinningOne;
-import jp.takoa.mojibattle.domain.combat.UltimateStrike;
-import jp.takoa.mojibattle.domain.combat.VisualEffect;
 import jp.takoa.mojibattle.domain.support.SupportCharacterDefinition;
 import jp.takoa.mojibattle.domain.support.SupportCharacterRuntime;
 import jp.takoa.mojibattle.domain.ability.AbilityConfigs;
@@ -82,136 +73,151 @@ public final class ArenaRenderer implements Disposable {
 
     private float animationTime;
 
-    public ArenaRenderer(BattleConfig config, List<BattleTeamDefinition> teamDefinitions,
-                         List<AbilityConfigs.ProjectileSkill> skills,
-                         List<AbilityConfigs.AreaUltimate> ultimates,
-                         String awakeningTexturePath, Iterable<CombatEffectDefinition> effects,
-                         ResourceManager resources) {
+    public ArenaRenderer(BattleConfig config, List<BattleTeamDefinition> teamDefinitions, List<AbilityConfigs.ProjectileSkill> skills, List<AbilityConfigs.AreaUltimate> ultimates, String awakeningTexturePath, Iterable<CombatEffectDefinition> effects, ResourceManager resources) {
         textureLoader = new GdxTextureLoader(resources);
+        
         try {
-        environment.set(new ColorAttribute(ColorAttribute.AmbientLight, 0.95f, 0.97f, 1f, 1));
+            environment.set(new ColorAttribute(ColorAttribute.AmbientLight, 0.95f, 0.97f, 1f, 1));
 
-        ModelBuilder modelBuilder = new ModelBuilder();
+            ModelBuilder modelBuilder = new ModelBuilder();
 
-        Texture groundTexture = texture("arena/sparse-grass.jpg");
-        groundTexture.setWrap(Texture.TextureWrap.Repeat, Texture.TextureWrap.Repeat);
+            Texture groundTexture = texture("arena/sparse-grass.jpg");
+            groundTexture.setWrap(Texture.TextureWrap.Repeat, Texture.TextureWrap.Repeat);
 
-        TextureAttribute groundDiffuse = TextureAttribute.createDiffuse(groundTexture);
-        groundDiffuse.scaleU = 7f;
-        groundDiffuse.scaleV = 7f;
+            TextureAttribute groundDiffuse = TextureAttribute.createDiffuse(groundTexture);
+            groundDiffuse.scaleU = 7f;
+            groundDiffuse.scaleV = 7f;
 
-        ground = instance(modelBuilder.createBox(config.arenaHalfExtent * 2, 0.2f, config.arenaHalfExtent * 2, new Material(groundDiffuse, ColorAttribute.createDiffuse(Color.WHITE)), TEXTURED_ATTRIBUTES));
-        Model wallModel = modelBuilder.createBox(config.arenaHalfExtent * 2 + 0.4f, 1.0f, 0.35f, material(new Color(0.58f, 0.72f, 0.68f, 1)), ATTRIBUTES);
-        models.add(wallModel);
+            ground = instance(modelBuilder.createBox(config.arenaHalfExtent * 2, 0.2f, config.arenaHalfExtent * 2, new Material(groundDiffuse, ColorAttribute.createDiffuse(Color.WHITE)), TEXTURED_ATTRIBUTES));
+            Model wallModel = modelBuilder.createBox(config.arenaHalfExtent * 2 + 0.4f, 1.0f, 0.35f, material(new Color(0.58f, 0.72f, 0.68f, 1)), ATTRIBUTES);
+            models.add(wallModel);
 
-        for (int i = 0; i < walls.length; i++) {
-            walls[i] = new ModelInstance(wallModel);
-        }
-
-        walls[0].transform.setToTranslation(0, .5f, -config.arenaHalfExtent);
-        walls[1].transform.setToTranslation(0, .5f, config.arenaHalfExtent);
-        walls[2].transform.setToTranslation(-config.arenaHalfExtent, .5f, 0).rotate(Vector3.Y, 90);
-        walls[3].transform.setToTranslation(config.arenaHalfExtent, .5f, 0).rotate(Vector3.Y, 90);
-
-        Texture sceneryTexture = texture("arena/hilly-terrain.jpg");
-        float backdropDistance = config.arenaHalfExtent + 7f;
-
-        scenery[0] = sceneryRect(modelBuilder, sceneryTexture, 46f, 19f);
-        scenery[1] = sceneryRect(modelBuilder, sceneryTexture, 46f, 19f);
-        scenery[2] = sceneryRect(modelBuilder, sceneryTexture, 46f, 19f);
-        scenery[3] = sceneryRect(modelBuilder, sceneryTexture, 46f, 19f);
-
-        // 法線はアリーナの外側を向いています。GL_BACKカリングにより、内側にいるプレイヤーからは草の平面が見えなくなります。
-        scenery[0].transform.setToTranslation(0, 7.5f, -backdropDistance).rotate(Vector3.Y, 180);
-        scenery[1].transform.setToTranslation(0, 7.5f, backdropDistance);
-        scenery[2].transform.setToTranslation(-backdropDistance, 7.5f, 0).rotate(Vector3.Y, -90);
-        scenery[3].transform.setToTranslation(backdropDistance, 7.5f, 0).rotate(Vector3.Y, 90);
-
-        Texture matsudoTexture = texture("arena/matsudo-backdrop.png");
-
-        for (int index = 0; index < matsudoScenery.length; index++) {
-            matsudoScenery[index] = sceneryRect(modelBuilder, matsudoTexture, 46f, 19f);
-        }
-
-        matsudoScenery[0].transform.setToTranslation(0, 7.5f, -backdropDistance).rotate(Vector3.Y, 180);
-        matsudoScenery[1].transform.setToTranslation(0, 7.5f, backdropDistance);
-        matsudoScenery[2].transform.setToTranslation(-backdropDistance, 7.5f, 0).rotate(Vector3.Y, -90);
-        matsudoScenery[3].transform.setToTranslation(backdropDistance, 7.5f, 0).rotate(Vector3.Y, 90);
-
-        Color[] playerColors = {new Color(.2f, .65f, 1, 1), new Color(1, .35f, .28f, 1), new Color(.45f, 1, .35f, 1), new Color(1, .45f, 1, 1)};
-        for (int index = 0; index < teamDefinitions.size(); index++) {
-            PlayerId id = PlayerId.values()[index];
-            BattleTeamDefinition team = teamDefinitions.get(index);
-            playerModels.put(id, texturedRect(modelBuilder, texture(team.main().glyphTexture), 1.8f, 2.8f, playerColors[index]));
-            List<ModelInstance> subModelsForPlayer = new ArrayList<>();
-            for (CharacterDefinition subMain : team.subMains()) {
-                subModelsForPlayer.add(texturedRect(modelBuilder, texture(subMain.glyphTexture), 1.55f, 2.35f, playerColors[index]));
+            for (int i = 0; i < walls.length; i++) {
+                walls[i] = new ModelInstance(wallModel);
             }
-            subMainModels.put(id, subModelsForPlayer);
-            List<ModelInstance> modelsForPlayer = new ArrayList<>();
-            for (SupportCharacterDefinition support : team.supports()) {
-                if (support != null) {
-                    modelsForPlayer.add(texturedRect(modelBuilder, texture(support.glyphTexture), 1.2f, 1.8f, playerColors[index]));
+
+            walls[0].transform.setToTranslation(0, .5f, -config.arenaHalfExtent);
+            walls[1].transform.setToTranslation(0, .5f, config.arenaHalfExtent);
+            walls[2].transform.setToTranslation(-config.arenaHalfExtent, .5f, 0).rotate(Vector3.Y, 90);
+            walls[3].transform.setToTranslation(config.arenaHalfExtent, .5f, 0).rotate(Vector3.Y, 90);
+
+            Texture sceneryTexture = texture("arena/hilly-terrain.jpg");
+            float backdropDistance = config.arenaHalfExtent + 7f;
+
+            scenery[0] = sceneryRect(modelBuilder, sceneryTexture, 46f, 19f);
+            scenery[1] = sceneryRect(modelBuilder, sceneryTexture, 46f, 19f);
+            scenery[2] = sceneryRect(modelBuilder, sceneryTexture, 46f, 19f);
+            scenery[3] = sceneryRect(modelBuilder, sceneryTexture, 46f, 19f);
+
+            // 法線はアリーナの外側を向いています。GL_BACKカリングにより、内側にいるプレイヤーからは草の平面が見えなくなります。
+            scenery[0].transform.setToTranslation(0, 7.5f, -backdropDistance).rotate(Vector3.Y, 180);
+            scenery[1].transform.setToTranslation(0, 7.5f, backdropDistance);
+            scenery[2].transform.setToTranslation(-backdropDistance, 7.5f, 0).rotate(Vector3.Y, -90);
+            scenery[3].transform.setToTranslation(backdropDistance, 7.5f, 0).rotate(Vector3.Y, 90);
+
+            Texture matsudoTexture = texture("arena/matsudo-backdrop.png");
+
+            for (int index = 0; index < matsudoScenery.length; index++) {
+                matsudoScenery[index] = sceneryRect(modelBuilder, matsudoTexture, 46f, 19f);
+            }
+
+            matsudoScenery[0].transform.setToTranslation(0, 7.5f, -backdropDistance).rotate(Vector3.Y, 180);
+            matsudoScenery[1].transform.setToTranslation(0, 7.5f, backdropDistance);
+            matsudoScenery[2].transform.setToTranslation(-backdropDistance, 7.5f, 0).rotate(Vector3.Y, -90);
+            matsudoScenery[3].transform.setToTranslation(backdropDistance, 7.5f, 0).rotate(Vector3.Y, 90);
+
+            Color[] playerColors = {new Color(.2f, .65f, 1, 1), new Color(1, .35f, .28f, 1), new Color(.45f, 1, .35f, 1), new Color(1, .45f, 1, 1)};
+            
+            for (int index = 0; index < teamDefinitions.size(); index++) {
+                PlayerId id = PlayerId.values()[index];
+                BattleTeamDefinition team = teamDefinitions.get(index);
+                
+                playerModels.put(id, texturedRect(modelBuilder, texture(team.main().glyphTexture), 1.8f, 2.8f, playerColors[index]));
+                
+                List<ModelInstance> subModelsForPlayer = new ArrayList<>();
+                
+                for (CharacterDefinition subMain : team.subMains()) {
+                    subModelsForPlayer.add(texturedRect(modelBuilder, texture(subMain.glyphTexture), 1.55f, 2.35f, playerColors[index]));
+                }
+                
+                subMainModels.put(id, subModelsForPlayer);
+                
+                List<ModelInstance> modelsForPlayer = new ArrayList<>();
+                
+                for (SupportCharacterDefinition support : team.supports()) {
+                    if (support != null) {
+                        modelsForPlayer.add(texturedRect(modelBuilder, texture(support.glyphTexture), 1.2f, 1.8f, playerColors[index]));
+                    }
+                }
+                
+                supportModels.put(id, modelsForPlayer);
+            }
+            
+            familyHealthBack = instance(modelBuilder.createBox(1.65f, .14f, .07f, material(new Color(.28f, .04f, .04f, 1)), ATTRIBUTES));
+            familyHealthFill = instance(modelBuilder.createBox(1.58f, .09f, .08f, material(new Color(.18f, 1f, .30f, 1)), ATTRIBUTES));
+
+            Color[] projectileColors = {new Color(1, 0.78f, 0.2f, 1), new Color(1, 0.55f, 0.15f, 1), new Color(1, 0.88f, 0.3f, 1), new Color(1, 0.65f, 0.1f, 1)};
+            int colorIndex = 0;
+
+            for (AbilityConfigs.ProjectileSkill skill : skills) {
+                String[] textures = skill.textures == null ? new String[0] : skill.textures;
+                for (String texturePath : textures) {
+                    if (!projectileGlyphs.containsKey(texturePath)) {
+                        Texture glyphTexture = texture(texturePath);
+                        
+                        projectileGlyphs.put(texturePath, texturedRect(modelBuilder, glyphTexture, .8f, .8f, projectileColors[colorIndex++ % projectileColors.length]));
+                        projectileOutlines.put(texturePath, texturedRect(modelBuilder, glyphTexture, .8f, .8f, Color.BLACK));
+                        objectModels.putIfAbsent(texturePath, new ModelInstance(projectileGlyphs.get(texturePath).model));
+                    }
                 }
             }
-            supportModels.put(id, modelsForPlayer);
-        }
-        familyHealthBack = instance(modelBuilder.createBox(1.65f, .14f, .07f, material(new Color(.28f, .04f, .04f, 1)), ATTRIBUTES));
-        familyHealthFill = instance(modelBuilder.createBox(1.58f, .09f, .08f, material(new Color(.18f, 1f, .30f, 1)), ATTRIBUTES));
+            for (BattleTeamDefinition team : teamDefinitions) {
+                for (SupportCharacterDefinition supportDefinition : team.supports()) {
+                    if (supportDefinition == null) {
+                        continue;
+                    }
+                    
+                    String texturePath = supportDefinition.projectileTexture;
 
-        Color[] projectileColors = {new Color(1, 0.78f, 0.2f, 1), new Color(1, 0.55f, 0.15f, 1), new Color(1, 0.88f, 0.3f, 1), new Color(1, 0.65f, 0.1f, 1)};
-        int colorIndex = 0;
-
-        for (AbilityConfigs.ProjectileSkill skill : skills) {
-            String[] textures = skill.textures == null ? new String[0] : skill.textures;
-            for (String texturePath : textures) {
-                if (!projectileGlyphs.containsKey(texturePath)) {
-                    Texture glyphTexture = texture(texturePath);
-                    projectileGlyphs.put(texturePath, texturedRect(modelBuilder, glyphTexture, .8f, .8f, projectileColors[colorIndex++ % projectileColors.length]));
-                    projectileOutlines.put(texturePath, texturedRect(modelBuilder, glyphTexture, .8f, .8f, Color.BLACK));
-                    objectModels.putIfAbsent(texturePath, new ModelInstance(projectileGlyphs.get(texturePath).model));
+                    if (!projectileGlyphs.containsKey(texturePath)) {
+                        Texture glyphTexture = texture(texturePath);
+                        
+                        projectileGlyphs.put(texturePath, texturedRect(modelBuilder, glyphTexture, .8f, .8f, Color.WHITE));
+                        projectileOutlines.put(texturePath, texturedRect(modelBuilder, glyphTexture, .8f, .8f, Color.BLACK));
+                        objectModels.putIfAbsent(texturePath, new ModelInstance(projectileGlyphs.get(texturePath).model));
+                    }
                 }
             }
-        }
-        for (BattleTeamDefinition team : teamDefinitions) {
-            for (SupportCharacterDefinition supportDefinition : team.supports()) {
-                if (supportDefinition == null) {
-                    continue;
-                }
-                String texturePath = supportDefinition.projectileTexture;
+            for (CombatEffectDefinition effect : effects) {
+                effectModels.put(effect.id(), effectRect(modelBuilder, texture(effect.texturePath())));
+            }
 
-                if (!projectileGlyphs.containsKey(texturePath)) {
-                    Texture glyphTexture = texture(texturePath);
-                    projectileGlyphs.put(texturePath, texturedRect(modelBuilder, glyphTexture, .8f, .8f, Color.WHITE));
-                    projectileOutlines.put(texturePath, texturedRect(modelBuilder, glyphTexture, .8f, .8f, Color.BLACK));
-                    objectModels.putIfAbsent(texturePath, new ModelInstance(projectileGlyphs.get(texturePath).model));
+            for (AbilityConfigs.AreaUltimate ultimate : ultimates) {
+                addObjectModel(modelBuilder, ultimate.objectTexture);
+            }
+            
+            for (AbilityConfigs.ProjectileSkill skill : skills) {
+                addObjectModel(modelBuilder, skill.activationTexture);
+                addObjectModel(modelBuilder, skill.fallingObjectTexture);
+            }
+            
+            for (BattleTeamDefinition team : teamDefinitions) {
+                addProjectileModel(modelBuilder, team.main().glyphTexture, Color.WHITE);
+                
+                for (CharacterDefinition subMain : team.subMains()) {
+                    addProjectileModel(modelBuilder, subMain.glyphTexture, Color.WHITE);
                 }
             }
-        }
-        for (CombatEffectDefinition effect : effects) {
-            effectModels.put(effect.id(), effectRect(modelBuilder, texture(effect.texturePath())));
-        }
+            
+            addObjectModel(modelBuilder, "objects/commuter-train.png");
 
-        for (AbilityConfigs.AreaUltimate ultimate : ultimates) {
-            addObjectModel(modelBuilder, ultimate.objectTexture);
-        }
-        for (AbilityConfigs.ProjectileSkill skill : skills) {
-            addObjectModel(modelBuilder, skill.activationTexture);
-            addObjectModel(modelBuilder, skill.fallingObjectTexture);
-        }
-        for (BattleTeamDefinition team : teamDefinitions) {
-            addProjectileModel(modelBuilder, team.main().glyphTexture, Color.WHITE);
-            for (CharacterDefinition subMain : team.subMains()) {
-                addProjectileModel(modelBuilder, subMain.glyphTexture, Color.WHITE);
-            }
-        }
-        addObjectModel(modelBuilder, "objects/commuter-train.png");
-
-        Texture awakening = texture(awakeningTexturePath);
-        objectModels.put(awakeningTexturePath, texturedRect(modelBuilder, awakening, (float) awakening.getWidth() / awakening.getHeight(), 1, Color.WHITE));
+            Texture awakening = texture(awakeningTexturePath);
+            objectModels.put(awakeningTexturePath, texturedRect(modelBuilder, awakening, (float) awakening.getWidth() / awakening.getHeight(), 1, Color.WHITE));
+        
         } catch (RuntimeException | Error error) {
             try {
                 dispose();
+                
             } catch (RuntimeException | Error disposeError) {
                 error.addSuppressed(disposeError);
             }
@@ -224,11 +230,14 @@ public final class ArenaRenderer implements Disposable {
         return new ModelInstance(model);
     }
 
-    /** 名前空間付きAPI参照と、旧来の相対パスキーを同じ描画モデルへ解決する。 */
-    private static ModelInstance modelForResource(Map<String, ModelInstance> models, String reference) {
-        ModelInstance value = models.get(reference);
+    /**
+     * 名前空間付きAPI参照と、旧来の相対パスキーを同じ描画モデルへ解決する。
+     */
+    static <T> T modelForResource(Map<String, T> models, String reference) {
+        T value = models.get(reference);
         if (value == null && reference != null) {
             int separator = reference.indexOf(':');
+            
             if (separator >= 0 && separator + 1 < reference.length()) {
                 value = models.get(reference.substring(separator + 1));
             }
@@ -240,15 +249,27 @@ public final class ArenaRenderer implements Disposable {
         if (texturePath == null || objectModels.containsKey(texturePath)) {
             return;
         }
+        
         Texture objectTexture = texture(texturePath);
         objectModels.put(texturePath, texturedRect(builder, objectTexture, Math.max(.5f, (float) objectTexture.getWidth() / objectTexture.getHeight()), 1f, Color.WHITE));
+    }
+
+    /**
+     * 実行時に初めて現れる画像をRenderer所有のキャッシュへ一度だけ追加する。
+     */
+    private void ensureObjectModel(String texturePath) {
+        if (texturePath != null && modelForResource(objectModels, texturePath) == null) {
+            addObjectModel(new ModelBuilder(), texturePath);
+        }
     }
 
     private void addProjectileModel(ModelBuilder builder, String texturePath, Color tint) {
         if (texturePath == null || projectileGlyphs.containsKey(texturePath)) {
             return;
         }
+        
         Texture glyphTexture = texture(texturePath);
+        
         projectileGlyphs.put(texturePath, texturedRect(builder, glyphTexture, .8f, .8f, tint));
         projectileOutlines.put(texturePath, texturedRect(builder, glyphTexture, .8f, .8f, Color.BLACK));
     }
@@ -260,6 +281,7 @@ public final class ArenaRenderer implements Disposable {
     private Texture texture(String path) {
         Texture value = textureLoader.load(path, true);
         value.setFilter(Texture.TextureFilter.MipMapLinearLinear, Texture.TextureFilter.Linear);
+        
         textures.add(value);
 
         return value;
@@ -290,17 +312,15 @@ public final class ArenaRenderer implements Disposable {
     }
 
     public void render(Camera camera, BattleController battle) {
-        Color ambient = new Color(.95f, .97f, 1f, 1f);
-        if (!battle.domains().isEmpty()) {
-            var domain = battle.domains().get(battle.domains().size() - 1);
-            ambient = switch (domain.spec().visualStyle()) {
-                case MONOCHROME -> new Color(.62f, .62f, .62f, 1f);
-                case SUNRISE -> new Color(1f, .72f, .48f, 1f);
-                case BLOOM -> new Color(1f, .68f, .82f, 1f);
-                case ABYSS -> new Color(.42f, .28f, .58f, 1f);
-            };
-        }
+        Color ambient = getColor(battle);
         environment.set(new ColorAttribute(ColorAttribute.AmbientLight, ambient));
+
+        for (CombatObject object : battle.objects()) {
+            if (object instanceof LineStrike line) {
+                ensureObjectModel(line.objectTexture);
+            }
+        }
+
         batch.begin(camera);
         ModelInstance[] activeScenery = battle.fieldEffectIds().contains("matsudo") ? matsudoScenery : scenery;
 
@@ -318,15 +338,21 @@ public final class ArenaRenderer implements Disposable {
         for (PlayerId id : battle.playerIds()) {
             if (battle.player(id).isAlive()) {
                 renderCharacter(playerModels.get(id), battle.player(id), camera);
+
                 List<CharacterRuntime> subMains = battle.subMains(id);
                 List<ModelInstance> mainModels = subMainModels.get(id);
+
                 for (int subIndex = 0; subIndex < subMains.size(); subIndex++) {
                     renderCharacter(mainModels.get(subIndex), subMains.get(subIndex), camera);
                 }
+
                 List<SupportCharacterRuntime> supports = battle.supports(id);
                 List<ModelInstance> models = supportModels.get(id);
+
                 for (int supportIndex = 0; supportIndex < supports.size(); supportIndex++) {
-                    renderSupport(models.get(supportIndex), supports.get(supportIndex), camera);
+                    if (!supports.get(supportIndex).hiddenAndDisabled() && supports.get(supportIndex).isAlive()) {
+                        renderSupport(models.get(supportIndex), supports.get(supportIndex), camera);
+                    }
                 }
             }
         }
@@ -337,6 +363,7 @@ public final class ArenaRenderer implements Disposable {
 
                 ModelInstance aura = effectModels.get(p.effectId);
                 billboard(aura, p.position(), camera, pulse * 4.1f);
+
                 aura.transform.rotate(Vector3.Z, animationTime * 260f + p.attackId * 19f);
                 batch.render(aura, environment);
 
@@ -349,6 +376,7 @@ public final class ArenaRenderer implements Disposable {
                     tempPosition.set(p.position()).add(0, MathUtils.sin(phase * .7f) * .16f, 0);
 
                     ModelInstance outline = modelForResource(projectileOutlines, p.texturePath);
+
                     tempDirection.set(camera.position).sub(tempPosition).nor();
                     tempOutline.set(tempPosition).mulAdd(tempDirection, -.035f);
 
@@ -361,10 +389,11 @@ public final class ArenaRenderer implements Disposable {
                     batch.render(glyph, environment);
                 }
             } else if (object instanceof CashBundle cash) {
-                ModelInstance image = objectModels.get(cash.texturePath);
+                ModelInstance image = modelForResource(objectModels, cash.texturePath);
                 if (image != null) {
                     tempPosition.set(cash.position()).add(0, .55f + MathUtils.sin(animationTime * 5f) * .08f, 0);
                     billboard(image, tempPosition, camera, 2.4f);
+
                     image.transform.rotate(Vector3.Z, MathUtils.sin(animationTime * 4f) * 7f);
                     batch.render(image, environment);
                 }
@@ -372,6 +401,7 @@ public final class ArenaRenderer implements Disposable {
                 if (strike.phase() == UltimateStrike.Phase.PENDING) {
                     continue;
                 }
+
                 float warningPulse = 1f + MathUtils.sin(animationTime * 9f) * .12f;
 
                 ModelInstance warning = effectModels.get(strike.warningEffectId);
@@ -384,7 +414,7 @@ public final class ArenaRenderer implements Disposable {
                 float side = strike.owner.ordinal() % 2 == 0 ? -1 : 1;
 
                 tempPosition.set(strike.position()).add(strike.fallHorizontalOffset * easedRemaining * side, y, -strike.fallHorizontalOffset * easedRemaining * .3f);
-                ModelInstance image = objectModels.get(strike.objectTexture);
+                ModelInstance image = modelForResource(objectModels, strike.objectTexture);
 
                 if (image != null) {
                     float fallScale = Math.max(4f, strike.radius * 1.4f) * (1f + MathUtils.sin(animationTime * 11f) * .04f);
@@ -406,8 +436,7 @@ public final class ArenaRenderer implements Disposable {
                     batch.render(impact, environment);
                 }
             } else if (object instanceof VisualEffect effect) {
-                ModelInstance visual = effect.texturePath == null ? effectModels.get(effect.effectId)
-                        : modelForResource(objectModels, effect.texturePath);
+                ModelInstance visual = effect.texturePath == null ? effectModels.get(effect.effectId) : modelForResource(objectModels, effect.texturePath);
 
                 if (visual == null) {
                     visual = effectModels.get(effect.effectId);
@@ -435,6 +464,15 @@ public final class ArenaRenderer implements Disposable {
             } else if (object instanceof FamilySummon family) {
                 renderFamily(family, camera);
 
+            } else if (object instanceof TemporarySupportSummon temporary) {
+                ensureProjectileModel(temporary.texturePath);
+                ModelInstance glyph = modelForResource(projectileGlyphs, temporary.texturePath);
+                if (glyph != null) {
+                    tempPosition.set(temporary.position()).add(0, 1.15f + MathUtils.sin(animationTime * 7f) * .12f, 0);
+                    billboard(glyph, tempPosition, camera, 1.55f);
+                    batch.render(glyph, environment);
+                }
+
             } else if (object instanceof CarHazard car) {
                 renderCar(car, camera);
 
@@ -442,7 +480,7 @@ public final class ArenaRenderer implements Disposable {
                 renderSpinningOne(one, camera);
 
             } else if (object instanceof AwakeningItem item) {
-                ModelInstance image = objectModels.get(item.texturePath);
+                ModelInstance image = modelForResource(objectModels, item.texturePath);
 
                 if (image == null) {
                     continue;
@@ -455,6 +493,23 @@ public final class ArenaRenderer implements Disposable {
             }
         }
         batch.end();
+    }
+
+    private static Color getColor(BattleController battle) {
+        Color ambient = new Color(.95f, .97f, 1f, 1f);
+
+        if (!battle.domains().isEmpty()) {
+            ActiveDomain domain = battle.domains().getLast();
+
+            ambient = switch (domain.spec().visualStyle()) {
+                case MONOCHROME -> new Color(.62f, .62f, .62f, 1f);
+                case SUNRISE -> new Color(1f, .72f, .48f, 1f);
+                case BLOOM -> new Color(1f, .68f, .82f, 1f);
+                case ABYSS -> new Color(.42f, .28f, .58f, 1f);
+            };
+        }
+
+        return ambient;
     }
 
     private void renderCharacter(ModelInstance model, CharacterRuntime runtime, Camera camera) {
@@ -488,27 +543,40 @@ public final class ArenaRenderer implements Disposable {
         batch.render(model, environment);
     }
 
+    private void ensureProjectileModel(String texturePath) {
+        if (modelForResource(projectileGlyphs, texturePath) == null) {
+            addProjectileModel(new ModelBuilder(), texturePath, Color.WHITE);
+        }
+    }
+
     private void renderLineStrike(LineStrike line, Camera camera) {
         tempPosition.set(line.position()).mulAdd(line.direction, line.length * .5f).add(0, .08f, 0);
 
         float yaw = -(float) Math.toDegrees(Math.atan2(line.direction.z, line.direction.x));
         float warningPulse = 1f + MathUtils.sin(animationTime * 14f) * .16f;
 
-        ModelInstance warning = effectModels.get(line.warningEffectId);
-        warning.transform.setToTranslation(tempPosition).rotate(Vector3.Y, yaw).rotate(Vector3.X, -90).scale(line.length * 1.3f, line.width * 5.2f * warningPulse, 1);
-        batch.render(warning, environment);
+        ModelInstance warning = modelForResource(effectModels, line.warningEffectId);
+        if (warning != null) {
+            warning.transform.setToTranslation(tempPosition).rotate(Vector3.Y, yaw).rotate(Vector3.X, -90).scale(line.length * 1.3f, line.width * 5.2f * warningPulse, 1);
+            batch.render(warning, environment);
+        }
 
         if (line.impacting()) {
-            ModelInstance lance = objectModels.get(line.objectTexture);
+            ModelInstance lance = modelForResource(objectModels, line.objectTexture);
+            if (lance == null) {
+                lance = modelForResource(effectModels, line.impactEffectId);
+            }
             float surge = 1f + MathUtils.sin(animationTime * 22f) * .1f;
 
-            lance.transform.setToTranslation(tempPosition.x, 1.2f + MathUtils.sin(animationTime * 18f) * .12f, tempPosition.z).rotate(Vector3.Y, yaw).scale(line.length * 1.15f * surge, line.width * 4.4f * surge, 1);
-            batch.render(lance, environment);
+            if (lance != null) {
+                lance.transform.setToTranslation(tempPosition.x, 1.2f + MathUtils.sin(animationTime * 18f) * .12f, tempPosition.z).rotate(Vector3.Y, yaw).scale(line.length * 1.15f * surge, line.width * 4.4f * surge, 1);
+                batch.render(lance, environment);
+            }
         }
     }
 
     private void renderCar(CarHazard car, Camera camera) {
-        ModelInstance image = objectModels.get(car.texturePath);
+        ModelInstance image = modelForResource(objectModels, car.texturePath);
         if (image == null) {
             return;
         }
@@ -528,7 +596,7 @@ public final class ArenaRenderer implements Disposable {
     }
 
     private void renderSpinningOne(SpinningOne one, Camera camera) {
-        ModelInstance image = objectModels.get(one.texturePath);
+        ModelInstance image = modelForResource(objectModels, one.texturePath);
         if (image == null) {
             return;
         }
@@ -549,8 +617,8 @@ public final class ArenaRenderer implements Disposable {
 
         tempPosition.set(family.position()).add(0, 1.15f, 0);
 
-        ModelInstance outline = projectileOutlines.get(family.texturePath);
-        ModelInstance glyph = projectileGlyphs.get(family.texturePath);
+        ModelInstance outline = modelForResource(projectileOutlines, family.texturePath);
+        ModelInstance glyph = modelForResource(projectileGlyphs, family.texturePath);
 
         if (outline != null) {
             tempDirection.set(camera.position).sub(tempPosition).nor();

@@ -4,7 +4,9 @@ import com.badlogic.gdx.math.Vector3;
 
 import java.util.Objects;
 
-/** coreが所有する、固定ステップ時刻で一度だけ処理を発火する戦闘オブジェクト。 */
+/**
+ * coreが所有する、固定ステップ時刻で一度だけ処理を発火する戦闘オブジェクト。
+ */
 public final class ScheduledCombatAction extends PositionedCombatObject {
     private final Runnable action;
     private float remaining;

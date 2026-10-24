@@ -1,354 +1,389 @@
 {
-  "menu.title":"文字バトル EX",
-  "menu.subtitle":"ただひたすらにやかましいだけの 3D Extreme 文字バトル",
-  "menu.start":"始める",
-  "menu.player_count_title":"対戦人数を選択",
-  "menu.player_count_help":"人数を決めると、キャラクター編成へ進みます。",
-  "menu.battle":"1対1対戦",
-  "menu.battle_two":"2人で戦う",
-  "menu.battle_three":"3人で戦う",
-  "menu.battle_four":"4人で戦う",
-  "menu.battle_chaos":"超究極スーパーカオスモード",
-  "menu.battle_chaos_two":"カオス 2人対戦",
-  "menu.battle_chaos_three":"カオス 3人対戦",
-  "menu.battle_chaos_four":"カオス 4人対戦",
-  "menu.training":"テスト場",
-  "menu.character_guide":"キャラクター紹介",
-  "menu.settings":"設定",
-  "menu.character_editor":"キャラクターエディタ",
-  "menu.back":"戻る",
-  "menu.ai_notice":"※すべての画像と演出の投下画像は製作者の絵のセンスがないため、すべてAIによって生成しました。ご了承ください",
-  "menu.more_modes":"トレーニング・図鑑・設定",
-  "menu.resume":"再開",
-  "menu.quit":"タイトルへ",
-  "select.title":"キャラクター選択",
-  "select.player_one":"1Pのキャラクターを選択",
-  "select.player_two":"2Pのキャラクターを選択",
-  "select.support_one":"1Pの補助キャラクターを選択",
-  "select.support_two":"2Pの補助キャラクターを選択",
-  "select.support_label":"補助",
-  "select.main_chosen":"メインキャラクター選択済み — 補助キャラクターを選んでください",
-  "select.main_prompt":"{0}Pのメインキャラクターを選択",
-  "select.chaos_main_prompt":"{0}Pのメインキャラクター {1}/{2} を選択（1体目を操作）",
-  "select.support_prompt":"{0}Pの補助キャラクターを選択",
-  "select.support_prompt_slot":"{0}Pの補助キャラクター {1}/{2} を選択",
-  "select.support_count":"補助キャラクター人数",
-  "select.support_count_one":"1人",
-  "select.support_count_two":"2人",
-  "select.selection_progress":"選択進行 {0} / {1}",
-  "select.appearance":"見た目: {0}",
-  "select.skill_brief":"クールタイム {0}秒 / 必殺獲得基準 {1}%",
-  "select.style":"戦闘スタイル: {0}",
-  "select.support_skill_detail.t":"7秒ごとに自動発動し、味方メインの攻撃力を40%上げて10秒間ラッシュ性能を高めます。",
-  "select.support_ultimate_detail.t":"生存中の全敵の被ダメージを75%増やし、各敵の左右で海が割れる演出を発生させます。効果時間10秒。",
-  "select.support_style.t":"会心と攻撃強化を重ね、一気に畳み掛けたい初心者向け攻撃支援型。",
-  "select.support_skill_detail.zero":"7秒ごとに自動発動し、生存中の全敵の攻撃力を45%下げます。効果時間9秒。",
-  "select.support_ultimate_detail.zero":"味方の最大HP15%を回復し、スタン・拘束・やけどなどをすべて解除します。",
-  "select.support_style.zero":"敵の攻撃力低下と回復を持つ代わりに、編成したメインの防御力が0になるハイリスクな立て直し型。",
-  "support.passive.zero_defense_main":"ゼロの代償: 自身のメインキャラクターの防御力を常時0にする。",
-  "select.support_skill_detail.slash":"6秒ごとに自動発動し、8秒間、味方の攻撃ダメージを45%増加させます。",
-  "select.support_ultimate_detail.slash":"基礎威力420・射程30の巨大な横長斬撃を放ち、複数の敵と召喚物をまとめて切断します。",
-  "select.support_style.slash":"手数の多いメインと好相性で、短時間の集中攻撃に向く斬撃型。",
-  "select.support_skill_detail.right":"6.5秒ごとに自動発動し、生存中の全敵の移動速度を55%下げます。効果時間7秒。",
-  "select.support_ultimate_detail.right":"最寄りの敵の右側へ5単位転移し、7秒間攻撃力を60%上げます。",
-  "select.support_style.right":"位置を入れ替えて回避や奇襲を行う、操作に慣れた人向けの戦場制御型。",
-  "select.ability_summary":"スキル: {0} / パッシブ: {1}",
-  "select.confirm":"決定",
-  "select.cancel":"キャンセル",
-  "select.choose_card_hint":"一覧のカードをクリックすると、スキル・必殺技・パッシブと戦闘スタイルの詳細を確認できます。",
-  "select.existing":"既存キャラクター",
-  "select.custom":"カスタムキャラクター",
-  "select.custom_empty":"保存済みのカスタムキャラクターはありません。タイトル画面のキャラクターエディタから作成できます。",
-  "select.custom_style":"選んだ外見の基本ステータスと、組み合わせた能力で戦うカスタム編成。",
-  "select.unselected":"未選択",
-  "guide.previous":"◀ 前のキャラ",
-  "guide.next":"次のキャラ ▶",
-  "guide.stats":"基本ステータス  HP {0} / 移動速度 {1}",
-  "guide.skill":"【スキル】{0}",
-  "guide.skill_stats":"CT {0}秒 / 1発 {1}ダメージ × {2}発 / 判定 {3} / 発動時必殺 +{4}% / {5}",
-  "guide.falling_skill":"追加効果: 会社落下 {0}ダメージ / 実効直径 {1}",
-  "guide.random_economy":"CT {0}秒 / 自分と全敵へ個別に抽選 / 好況50%: 攻撃+35%・被ダメ-28% / 不況50%: 攻撃-28%・被ダメ+40% / 必殺+{1}%",
-  "guide.cash_crash":"札束1個ごとに威力{0}・直径{1}の大爆発 / 全敵の被ダメージ+{2}%を{3}秒付与",
-  "guide.bind_follow_up":"CT {0}秒 / 麺 {1}ダメージ → 拘束 {2}秒 → 巨大スプーン {3}ダメージ / 命中時必殺 +{4}%",
-  "guide.attack_buff":"CT {0}秒 / 攻撃力 +{1}% / 効果 {2}秒 / 敵方向へ香り寿司5貫を射出 / 必殺ポイント獲得なし",
-  "guide.stun":"スタン {0}秒",
-  "guide.no_stun":"スタンなし",
-  "guide.ultimate":"【必殺技】{0}",
-  "guide.area":"{0}ダメージ / 実効直径 {1}",
-  "guide.line":"{0}ダメージ / 長さ {1} / 幅 {2} / {3}方向同時攻撃",
-  "guide.meteor":"隧石 {0}個 / 1発 {1}ダメージ / 実効直径 {2}",
-  "guide.family_ultimate":"1回で家族 {0}人召喚 / 各1人 HP {1} / 自動攻撃 {2}ダメージ / 防御力 {3} / 召喚上限なし",
-  "guide.car":"接触 {0}ダメージ / {1}秒間走行 / スタン {2}秒",
-  "guide.spinning_one":"1回 {0}ダメージ / 巨大な1の長さ {1} / 命中時HP {2}回復",
-  "guide.barrage":"スキルを{0}回連続発動 / 発動間隔 {1}秒 / CD・必殺ポイント獲得なし",
-  "guide.sushi_barrage":"寿司 {0}貫 / 1貫 {1}ダメージ / {2}秒間隔 / 飛翔速度 {3} / 防御無視",
-  "guide.heal":"HP {0}回復",
-  "guide.cost":"必要ポイント {0}%",
-  "guide.support_role":"【補助キャラクター】メインへ自動追従・自動射撃し、スキルはCT完了時に自動発動します。補助必殺はメインと別の専用ゲージが時間で貯まります。",
-  "guide.support_stats":"移動 {0} / 追従距離 {1} / 通常攻撃間隔 {2}秒 / 通常攻撃 {3} / 射程 {4}",
-  "guide.support_skill":"【自動補助スキル】{0} / CT {1}秒 / 効果 {2}秒 / 基準効果量 {3}%",
-  "guide.support_ultimate":"【補助必殺技】{0} / 補助専用ポイント {1}%消費",
-  "guide.field_passives":"【フィールドパッシブ】{0} / {1}",
-  "guide.field_passives_title":"【フィールドパッシブ】",
-  "guide.health_cost":"発動時に最大HPの{0}%を消費",
-  "guide.passive":"【パッシブ】{0}",
-  "guide.passive_stats":"{0}秒ごとに火力 +{1}% / 最大倍率 ×{2}",
-  "guide.family_passive_stats":"生存中の家族1人ごとに火力 +{0}% / 最大倍率 ×{1}",
-  "guide.passive_effect.kabushiki":"会社増資：スキルを発動するたび、次回以降の必殺技で落下する会社が2社増える。増加数に上限はなく、会社ごとにダメージ判定が発生する。",
-  "guide.passive_effect.hiragana_i":"母音共鳴：すべてのスキル弾の接触・爆発判定がさらに1.4倍になる。",
-  "guide.passive_effect.integral":"面積蓄積：戦闘中、命中に関係なく必殺ポイントが毎秒0.45ずつ増加する。",
-  "guide.passive_effect.one":"孤高の狂戦士：HPが減るほど火力が上昇し、瀕死時は最大2.8倍になる。",
-  "guide.passive_effect.d_letter":"加速するD：移動速度が常時1.28倍になる。",
-  "guide.passive_effect.kilometer":"単位上昇：スキル発動時に得る必殺ポイントが1.45倍になる。",
-  "guide.passive_effect.short":"短期決戦：スキルで与えるスタン時間が1.6倍になる。",
-  "guide.passive_effect.star_struck":"観客熱狂：スキルのクールタイムが32%短縮される。",
-  "guide.passive_effect.a_letter":"家族の絆：生存中の家族1人ごとに本体と家族の火力が6%上昇し、最大2倍になる。",
-  "guide.passive_effect.biang":"難しい漢字：1秒ごとに5%で敵を0.5秒スタンさせる。発動後は5秒間再発動しない。",
-  "guide.character.kabushiki":"スキルで会社を落としながら会社数を増資し、必殺技では蓄積した全会社を斜め上空から落とす成長型。1社の威力は低いが、発動回数に上限はない。",
-  "guide.character.hiragana_i":"低火力と引き換えに、スキルと必殺技が広範囲を覆う制圧型。",
-  "guide.character.integral":"一般的な数式を展開して攻撃し、必殺技では5発の数式隕石を一定間隔で1発ずつ落とす計算型。",
-  "guide.character.one":"HPを削って高威力スキルを放ち、瀕死になるほど火力が跳ね上がる危険なバーサーカー型。必殺技は減少HPボーナスを多段へ分散し、巨大な1を水平回転させて小回復する。",
-  "guide.character.d_letter":"高速移動と素早い弾に加え、戦場を走り続け敵をスタンさせる車で主導権を握る加速型。",
-  "guide.character.kilometer":"高速で距離を詰め、必殺技で戦場の八方向を一斉に貫く全方位突進型。",
-  "guide.character.short":"狭い判定の長時間スタンから、巨大な「単位」を斜めに落とす「知の濃縮」へつなぐテクニカル型。",
-  "guide.character.star_struck":"短いクールタイムで手数を稼ぎ、大量の隧石で戦場全体を埋める乱戦型。",
-  "guide.character.biang":"6秒ごとに麺で敵を1.2秒拘束して巨大スプーンを投げ、低めの単発火力と拘束で攻める連携型。必殺のスープは5秒間やけどさせる。",
-  "battle.time_remaining":"残り {0}",
-  "battle.final_minute":"最終局面",
-  "battle.win":"{0} の勝利",
-  "battle.draw":"引き分け",
-  "battle.damage":"与ダメージ {0}",
-  "battle.ultimate_points":"必殺 {0}%",
-  "battle.skill_ready":"スキル READY",
-  "battle.skill_cooldown":"スキル {0}",
-  "training.hits":"ヒット {0}",
-  "training.dps":"DPS {0}",
-  "training.last_damage":"直近 {0}",
-  "training.controls":"F1: CDリセット / F2: 必殺最大 / F3: 統計リセット / F4: 30秒進める / F5: 覚醒出現",
-  "settings.resolution":"解像度: {0}",
-  "settings.fullscreen":"フルスクリーン: {0}",
-  "settings.volume":"音量: {0}%",
-  "settings.ui_scale":"UI倍率: {0}",
-  "settings.camera_follow":"カメラ追従: {0}",
-  "settings.language":"言語: {0}",
-  "settings.keys":"キー設定: config/controls.json",
-  "battle.hp":"HP {0}",
-  "battle.stunned":"スタン {0}秒",
-  "battle.player_one":"1P",
-  "battle.player_two":"2P",
-  "battle.family_count":"家族 {0}人",
-  "battle.support":"補助 {0}",
-  "battle.no_support":"補助なし",
-  "battle.support_ready":"補助スキル READY",
-  "battle.support_cooldown":"補助スキル {0}",
-  "battle.support_ultimate":"補助必殺 {0}",
-  "battle.field_effects":"場: {0}",
-  "battle.effects":"効果 {0}",
-  "battle.awakened":"【覚醒】",
-  "battle.critical":"★ CRITICAL!! ★",
-  "battle.hp_fraction":"HP {0} / {1}",
-  "battle.hp_gauge":"HP",
-  "battle.hp_value":"{0}/{1}",
-  "battle.skill_gauge":"スキル",
-  "battle.ultimate_gauge":"必殺技",
-  "battle.support_skill_gauge":"スキル",
-  "battle.support_ultimate_gauge":"必殺技",
-  "battle.skill_available":"発動可能!",
-  "battle.ultimate_available":"発動可能!",
-  "battle.support_skill_available":"発動可能!",
-  "battle.support_ultimate_available":"発動可能!",
-  "battle.support_skill_auto":"AUTO",
-  "battle.cooldown_seconds":"残り {0}秒",
-  "battle.auto_cooldown":"AUTO / 残り {0}秒",
-  "battle.percent":"{0}%",
-  "battle.ultimate_announcement":"★★★ {0} 必殺技 ★★★\n《 {1} 》",
-  "select.player_one_chosen":"1P: {0} を選択済み",
-  "character.kabushiki.name":"株式会社",
-  "ability.kabushiki.skill.name":"株価上昇",
-  "ability.kabushiki.ultimate.name":"倒産",
-  "ability.kabushiki.passive.name":"長期的な投資"
-  ,"character.hiragana_i.name":"い — 広範囲・低火力型"
-  ,"ability.hiragana_i.skill.name":"いろは弾"
-  ,"ability.hiragana_i.ultimate.name":"五十音暴走"
-  ,"ability.hiragana_i.passive.name":"母音共鳴"
-  ,"character.integral.name":"積分 — 蓄積する重戦士"
-  ,"ability.integral.skill.name":"積分波"
-  ,"ability.integral.ultimate.name":"無限積分領域"
-  ,"ability.integral.passive.name":"面積蓄積"
-  ,"character.one.name":"1 — HP消費バーサーカー"
-  ,"ability.one.skill.name":"ブラッド・ワンショット"
-  ,"ability.one.ultimate.name":"唯一無二大回転"
-  ,"ability.one.passive.name":"孤高の狂戦士"
-  ,"character.d_letter.name":"D — 高速・標準性能型"
-  ,"ability.d_letter.skill.name":"ドライブスラッシュ"
-  ,"ability.d_letter.ultimate.name":"D・デッドヒート"
-  ,"ability.d_letter.passive.name":"加速するD"
-  ,"character.kilometer.name":"キロ — 超高速の単位戦士"
-  ,"ability.kilometer.skill.name":"キロ加速砲"
-  ,"ability.kilometer.ultimate.name":"メガトン換算"
-  ,"ability.kilometer.passive.name":"単位上昇"
-  ,"character.short.name":"短 — スタン連携の技巧型"
-  ,"ability.short.skill.name":"短距離連斬"
-  ,"ability.short.ultimate.name":"知の濃縮"
-  ,"ability.short.passive.name":"短期決戦"
-  ,"character.star_struck.name":"スター — 手数と隕石の乱戦型"
-  ,"ability.star_struck.skill.name":"スターラッシュ"
-  ,"ability.star_struck.ultimate.name":"スーパースター"
-  ,"ability.star_struck.passive.name":"観客熱狂"
-  ,"character.a_letter.name":"A — 家族増殖型"
-  ,"ability.a_letter.skill.name":"fAmily"
-  ,"ability.a_letter.ultimate.name":"家族総出でお出迎えします"
-  ,"ability.a_letter.passive.name":"家族の絆"
-  ,"character.biang.name":"ビャン — 麺と巨大スプーン"
-  ,"ability.biang.skill.name":"くそでかスプーン"
-  ,"ability.biang.ultimate.name":"𰻞𰻞麺"
-  ,"ability.biang.passive.name":"難しい漢字"
-  ,"character.ha.name":"は — 寿司強化・防御無視型"
-  ,"ability.ha.skill.name":"寿司の香り"
-  ,"ability.ha.ultimate.name":"寿司爆撃"
-  ,"ability.ha.passive.name":"寿司打"
-  ,"support.t.name":"T — 会心支援"
-  ,"support.t.skill.name":"奏でる旋律"
-  ,"support.t.ultimate.name":"海を割る者"
-  ,"support.zero.name":"0 — 回復防御"
-  ,"support.zero.skill.name":"ゼロ除算"
-  ,"support.zero.ultimate.name":"原点回帰"
-  ,"support.slash.name":"/ — 分割斬撃"
-  ,"support.slash.skill.name":"分割統治"
-  ,"support.slash.ultimate.name":"世界を二分する"
-  ,"support.right.name":"右 — 位置制御"
-  ,"support.right.skill.name":"右往左往"
-  ,"support.right.ultimate.name":"右方転移"
-  ,"support.matsu.name":"松 — 松戸・風圧支援"
-  ,"support.matsu.skill.name":"松戸の風"
-  ,"support.matsu.ultimate.name":"終わらない加速"
-  ,"field.collapse":"崩壊"
-  ,"field.resonance":"共鳴"
-  ,"field.absolute_zero":"絶対零度"
-  ,"field.creation_from_zero":"無からの生成"
-  ,"field.crack":"亀裂"
-  ,"field.split_time":"時間の分割"
-  ,"field.rising_right":"右肩上がり"
-  ,"field.deflection":"偏向"
-  ,"field.matsudo":"松戸"
-  ,"field.description.collapse":"全員が会心攻撃を出せるようになり、戦場全体が高火力化します。"
-  ,"field.description.resonance":"全員のスキルクールタイムを10%短縮します。"
-  ,"field.description.absolute_zero":"全員の移動速度が10%低下し、位置取りが重くなります。"
-  ,"field.description.creation_from_zero":"全メインキャラが10秒ごとに最大HPの1%を回復します。"
-  ,"field.description.crack":"全員が受けるダメージを10%増やし、乱戦を短期決戦化します。"
-  ,"field.description.split_time":"15秒ごとに3秒間、全員の移動速度が20%上昇します。"
-  ,"field.description.rising_right":"1分ごとに全員の攻撃力が2%ずつ上昇し、最大10%になります。"
-  ,"field.description.deflection":"すべての飛び道具が大きく曲がり、弾道予測を困難にします。"
-  ,"field.description.matsudo":"景色が松戸へ変わり、7秒ごとに一般車が複数レーンを高速通過します。接触するとダメージと短いスタンを受けます。"
-  ,"select.support_skill_detail.matsu":"12秒CTと引き換えに、強風で生存中の全敵を味方側へ最大8単位引き寄せ、0.8秒拘束します。"
-  ,"select.support_ultimate_detail.matsu":"発動した瞬間、敵味方を含む全キャラクターと全補助の残りスキルCTを半減します。"
-  ,"select.support_style.matsu":"全員の時間軸と位置関係を壊し、松戸の一般車まで呼び込む大規模フィールド操作型。"
-  ,"guide.character.a_letter":"全方位へ32発の fAmily を拡散し、必殺技のたびにHP100・防御力0・攻撃力2.5の家族を6人追加召喚する増殖型。生存中の家族に上限はない。"
-  ,"guide.character.ha":"CT8秒の香り寿司で8秒間攻撃力を高め、高速20連射の防御無視・寿司爆撃へつなぐ必殺重視型。必殺後は通常攻撃も寿司へ変化し、攻撃間隔が短くなる。"
-  ,"guide.passive_effect.ha":"寿司打：自身が装備するメイン必殺技だけを1.2倍に強化する。通常スキルと補助必殺には適用されない。"
-  ,"character.heisei.name":"平成 — バブル相場師"
-  ,"ability.heisei.skill.name":"技術革新"
-  ,"ability.heisei.ultimate.name":"バブル崩壊"
-  ,"ability.heisei.passive.name":"札束の暴力"
-  ,"guide.character.heisei":"好況と不況を敵味方へ無差別に発生させ、地面へ蓄積した札束を一斉起爆する相場操作型。"
-  ,"guide.passive_effect.heisei":"札束の暴力：4秒ごとに札束を配置し、最大12個まで蓄積する。札束は「バブル崩壊」で範囲爆発する。"
-  ,"support.maki.name":"薪 — 特急圧縮支援"
-  ,"support.maki.skill.name":"通勤快速薪突撃"
-  ,"support.maki.ultimate.name":"薪.zip"
-  ,"select.support_skill_detail.maki":"10秒CTで超高速の通勤快速を横断させ、接触した敵へダメージと短いスタンを与えます。"
-  ,"select.support_ultimate_detail.maki":"戦場にいるすべてのメインキャラクターを中央へ一斉圧縮します。"
-  ,"select.support_style.maki":"全員の移動速度と補助必殺の充填速度を上げ、列車と中央圧縮で戦場を強制的にかき回す高速展開型。"
-  ,"field.express_maki":"特急薪乗車"
-  ,"field.description.express_maki":"全キャラクターの移動速度と、全補助キャラクターの必殺ゲージ充填速度を25%上昇させます。"
-  ,"character.training_dummy.name":"ダミー君"
-  ,"editor.title":"キャラクターエディタ"
-  ,"editor.choose_type":"作成するキャラクターの分類を選択してください。"
-  ,"editor.main":"メインキャラクター"
-  ,"editor.support":"補助キャラクター"
-  ,"editor.choose_appearance":"外見と表示名を選択してください。基本ステータスは外見元から引き継ぎます。"
-  ,"editor.display_name":"表示名"
-  ,"editor.name_hint":"未入力なら Custom（保存枠番号）"
-  ,"editor.choose_skill":"装備するスキルを1つ選択してください。"
-  ,"editor.choose_ultimate":"装備する必殺技を1つ選択してください。"
-  ,"editor.choose_passive":"パッシブ選択  {0}/{1}"
-  ,"editor.choose_field_passive":"フィールドパッシブ選択  {0}/{1}"
-  ,"editor.choose_slot":"保存枠を選択してください。"
-  ,"editor.next":"次へ"
-  ,"editor.ability_option":"{0}\n元: {1} / {2}"
-  ,"editor.passive_option":"{0}\n元: {1}"
-  ,"editor.buff_summary":"攻撃力 +{0}% / 効果 {1}秒 / CT {2}秒"
-  ,"editor.projectile_summary":"CT {0}秒 / {1}発 / 1発の基礎威力 {2}"
-  ,"editor.support_skill_summary":"CT {0}秒 / {1}"
-  ,"editor.ultimate_summary":"方式 {0} / 基礎威力 {1} / 必要 {2}%"
-  ,"editor.slot_empty":"枠 {0}  — 空き枠"
-  ,"editor.slot_used":"枠 {0}  — {1} / {2} / {3}"
-  ,"editor.overwrite_confirm":"この枠には既にキャラクターが保存されています。上書きしますか？"
-  ,"editor.overwrite":"上書きする"
-  ,"editor.save_success":"保存成功"
-  ,"editor.save_failed":"保存失敗: {0}"
-  ,"battle.start.error.title":"戦闘を開始できません"
-  ,"battle.start.error.message":"キャラクター選択画面へ戻りました。\n詳細ログ: {0}"
-  ,"battle.start.error.dismiss":"閉じる"
-  ,"editor.invalid_save":"カスタムデータに不正な参照があります: {0}"
-  ,"training.debug.title":"TRAINING DEBUG"
-  ,"training.debug.damage":"【ダメージ計測】\n今回与えたダメージ: {0}\n累計で与えたダメージ: {1}\nヒット数: {2}\n平均DPS: {3}"
-  ,"training.debug.field_title":"【フィールド効果】"
-  ,"training.debug.passive_title":"【パッシブ効果】"
-  ,"training.debug.self_title":"【自身の全ステータス】"
-  ,"training.debug.dummy_title":"【ダミーの全ステータス】"
-  ,"training.debug.status_title":"現在のバフ・デバフ"
-  ,"training.debug.none":"なし"
-  ,"training.debug.yes":"有効"
-  ,"training.debug.no":"無効"
-  ,"training.debug.passive_multipliers":"実効倍率: 攻撃 ×{0} / 被ダメ ×{1} / 判定 ×{2} / スキルCT ×{3} / 必殺獲得 ×{4} / スタン ×{5} / 必殺威力 ×{6}"
-  ,"training.debug.character_stats":"ID: {0}\nHP: {1}/{2} (減少 {3})\n生存: {4} / 覚醒: {5} / 防御0: {6}\n基礎攻撃: {7} / 実効攻撃倍率: ×{8}\n基礎移動: {9} / 実効移動: {10}\n被ダメ倍率: ×{11}\n当たり判定: {12} / 実効判定倍率: ×{13}\nスキルCT残り: {14}秒 / 充填: {15}% / ストック: {16}/{17}\n必殺ポイント: {18}% / 累計与ダメ: {19}\nスタン残り: {20}秒 / 移動不能: {21}\n位置: ({22}, {23}, {24})\n向き: ({25}, {26})\n会心: {27} / 会心率: {28}% / 会心倍率: ×{29}"
-  ,"training.debug.status_entry":"{0} / {1} / 強度 {2} / {3}スタック / 残り {4}秒 / 付与元 {5}"
-  ,"character.zan.name":"斬 — 天の剣客"
-  ,"ability.zan.skill.name":"次元斬"
-  ,"ability.zan.ultimate.name":"一瞬千撃"
-  ,"ability.zan.passive.name":"天切り開く者"
-  ,"guide.character.zan":"次元斬で全敵を中央へ4.2秒間吸引しながら刻み、一瞬千撃で全体斬撃と領域「天」を展開する領域制圧型。"
-  ,"guide.passive_effect.zan":"天切り開く者：自身の領域「天」の間は景色が白黒化し、全攻撃が防御を無視する。戦闘中2回まで必殺発動後に必殺ゲージを100%へ戻す。"
-  ,"cutin.zan":"一太刀に、千の終幕―― 一瞬千撃"
-  ,"state.zan.heaven":"領域「天」 {0} / 再装填 残り{1}回"
-  ,"character.beast.name":"獣 — 捕食進化体"
-  ,"ability.beast.skill.name":"捕食跳躍"
-  ,"ability.beast.ultimate.name":"百獣夜行"
-  ,"ability.beast.passive.name":"野生進化"
-  ,"guide.character.beast":"全敵を弾き飛ばして吸血し、七方向の獣弾を敵ごとに放つ近接乱戦型。与えた累計ダメージで三段階に進化する。"
-  ,"guide.passive_effect.beast":"野生進化：累計与ダメージ180/480/900で進化し、通常攻撃の弾数・速度・広がり・威力が段階的に変化する。"
-  ,"state.beast.evolution":"野生進化 Lv.{0} / 蓄積 {1}"
-  ,"character.east.name":"東 — 暁の転位師"
-  ,"ability.east.skill.name":"東西交換"
-  ,"ability.east.ultimate.name":"旭日反転"
-  ,"ability.east.passive.name":"東風"
-  ,"guide.character.east":"標的と位置を交換して全敵を斬り、必殺では敵全員を戦場中央の反対側へ反転させて領域「暁」を展開する転位型。"
-  ,"guide.passive_effect.east":"東風：自身の領域「暁」の間だけ通常攻撃が高速三連弾へ変化し、敵の位置関係を崩した直後の集中攻撃を狙える。"
-  ,"state.east.sunrise":"領域「暁」 {0}"
-  ,"character.crab.name":"🦀 — 横歩き会心王"
-  ,"ability.crab.skill.name":"横行強襲"
-  ,"ability.crab.ultimate.name":"甲殻臨界"
-  ,"ability.crab.passive.name":"脱皮"
-  ,"guide.character.crab":"標的との位置を突然交換して会心時防御無視の蟹弾を浴びせ、甲殻臨界では敵ごとに十二方向の巨大弾幕を展開する奇襲型。"
-  ,"guide.passive_effect.crab":"脱皮：HP35%以下で一度だけ最大HP30%回復・全デバフ解除。以後、通常攻撃が高速三方向の蟹弾へ永久変化する。"
-  ,"cutin.crab":"退路は横にも存在しない―― 甲殻臨界"
-  ,"state.crab.molting":"脱皮 {0}"
-  ,"support.south.name":"南 — 南十字の標定者"
-  ,"support.south.skill.name":"南十字標定"
-  ,"support.south.ultimate.name":"南北反転"
-  ,"select.support_skill_detail.south":"全敵へ8秒間残る印を付け、次に受ける1回のダメージだけ1.65倍にします。"
-  ,"select.support_ultimate_detail.south":"全敵を戦場中央に対して点対称へ瞬間移動させ、同時に全体攻撃を与えます。"
-  ,"select.support_style.south":"次の一撃を増幅し、位置を丸ごと反転する座標撹乱型。通常攻撃も二方向へ分岐します。"
-  ,"state.south.cross":"南十字弾：常時二方向射撃"
-  ,"support.flower.name":"花 — 永花庭園の主"
-  ,"support.flower.skill.name":"花弁再生"
-  ,"support.flower.ultimate.name":"永花満開"
-  ,"select.support_skill_detail.flower":"味方メイン全員へ7秒間の継続回復を付与します。再発動で最大3段まで回復量が重なります。"
-  ,"select.support_ultimate_detail.flower":"領域「永花庭園」を14秒展開し、全敵の足元へ巨大な花弁範囲攻撃を咲かせます。"
-  ,"select.support_style.flower":"継続回復を重ねつつ、花園領域中だけ通常攻撃が高速五方向へ変化する長期支援型。"
-  ,"state.flower.garden":"永花庭園 {0}"
-  ,"field.southern_cross":"南十字航路"
-  ,"field.description.southern_cross":"敵チームの移動速度を8%低下させ、南の座標操作を当てやすくします。"
-  ,"field.bloom_cycle":"開花周期"
-  ,"field.description.bloom_cycle":"味方チームの通常攻撃間隔を12%短縮します。"
+  "menu.title": "文字バトル EX",
+  "menu.subtitle": "ただひたすらにやかましいだけの 3D Extreme 文字バトル",
+  "menu.start": "始める",
+  "menu.player_count_title": "対戦人数を選択",
+  "menu.player_count_help": "人数を決めると、キャラクター編成へ進みます。",
+  "menu.battle": "1対1対戦",
+  "menu.battle_two": "2人で戦う",
+  "menu.battle_three": "3人で戦う",
+  "menu.battle_four": "4人で戦う",
+  "menu.battle_chaos": "超究極スーパーカオスモード",
+  "menu.battle_chaos_two": "超究極スーパーカオスモード 2人対戦",
+  "menu.battle_chaos_three": "超究極スーパーカオスモード 3人対戦",
+  "menu.battle_chaos_four": "超究極スーパーカオスモード 4人対戦",
+  "menu.battle_whatareyoudoing_two": "ハイパー超絶メガグラビティウルトラぎらぎら無限大ダイナマイト超スーパー究極ドカンと爆発エクストリームスーパーハイパーギガデラックスアブソリュートデンジャラスアルティメットわっしょいギャラクシーモード",
+  "menu.training": "テスト場",
+  "menu.character_guide": "キャラクター紹介",
+  "menu.settings": "設定",
+  "menu.character_editor": "キャラクターエディタ",
+  "menu.back": "戻る",
+  "menu.ai_notice": "※すべての画像と演出の投下画像は製作者の絵のセンスがないため、すべてAIによって生成しました。ご了承ください",
+  "menu.more_modes": "トレーニング・図鑑・設定",
+  "menu.resume": "再開",
+  "menu.quit": "タイトルへ",
+  "select.title": "キャラクター選択",
+  "select.player_one": "1Pのキャラクターを選択",
+  "select.player_two": "2Pのキャラクターを選択",
+  "select.support_one": "1Pの補助キャラクターを選択",
+  "select.support_two": "2Pの補助キャラクターを選択",
+  "select.support_label": "補助",
+  "select.main_chosen": "メインキャラクター選択済み — 補助キャラクターを選んでください",
+  "select.main_prompt": "{0}Pのメインキャラクターを選択",
+  "select.chaos_main_prompt": "{0}Pのメインキャラクター {1}/{2} を選択（1体目を操作）",
+  "select.support_prompt": "{0}Pの補助キャラクターを選択",
+  "select.support_prompt_slot": "{0}Pの補助キャラクター {1}/{2} を選択",
+  "select.support_count": "補助キャラクター人数",
+  "select.support_count_one": "1人",
+  "select.support_count_two": "2人",
+  "select.selection_progress": "選択進行 {0} / {1}",
+  "select.appearance": "見た目: {0}",
+  "select.skill_brief": "クールタイム {0}秒 / 必殺獲得基準 {1}%",
+  "select.style": "戦闘スタイル: {0}",
+  "select.support_skill_detail.t": "7秒ごとに自動発動し、味方メインの攻撃力を40%上げて10秒間ラッシュ性能を高めます。",
+  "select.support_ultimate_detail.t": "生存中の全敵の被ダメージを75%増やし、各敵の左右で海が割れる演出を発生させます。効果時間10秒。",
+  "select.support_style.t": "会心と攻撃強化を重ね、一気に畳み掛けたい初心者向け攻撃支援型。",
+  "select.support_skill_detail.zero": "7秒ごとに自動発動し、生存中の全敵の攻撃力を45%下げます。効果時間9秒。",
+  "select.support_ultimate_detail.zero": "味方の最大HP15%を回復し、スタン・拘束・やけどなどをすべて解除します。",
+  "select.support_style.zero": "敵の攻撃力低下と回復を持つ代わりに、編成したメインの防御力が0になるハイリスクな立て直し型。",
+  "support.passive.zero_defense_main": "ゼロの代償: 自身のメインキャラクターの防御力を常時0にする。",
+  "select.support_skill_detail.slash": "6秒ごとに自動発動し、8秒間、味方の攻撃ダメージを45%増加させます。",
+  "select.support_ultimate_detail.slash": "基礎威力420・射程30の巨大な横長斬撃を放ち、複数の敵と召喚物をまとめて切断します。",
+  "select.support_style.slash": "手数の多いメインと好相性で、短時間の集中攻撃に向く斬撃型。",
+  "select.support_skill_detail.right": "6.5秒ごとに自動発動し、生存中の全敵の移動速度を55%下げます。効果時間7秒。",
+  "select.support_ultimate_detail.right": "最寄りの敵の右側へ5単位転移し、7秒間攻撃力を60%上げます。",
+  "select.support_style.right": "位置を入れ替えて回避や奇襲を行う、操作に慣れた人向けの戦場制御型。",
+  "select.ability_summary": "スキル: {0} / パッシブ: {1}",
+  "select.confirm": "決定",
+  "select.cancel": "キャンセル",
+  "select.choose_card_hint": "一覧のカードをクリックすると、スキル・必殺技・パッシブと戦闘スタイルの詳細を確認できます。",
+  "select.existing": "既存キャラクター",
+  "select.custom": "カスタムキャラクター",
+  "select.custom_empty": "保存済みのカスタムキャラクターはありません。タイトル画面のキャラクターエディタから作成できます。",
+  "select.custom_style": "選んだ外見の基本ステータスと、組み合わせた能力で戦うカスタム編成。",
+  "select.unselected": "未選択",
+  "guide.previous": "◀ 前のキャラ",
+  "guide.next": "次のキャラ ▶",
+  "guide.stats": "基本ステータス  HP {0} / 移動速度 {1}",
+  "guide.skill": "【スキル】{0}",
+  "guide.skill_stats": "CT {0}秒 / 1発 {1}ダメージ × {2}発 / 判定 {3} / 発動時必殺 +{4}% / {5}",
+  "guide.falling_skill": "追加効果: 会社落下 {0}ダメージ / 実効直径 {1}",
+  "guide.random_economy": "CT {0}秒 / 自分と全敵へ個別に抽選 / 好況50%: 攻撃+35%・被ダメ-28% / 不況50%: 攻撃-28%・被ダメ+40% / 必殺+{1}%",
+  "guide.cash_crash": "札束1個ごとに威力{0}・直径{1}の大爆発 / 全敵の被ダメージ+{2}%を{3}秒付与",
+  "guide.bind_follow_up": "CT {0}秒 / 麺 {1}ダメージ → 拘束 {2}秒 → 巨大スプーン {3}ダメージ / 命中時必殺 +{4}%",
+  "guide.attack_buff": "CT {0}秒 / 攻撃力 +{1}% / 効果 {2}秒 / 敵方向へ香り寿司5貫を射出 / 必殺ポイント獲得なし",
+  "guide.stun": "スタン {0}秒",
+  "guide.no_stun": "スタンなし",
+  "guide.ultimate": "【必殺技】{0}",
+  "guide.area": "{0}ダメージ / 実効直径 {1}",
+  "guide.line": "{0}ダメージ / 長さ {1} / 幅 {2} / {3}方向同時攻撃",
+  "guide.meteor": "隧石 {0}個 / 1発 {1}ダメージ / 実効直径 {2}",
+  "guide.family_ultimate": "1回で家族 {0}人召喚 / 各1人 HP {1} / 自動攻撃 {2}ダメージ / 防御力 {3} / 召喚上限なし",
+  "guide.car": "接触 {0}ダメージ / {1}秒間走行 / スタン {2}秒",
+  "guide.spinning_one": "1回 {0}ダメージ / 巨大な1の長さ {1} / 命中時HP {2}回復",
+  "guide.barrage": "スキルを{0}回連続発動 / 発動間隔 {1}秒 / CD・必殺ポイント獲得なし",
+  "guide.sushi_barrage": "寿司 {0}貫 / 1貫 {1}ダメージ / {2}秒間隔 / 飛翔速度 {3} / 防御無視",
+  "guide.heal": "HP {0}回復",
+  "guide.cost": "必要ポイント {0}%",
+  "guide.support_role": "【補助キャラクター】メインへ自動追従・自動射撃し、スキルはCT完了時に自動発動します。補助必殺はメインと別の専用ゲージが時間で貯まります。",
+  "guide.support_stats": "移動 {0} / 追従距離 {1} / 通常攻撃間隔 {2}秒 / 通常攻撃 {3} / 射程 {4}",
+  "guide.support_skill": "【自動補助スキル】{0} / CT {1}秒 / 効果 {2}秒 / 基準効果量 {3}%",
+  "guide.support_ultimate": "【補助必殺技】{0} / 補助専用ポイント {1}%消費",
+  "guide.field_passives": "【フィールドパッシブ】{0} / {1}",
+  "guide.field_passives_title": "【フィールドパッシブ】",
+  "guide.health_cost": "発動時に最大HPの{0}%を消費",
+  "guide.passive": "【パッシブ】{0}",
+  "guide.passive_stats": "{0}秒ごとに火力 +{1}% / 最大倍率 ×{2}",
+  "guide.family_passive_stats": "生存中の家族1人ごとに火力 +{0}% / 最大倍率 ×{1}",
+  "guide.passive_effect.kabushiki": "会社増資：スキルを発動するたび会社を4社ストックし、各社につき必殺ゲージを10%回復する。通常攻撃でもストックとは別の会社を落とし、威力が15%上がる。",
+  "guide.passive_effect.hiragana_i": "母音共鳴：すべてのスキル弾の接触・爆発判定がさらに1.4倍になる。",
+  "guide.passive_effect.integral": "面積蓄積：戦闘中、命中に関係なく必殺ポイントが毎秒0.45ずつ増加する。",
+  "guide.passive_effect.one": "孤高の狂戦士：HPが減るほど火力が上昇し、瀕死時は最大2.8倍になる。",
+  "guide.passive_effect.d_letter": "加速するD：移動速度が常時1.28倍になる。",
+  "guide.passive_effect.kilometer": "単位上昇：スキル発動時に得る必殺ポイントが1.45倍になる。",
+  "guide.passive_effect.short": "短期決戦：スキルで与えるスタン時間が1.6倍になる。",
+  "guide.passive_effect.star_struck": "観客熱狂：スキルのクールタイムが32%短縮される。",
+  "guide.passive_effect.a_letter": "家族の絆：生存中の家族1人ごとに本体と家族の火力が6%上昇し、最大2倍になる。",
+  "guide.passive_effect.biang": "難しい漢字：1秒ごとに5%で敵を3秒スタンさせる。発動後は5秒間再発動しない。",
+  "guide.character.kabushiki": "スキルで会社を落としながら会社数を増資し、必殺技では蓄積した全会社を斜め上空から落とす成長型。1社の威力は低いが、発動回数に上限はない。",
+  "guide.character.hiragana_i": "低火力と引き換えに、スキルと必殺技が広範囲を覆う制圧型。",
+  "guide.character.integral": "一般的な数式を展開して攻撃し、必殺技では5発の数式隕石を一定間隔で1発ずつ落とす計算型。",
+  "guide.character.one": "HPを削って高威力スキルを放ち、瀕死になるほど火力が跳ね上がる危険なバーサーカー型。必殺技は減少HPボーナスを多段へ分散し、巨大な1を水平回転させて小回復する。",
+  "guide.character.d_letter": "高速移動と素早い弾に加え、戦場を走り続け敵をスタンさせる車で主導権を握る加速型。",
+  "guide.character.kilometer": "高速で距離を詰め、必殺技で戦場の八方向を一斉に貫く全方位突進型。",
+  "guide.character.short": "狭い判定の長時間スタンから、巨大な「単位」を斜めに落とす「知の濃縮」へつなぐテクニカル型。",
+  "guide.character.star_struck": "短いクールタイムで手数を稼ぎ、大量の隧石で戦場全体を埋める乱戦型。",
+  "guide.character.biang": "5.5秒ごとに麺で敵を1.2秒拘束して巨大スプーンを投げ、低めの単発火力と拘束で攻める連携型。必殺のスープは15秒間、毎秒40ダメージのやけどを与える。",
+  "battle.time_remaining": "残り {0}",
+  "battle.final_minute": "最終局面",
+  "battle.win": "{0} の勝利",
+  "battle.draw": "引き分け",
+  "battle.damage": "与ダメージ {0}",
+  "battle.ultimate_points": "必殺 {0}%",
+  "battle.skill_ready": "スキル READY",
+  "battle.skill_cooldown": "スキル {0}",
+  "training.hits": "ヒット {0}",
+  "training.dps": "DPS {0}",
+  "training.last_damage": "直近 {0}",
+  "training.controls": "F1: CDリセット / F2: 必殺最大 / F3: 統計リセット / F4: 30秒進める / F5: 覚醒出現",
+  "settings.resolution": "解像度: {0}",
+  "settings.fullscreen": "フルスクリーン: {0}",
+  "settings.volume": "音量: {0}%",
+  "settings.ui_scale": "UI倍率: {0}",
+  "settings.ui_theme": "UIテーマ: {0}",
+  "settings.ui_theme.current": "UI 1 / 現在の見た目",
+  "settings.ui_theme.modern": "UI 2 / モダンHUD",
+  "settings.ui_theme.chaos": "UI 3 / 超騒乱ネオン",
+  "settings.camera_follow": "カメラ追従: {0}",
+  "settings.ultimate_cut_ins": "必殺技演出: {0}",
+  "settings.enabled": "オン",
+  "settings.disabled": "オフ",
+  "settings.language": "言語: {0}",
+  "settings.keys": "キー設定: config/controls.json",
+  "settings.input": "入力方式: {0}",
+  "settings.input.keyboard": "キーボード",
+  "settings.input.controller": "コントローラー",
+  "settings.controller.left": "Joy-Con (L)",
+  "settings.controller.right": "Joy-Con (R)",
+  "settings.controller.connected": "接続済み",
+  "settings.controller.disconnected": "未接続",
+  "settings.controller.unassigned": "未割り当て: {0}台",
+  "settings.controller.open": "コントローラー設定を開く",
+  "controller.title": "コントローラー設定",
+  "controller.help": "Joy-Conを横持ちして入力してください。反応中のゲーム内アクションが緑色で表示されます。",
+  "controller.input_mode": "現在の入力方式: {0}",
+  "controller.device": "{0}  /  {1}",
+  "controller.no_device": "Joy-Conは割り当てられていません",
+  "controller.stick": "スティック: {0}   X {1} / Y {2}",
+  "controller.stick.neutral": "中央",
+  "controller.action.main_skill": "メインスキル",
+  "controller.action.main_ultimate": "メイン必殺技",
+  "controller.action.support_skill": "補助スキル",
+  "controller.action.support_ultimate": "補助必殺技",
+  "controller.action.active": "● {0}",
+  "controller.action.inactive": "○ {0}",
+  "controller.direction.up": "↑",
+  "controller.direction.down": "↓",
+  "controller.direction.left": "←",
+  "controller.direction.right": "→",
+  "controller.assign": "{0}のJoy-Conを切り替える",
+  "battle.hp": "HP {0}",
+  "battle.stunned": "スタン {0}秒",
+  "battle.player_one": "1P",
+  "battle.player_two": "2P",
+  "battle.family_count": "家族 {0}人",
+  "battle.support": "補助 {0}",
+  "battle.no_support": "補助なし",
+  "battle.support_ready": "補助スキル READY",
+  "battle.support_cooldown": "補助スキル {0}",
+  "battle.support_ultimate": "補助必殺 {0}",
+  "battle.field_effects": "場: {0}",
+  "battle.effects": "効果 {0}",
+  "battle.awakened": "【覚醒】",
+  "battle.critical": "★ CRITICAL!! ★",
+  "battle.hp_fraction": "HP {0} / {1}",
+  "battle.hp_gauge": "HP",
+  "battle.hp_value": "{0}/{1}",
+  "battle.skill_gauge": "スキル",
+  "battle.ultimate_gauge": "必殺技",
+  "battle.support_skill_gauge": "スキル",
+  "battle.support_ultimate_gauge": "必殺技",
+  "battle.skill_available": "発動可能!",
+  "battle.ultimate_available": "発動可能!",
+  "battle.support_skill_available": "発動可能!",
+  "battle.support_ultimate_available": "発動可能!",
+  "battle.support_skill_auto": "AUTO",
+  "battle.cooldown_seconds": "残り {0}秒",
+  "battle.auto_cooldown": "AUTO / 残り {0}秒",
+  "battle.percent": "{0}%",
+  "battle.ultimate_announcement": "★★★ {0} 必殺技 ★★★\n《 {1} 》",
+  "select.player_one_chosen": "1P: {0} を選択済み",
+  "character.kabushiki.name": "株式会社",
+  "ability.kabushiki.skill.name": "株価上昇",
+  "ability.kabushiki.ultimate.name": "倒産",
+  "ability.kabushiki.passive.name": "長期的な投資",
+  "character.hiragana_i.name": "い — 広範囲・低火力型",
+  "ability.hiragana_i.skill.name": "いろは弾",
+  "ability.hiragana_i.ultimate.name": "五十音暴走",
+  "ability.hiragana_i.passive.name": "母音共鳴",
+  "character.integral.name": "積分 — 蓄積する重戦士",
+  "ability.integral.skill.name": "積分波",
+  "ability.integral.ultimate.name": "無限積分領域",
+  "ability.integral.passive.name": "面積蓄積",
+  "character.one.name": "1 — HP消費バーサーカー",
+  "ability.one.skill.name": "ブラッド・ワンショット",
+  "ability.one.ultimate.name": "唯一無二大回転",
+  "ability.one.passive.name": "孤高の狂戦士",
+  "character.d_letter.name": "D — 高速・標準性能型",
+  "ability.d_letter.skill.name": "ドライブスラッシュ",
+  "ability.d_letter.ultimate.name": "D・デッドヒート",
+  "ability.d_letter.passive.name": "加速するD",
+  "character.kilometer.name": "キロ — 超高速の単位戦士",
+  "ability.kilometer.skill.name": "キロ加速砲",
+  "ability.kilometer.ultimate.name": "メガトン換算",
+  "ability.kilometer.passive.name": "単位上昇",
+  "character.short.name": "短 — スタン連携の技巧型",
+  "ability.short.skill.name": "短距離連斬",
+  "ability.short.ultimate.name": "知の濃縮",
+  "ability.short.passive.name": "短期決戦",
+  "character.star_struck.name": "スター — 手数と隕石の乱戦型",
+  "ability.star_struck.skill.name": "スターラッシュ",
+  "ability.star_struck.ultimate.name": "スーパースター",
+  "ability.star_struck.passive.name": "観客熱狂",
+  "character.a_letter.name": "A — 家族増殖型",
+  "ability.a_letter.skill.name": "fAmily",
+  "ability.a_letter.ultimate.name": "家族総出でお出迎えします",
+  "ability.a_letter.passive.name": "家族の絆",
+  "character.biang.name": "ビャン — 麺と巨大スプーン",
+  "ability.biang.skill.name": "くそでかスプーン",
+  "ability.biang.ultimate.name": "𰻞𰻞麺",
+  "ability.biang.passive.name": "難しい漢字",
+  "character.ha.name": "は — 寿司強化・防御無視型",
+  "ability.ha.skill.name": "寿司の香り",
+  "ability.ha.ultimate.name": "寿司爆撃",
+  "ability.ha.passive.name": "寿司打",
+  "support.t.name": "T — 会心支援",
+  "support.t.skill.name": "奏でる旋律",
+  "support.t.ultimate.name": "海を割る者",
+  "support.zero.name": "0 — 回復防御",
+  "support.zero.skill.name": "ゼロ除算",
+  "support.zero.ultimate.name": "原点回帰",
+  "support.slash.name": "/ — 分割斬撃",
+  "support.slash.skill.name": "分割統治",
+  "support.slash.ultimate.name": "世界を二分する",
+  "support.right.name": "右 — 位置制御",
+  "support.right.skill.name": "右往左往",
+  "support.right.ultimate.name": "右方転移",
+  "support.matsu.name": "松 — 松戸・風圧支援",
+  "support.matsu.skill.name": "松戸の風",
+  "support.matsu.ultimate.name": "終わらない加速",
+  "field.collapse": "崩壊",
+  "field.resonance": "共鳴",
+  "field.absolute_zero": "絶対零度",
+  "field.creation_from_zero": "無からの生成",
+  "field.crack": "亀裂",
+  "field.split_time": "時間の分割",
+  "field.rising_right": "右肩上がり",
+  "field.deflection": "偏向",
+  "field.matsudo": "松戸",
+  "field.description.collapse": "全員が会心攻撃を出せるようになり、戦場全体が高火力化します。",
+  "field.description.resonance": "全員のスキルクールタイムを10%短縮します。",
+  "field.description.absolute_zero": "全員の移動速度が10%低下し、位置取りが重くなります。",
+  "field.description.creation_from_zero": "全メインキャラが10秒ごとに最大HPの1%を回復します。",
+  "field.description.crack": "全員が受けるダメージを10%増やし、乱戦を短期決戦化します。",
+  "field.description.split_time": "15秒ごとに3秒間、全員の移動速度が20%上昇します。",
+  "field.description.rising_right": "1分ごとに全員の攻撃力が2%ずつ上昇し、最大10%になります。",
+  "field.description.deflection": "すべての飛び道具が大きく曲がり、弾道予測を困難にします。",
+  "field.description.matsudo": "景色が松戸へ変わり、7秒ごとに一般車が複数レーンを高速通過します。接触するとダメージと短いスタンを受けます。",
+  "select.support_skill_detail.matsu": "12秒CTと引き換えに、強風で生存中の全敵を味方側へ最大8単位引き寄せ、0.8秒拘束します。",
+  "select.support_ultimate_detail.matsu": "発動した瞬間、敵味方を含む全キャラクターと全補助の残りスキルCTを半減します。",
+  "select.support_style.matsu": "全員の時間軸と位置関係を壊し、松戸の一般車まで呼び込む大規模フィールド操作型。",
+  "guide.character.a_letter": "全方位へ32発の fAmily を拡散し、必殺技のたびにHP500・防御力0・攻撃力0.75の家族を6人追加召喚する増殖型。生存中の家族に上限はない。",
+  "guide.character.ha": "CT8秒の香り寿司で8秒間攻撃力を高め、高速20連射の防御無視・寿司爆撃へつなぐ必殺重視型。必殺後は通常攻撃が30秒間寿司へ変化し、攻撃間隔が短くなる。",
+  "guide.passive_effect.ha": "寿司打：自身のメイン必殺技を1.2倍に強化し、発動後に必殺ゲージを40%回復する。通常スキルと補助必殺には適用されない。",
+  "character.heisei.name": "平成 — バブル相場師",
+  "ability.heisei.skill.name": "技術革新",
+  "ability.heisei.ultimate.name": "バブル崩壊",
+  "ability.heisei.passive.name": "札束の暴力",
+  "guide.character.heisei": "好況と不況を敵味方へ無差別に発生させ、地面へ蓄積した札束を一斉起爆する相場操作型。",
+  "guide.passive_effect.heisei": "札束の暴力：4秒ごとに敵付近へ札束を3個配置し、最大36個まで蓄積する。札束は「バブル崩壊」で範囲爆発する。",
+  "support.maki.name": "薪 — 特急圧縮支援",
+  "support.maki.skill.name": "通勤快速薪突撃",
+  "support.maki.ultimate.name": "薪.zip",
+  "select.support_skill_detail.maki": "10秒CTで超高速の通勤快速を横断させ、接触した敵へダメージと短いスタンを与えます。",
+  "select.support_ultimate_detail.maki": "戦場にいるすべてのメインキャラクターを中央へ一斉圧縮します。",
+  "select.support_style.maki": "全員の移動速度と補助必殺の充填速度を上げ、列車と中央圧縮で戦場を強制的にかき回す高速展開型。",
+  "field.express_maki": "特急薪乗車",
+  "field.description.express_maki": "全キャラクターの移動速度と、全補助キャラクターの必殺ゲージ充填速度を25%上昇させます。",
+  "character.training_dummy.name": "ダミー君",
+  "editor.title": "キャラクターエディタ",
+  "editor.choose_type": "作成するキャラクターの分類を選択してください。",
+  "editor.main": "メインキャラクター",
+  "editor.support": "補助キャラクター",
+  "editor.choose_appearance": "外見と表示名を選択してください。基本ステータスは外見元から引き継ぎます。",
+  "editor.display_name": "表示名",
+  "editor.name_hint": "未入力なら Custom（保存枠番号）",
+  "editor.choose_skill": "装備するスキルを1つ選択してください。",
+  "editor.choose_ultimate": "装備する必殺技を1つ選択してください。",
+  "editor.choose_passive": "パッシブ選択  {0}/{1}",
+  "editor.choose_field_passive": "フィールドパッシブ選択  {0}/{1}",
+  "editor.choose_slot": "保存枠を選択してください。",
+  "editor.next": "次へ",
+  "editor.ability_option": "{0}\n元: {1} / {2}",
+  "editor.passive_option": "{0}\n元: {1}",
+  "editor.buff_summary": "攻撃力 +{0}% / 効果 {1}秒 / CT {2}秒",
+  "editor.projectile_summary": "CT {0}秒 / {1}発 / 1発の基礎威力 {2}",
+  "editor.support_skill_summary": "CT {0}秒 / {1}",
+  "editor.ultimate_summary": "方式 {0} / 基礎威力 {1} / 必要 {2}%",
+  "editor.slot_empty": "枠 {0}  — 空き枠",
+  "editor.slot_used": "枠 {0}  — {1} / {2} / {3}",
+  "editor.overwrite_confirm": "この枠には既にキャラクターが保存されています。上書きしますか？",
+  "editor.overwrite": "上書きする",
+  "editor.save_success": "保存成功",
+  "editor.save_failed": "保存失敗: {0}",
+  "battle.start.error.title": "戦闘を開始できません",
+  "battle.start.error.message": "キャラクター選択画面へ戻りました。\n詳細ログ: {0}",
+  "battle.start.error.dismiss": "閉じる",
+  "editor.invalid_save": "カスタムデータに不正な参照があります: {0}",
+  "training.debug.title": "TRAINING DEBUG",
+  "training.debug.damage": "【ダメージ計測】\n今回与えたダメージ: {0}\n累計で与えたダメージ: {1}\nヒット数: {2}\n平均DPS: {3}",
+  "training.debug.field_title": "【フィールド効果】",
+  "training.debug.passive_title": "【パッシブ効果】",
+  "training.debug.self_title": "【自身の全ステータス】",
+  "training.debug.dummy_title": "【ダミーの全ステータス】",
+  "training.debug.status_title": "現在のバフ・デバフ",
+  "training.debug.none": "なし",
+  "training.debug.yes": "有効",
+  "training.debug.no": "無効",
+  "training.debug.passive_multipliers": "実効倍率: 攻撃 ×{0} / 被ダメ ×{1} / 判定 ×{2} / スキルCT ×{3} / 必殺獲得 ×{4} / スタン ×{5} / 必殺威力 ×{6}",
+  "training.debug.character_stats": "ID: {0}\nHP: {1}/{2} (減少 {3})\n生存: {4} / 覚醒: {5} / 防御0: {6}\n基礎攻撃: {7} / 実効攻撃倍率: ×{8}\n基礎移動: {9} / 実効移動: {10}\n被ダメ倍率: ×{11}\n当たり判定: {12} / 実効判定倍率: ×{13}\nスキルCT残り: {14}秒 / 充填: {15}% / ストック: {16}/{17}\n必殺ポイント: {18}% / 累計与ダメ: {19}\nスタン残り: {20}秒 / 移動不能: {21}\n位置: ({22}, {23}, {24})\n向き: ({25}, {26})\n会心: {27} / 会心率: {28}% / 会心倍率: ×{29}",
+  "training.debug.status_entry": "{0} / {1} / 強度 {2} / {3}スタック / 残り {4}秒 / 付与元 {5}",
+  "character.zan.name": "斬 — 天の剣客",
+  "ability.zan.skill.name": "次元斬",
+  "ability.zan.ultimate.name": "一瞬千撃",
+  "ability.zan.passive.name": "天切り開く者",
+  "guide.character.zan": "次元斬で全敵を中央へ4.2秒間吸引しながら刻み、一瞬千撃で全体斬撃と領域「天」を展開する領域制圧型。",
+  "guide.passive_effect.zan": "天切り開く者：自身の領域「天」の15秒間は景色が白黒化し、全攻撃が防御無視かつ確定会心になる。戦闘中4回まで必殺発動後に必殺ゲージを100%へ戻す。",
+  "cutin.zan": "一太刀に、千の終幕―― 一瞬千撃",
+  "state.zan.heaven": "領域「天」 {0} / 再装填 残り{1}回",
+  "character.beast.name": "獣 — 捕食進化体",
+  "ability.beast.skill.name": "捕食跳躍",
+  "ability.beast.ultimate.name": "百獣夜行",
+  "ability.beast.passive.name": "野生進化",
+  "guide.character.beast": "全敵を弾き飛ばして吸血し、七方向の獣弾を敵ごとに放つ近接乱戦型。与えた累計ダメージで五段階に進化する。",
+  "guide.passive_effect.beast": "野生進化：累計与ダメージ120/260/480/760/1100で五段階に進化し、通常攻撃の弾数・速度・広がり・威力が段階的に変化する。",
+  "state.beast.evolution": "野生進化 Lv.{0} / 蓄積 {1}",
+  "character.east.name": "東 — 暁の転位師",
+  "ability.east.skill.name": "東西交換",
+  "ability.east.ultimate.name": "旭日反転",
+  "ability.east.passive.name": "東風",
+  "guide.character.east": "標的と位置を交換して全敵を斬り、必殺では敵全員を戦場中央の反対側へ反転させて領域「暁」を展開する転位型。",
+  "guide.passive_effect.east": "東風：自身の領域「暁」の間だけ通常攻撃が高速三連弾へ変化し、敵の位置関係を崩した直後の集中攻撃を狙える。",
+  "state.east.sunrise": "領域「暁」 {0}",
+  "character.crab.name": "🦀 — 横歩き会心王",
+  "ability.crab.skill.name": "横行強襲",
+  "ability.crab.ultimate.name": "甲殻臨界",
+  "ability.crab.passive.name": "脱皮",
+  "guide.character.crab": "標的との位置を突然交換して会心時防御無視の蟹弾を浴びせ、甲殻臨界では敵ごとに十二方向の巨大弾幕を展開する奇襲型。",
+  "guide.passive_effect.crab": "脱皮：HP35%以下で一度だけ最大HP30%回復・全デバフ解除。以後、通常攻撃が高速三方向の蟹弾へ永久変化する。",
+  "cutin.crab": "退路は横にも存在しない―― 甲殻臨界",
+  "state.crab.molting": "脱皮 {0}",
+  "support.south.name": "南 — 南十字の標定者",
+  "support.south.skill.name": "南十字標定",
+  "support.south.ultimate.name": "南北反転",
+  "select.support_skill_detail.south": "全敵へ8秒間残る印を付け、次に受ける1回のダメージだけ1.65倍にします。",
+  "select.support_ultimate_detail.south": "全敵を戦場中央に対して点対称へ瞬間移動させ、同時に全体攻撃を与えます。",
+  "select.support_style.south": "次の一撃を増幅し、位置を丸ごと反転する座標撹乱型。通常攻撃も二方向へ分岐します。",
+  "state.south.cross": "南十字弾：常時二方向射撃",
+  "support.flower.name": "花 — 永花庭園の主",
+  "support.flower.skill.name": "花弁再生",
+  "support.flower.ultimate.name": "永花満開",
+  "select.support_skill_detail.flower": "味方メイン全員へ7秒間の継続回復を付与します。再発動で最大3段まで回復量が重なります。",
+  "select.support_ultimate_detail.flower": "領域「永花庭園」を14秒展開し、全敵の足元へ巨大な花弁範囲攻撃を咲かせます。",
+  "select.support_style.flower": "継続回復を重ねつつ、花園領域中だけ通常攻撃が高速五方向へ変化する長期支援型。",
+  "state.flower.garden": "永花庭園 {0}",
+  "field.southern_cross": "南十字航路",
+  "field.description.southern_cross": "敵チームの移動速度を8%低下させ、南の座標操作を当てやすくします。",
+  "field.bloom_cycle": "開花周期",
+  "field.description.bloom_cycle": "味方チームの通常攻撃間隔を12%短縮します。"
 }

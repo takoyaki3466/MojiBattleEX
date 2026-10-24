@@ -53,7 +53,9 @@ public final class StatusEffect {
         return this;
     }
 
-    /** 明示的な永続状態とし、時間更新による期限切れを無効化する。 */
+    /**
+     * 明示的な永続状態とし、時間更新による期限切れを無効化する。
+     */
     public StatusEffect permanent() {
         permanent = true;
         return this;

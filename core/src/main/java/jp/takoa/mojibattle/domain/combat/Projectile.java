@@ -44,6 +44,7 @@ public final class Projectile extends PositionedCombatObject {
     private boolean ignoreDefenseOnCritical;
     private boolean ultimateAttack;
     private CharacterRuntime source;
+    private String sourceInstanceId;
 
     public Projectile(long attackId, PlayerId owner, String glyph, String texturePath, String effectId, Vector3 start, Vector3 velocity, float radius, float baseDamage, float stunSeconds, float life) {
         this(attackId, owner, glyph, texturePath, effectId, start, velocity, radius, baseDamage, stunSeconds, 0, life, false, 0, 0);
@@ -193,8 +194,7 @@ public final class Projectile extends PositionedCombatObject {
         return this;
     }
 
-    public Projectile attackTraits(boolean ultimateAttack, boolean ignoreDefense,
-                                   boolean ignoreDefenseOnCritical) {
+    public Projectile attackTraits(boolean ultimateAttack, boolean ignoreDefense, boolean ignoreDefenseOnCritical) {
         this.ultimateAttack = ultimateAttack;
         this.ignoreDefense = ignoreDefense;
         this.ignoreDefenseOnCritical = ignoreDefenseOnCritical;
@@ -211,6 +211,15 @@ public final class Projectile extends PositionedCombatObject {
 
     public CharacterRuntime source() {
         return source;
+    }
+
+    public Projectile sourceInstanceId(String value) {
+        sourceInstanceId = value;
+        return this;
+    }
+
+    public String sourceInstanceId() {
+        return sourceInstanceId;
     }
 
     public boolean ignoresDefense() {

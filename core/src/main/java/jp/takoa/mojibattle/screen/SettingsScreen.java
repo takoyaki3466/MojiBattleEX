@@ -9,17 +9,19 @@ import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
 import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
 import com.badlogic.gdx.utils.Align;
 import jp.takoa.mojibattle.GameContext;
+import jp.takoa.mojibattle.input.InputDeviceMode;
+import jp.takoa.mojibattle.ui.UiTheme;
+import jp.takoa.mojibattle.ui.UiThemeManager;
 
 /**
  * 解像度、全画面、音量、UI倍率、カメラ追従値をPreferencesへ保存する設定画面。
  */
 public final class SettingsScreen extends StageScreen {
-    private static final String PREFERENCES_NAME = "mojibattle-user";
     private static final int[][] RESOLUTIONS = {{1280, 720}, {1600, 900}, {1920, 1080}};
 
     public SettingsScreen(GameContext context, ScreenManager screens) {
         super(context, screens);
-        Preferences preferences = Gdx.app.getPreferences(PREFERENCES_NAME);
+        Preferences preferences = Gdx.app.getPreferences(UiThemeManager.PREFERENCES_NAME);
 
         Table root = new Table();
         root.setFillParent(true);
@@ -28,12 +30,12 @@ public final class SettingsScreen extends StageScreen {
         Table table = new Table(context.skin);
         table.setBackground("panel");
         table.pad(26);
-        table.defaults().growX().height(46).pad(3);
+        table.defaults().growX().height(42).pad(2);
 
         Label title = new Label(context.i18n.text("menu.settings"), context.skin, "title");
         title.setFontScale(.54f);
         title.setAlignment(Align.center);
-        table.add(title).height(76).row();
+        table.add(title).height(62).row();
 
         int[] resolutionIndex = {1};
 
@@ -129,6 +131,51 @@ public final class SettingsScreen extends StageScreen {
             }
         });
 
+        boolean cutInsEnabled = preferences.getBoolean("ultimateCutIns", context.config.graphics.ultimateCutIns);
+        context.config.graphics.ultimateCutIns = cutInsEnabled;
+        TextButton ultimateCutIns = new TextButton(cutInLabel(cutInsEnabled), context.skin);
+        table.add(ultimateCutIns).row();
+        ultimateCutIns.addListener(new ChangeListener() {
+            public void changed(ChangeEvent event, Actor actor) {
+                boolean enabled = !preferences.getBoolean("ultimateCutIns", context.config.graphics.ultimateCutIns);
+                context.config.graphics.ultimateCutIns = enabled;
+                preferences.putBoolean("ultimateCutIns", enabled).flush();
+                ultimateCutIns.setText(cutInLabel(enabled));
+            }
+        });
+
+        UiTheme selectedTheme = UiThemeManager.selected();
+        TextButton uiTheme = new TextButton(themeLabel(selectedTheme), context.skin);
+        table.add(uiTheme).row();
+        uiTheme.addListener(new ChangeListener() {
+            public void changed(ChangeEvent event, Actor actor) {
+                UiTheme next = UiThemeManager.selected().next();
+                UiThemeManager.select(context.skin, next);
+                screens.show(new SettingsScreen(context, screens));
+            }
+        });
+
+        InputDeviceMode selectedInput = InputDeviceMode.load(preferences);
+        TextButton inputMode = new TextButton(inputModeLabel(selectedInput), context.skin);
+        table.add(inputMode).row();
+
+        inputMode.addListener(new ChangeListener() {
+            public void changed(ChangeEvent event, Actor actor) {
+                InputDeviceMode next = InputDeviceMode.load(preferences).next();
+                next.save(preferences);
+                inputMode.setText(inputModeLabel(next));
+            }
+        });
+
+        TextButton controllerSettings = new TextButton(context.i18n.text("settings.controller.open"), context.skin);
+        table.add(controllerSettings).row();
+        controllerSettings.addListener(new ChangeListener() {
+            @Override
+            public void changed(ChangeEvent event, Actor actor) {
+                screens.show(new ControllerSettingsScreen(context, screens));
+            }
+        });
+
         table.add(new Label(context.i18n.text("settings.language", context.config.game.language), context.skin)).row();
         table.add(new Label(context.i18n.text("settings.keys"), context.skin)).row();
 
@@ -142,5 +189,18 @@ public final class SettingsScreen extends StageScreen {
         });
 
         addStandardMenu(root, table);
+    }
+
+    private String inputModeLabel(InputDeviceMode mode) {
+        String valueKey = mode == InputDeviceMode.KEYBOARD ? "settings.input.keyboard" : "settings.input.controller";
+        return context.i18n.text("settings.input", context.i18n.text(valueKey));
+    }
+
+    private String themeLabel(UiTheme theme) {
+        return context.i18n.text("settings.ui_theme", context.i18n.text(theme.translationKey()));
+    }
+
+    private String cutInLabel(boolean enabled) {
+        return context.i18n.text("settings.ultimate_cut_ins", context.i18n.text(enabled ? "settings.enabled" : "settings.disabled"));
     }
 }

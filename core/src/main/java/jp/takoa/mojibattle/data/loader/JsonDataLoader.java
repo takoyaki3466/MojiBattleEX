@@ -28,7 +28,7 @@ public final class JsonDataLoader {
             throw new IllegalArgumentException("Resource manager is required");
         }
         this.resources = resources;
-        json.setSerializer(Map.class, new Json.Serializer<Map>() {
+        json.setSerializer(Map.class, new Json.Serializer<>() {
             @Override
             public void write(Json json, Map object, Class knownType) {
                 json.writeObjectStart();
@@ -37,7 +37,7 @@ public final class JsonDataLoader {
             }
 
             @Override
-            public Map read(Json json, JsonValue data, Class type) {
+            public Map<String, Object> read(Json json, JsonValue data, Class type) {
                 return readObject(data);
             }
         });
@@ -55,10 +55,11 @@ public final class JsonDataLoader {
         return read(new ResourceId("mojibattle", path), type);
     }
 
-    /** 任意MOD名前空間のJSONをデシリアライズする。 */
+    /**
+     * 任意MOD名前空間のJSONをデシリアライズする。
+     */
     public <T> T read(ResourceId id, Class<T> type) {
-        try (var stream = resources.open(ResourceKind.DATA, id);
-             var reader = new InputStreamReader(stream, StandardCharsets.UTF_8)) {
+        try (var stream = resources.open(ResourceKind.DATA, id); var reader = new InputStreamReader(stream, StandardCharsets.UTF_8)) {
             return json.fromJson(type, reader);
         } catch (IOException | RuntimeException error) {
             throw new SerializationException("Invalid config " + id, error);

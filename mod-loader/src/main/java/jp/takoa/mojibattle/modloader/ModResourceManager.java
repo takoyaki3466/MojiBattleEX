@@ -17,7 +17,9 @@ import java.util.Map;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 
-/** ホストの互換リソースと、MOD JAR内の名前空間化リソースを読み出す。 */
+/**
+ * ホストの互換リソースと、MOD JAR内の名前空間化リソースを読み出す。
+ */
 public final class ModResourceManager implements ResourceManager {
     private static final String HOST_NAMESPACE = "mojibattle";
     private final ClassLoader hostClassLoader;
@@ -109,9 +111,7 @@ public final class ModResourceManager implements ResourceManager {
             return "";
         }
         String normalized = prefix.trim().toLowerCase(Locale.ROOT);
-        String withoutTrailingSlash = normalized.endsWith("/")
-                ? normalized.substring(0, normalized.length() - 1)
-                : normalized;
+        String withoutTrailingSlash = normalized.endsWith("/") ? normalized.substring(0, normalized.length() - 1) : normalized;
         new ResourceId("validation", withoutTrailingSlash);
         return withoutTrailingSlash + "/";
     }

@@ -2,8 +2,10 @@ package jp.takoa.mojibattle.registry;
 
 import java.util.function.Supplier;
 
-/** 登録確定後だけ値を返す遅延参照。 */
-public final class RegistryHandle<T> implements Supplier<T> {
+/**
+ * 登録確定後だけ値を返す遅延参照。
+ */
+public class RegistryHandle<T> implements Supplier<T> {
     private final RegistryId id;
     private T value;
 

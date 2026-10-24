@@ -61,6 +61,22 @@ public final class FamilySummon extends PositionedCombatObject {
         return maximumHp <= 0 ? 0 : hp / maximumHp;
     }
 
+    public float hp() {
+        return hp;
+    }
+
+    public boolean isAlive() {
+        return hp > 0;
+    }
+
+    public float defenseMultiplier() {
+        return 100f / (100f + defense);
+    }
+
+    public void heal(float amount) {
+        if (isAlive() && Float.isFinite(amount) && amount > 0) hp = Math.min(maximumHp, hp + amount);
+    }
+
     public float orbitAngle() {
         return orbitAngle;
     }

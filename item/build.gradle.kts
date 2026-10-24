@@ -10,7 +10,6 @@ java {
 
 dependencies {
     api(project(":api"))
-    api(project(":core"))
 }
 
 sourceSets.main {
