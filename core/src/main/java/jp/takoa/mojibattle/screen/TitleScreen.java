@@ -37,15 +37,10 @@ public final class TitleScreen extends StageScreen {
         subtitle.setAlignment(Align.center);
 
         boolean chaos = UiThemeManager.selected() == UiTheme.CHAOS;
-        TextButton start = chaos
-                ? new ChaosButton(context.i18n.text("menu.start"), context.skin, ChaosButton.Accent.ORANGE)
-                : new TextButton(context.i18n.text("menu.start"), context.skin);
-        TextButton editor = chaos
-                ? new ChaosButton(context.i18n.text("menu.character_editor"), context.skin, ChaosButton.Accent.CYAN)
-                : new TextButton(context.i18n.text("menu.character_editor"), context.skin);
-        TextButton settings = chaos
-                ? new ChaosButton(context.i18n.text("menu.settings"), context.skin, ChaosButton.Accent.LIME)
-                : new TextButton(context.i18n.text("menu.settings"), context.skin);
+
+        TextButton start = chaos ? new ChaosButton(context.i18n.text("menu.start"), context.skin, ChaosButton.Accent.ORANGE) : new TextButton(context.i18n.text("menu.start"), context.skin);
+        TextButton editor = chaos ? new ChaosButton(context.i18n.text("menu.character_editor"), context.skin, ChaosButton.Accent.CYAN) : new TextButton(context.i18n.text("menu.character_editor"), context.skin);
+        TextButton settings = chaos ? new ChaosButton(context.i18n.text("menu.settings"), context.skin, ChaosButton.Accent.LIME) : new TextButton(context.i18n.text("menu.settings"), context.skin);
 
         Label saved = noticeKey == null ? null : new Label(context.i18n.text(noticeKey), context.skin);
         if (saved != null) {
@@ -73,11 +68,7 @@ public final class TitleScreen extends StageScreen {
 
         if (chaos) {
             title.setFontScale(1.08f);
-            ChaosMenuLayout layout = new ChaosMenuLayout(context.skin)
-                    .header(title, subtitle)
-                    .action(start, 84)
-                    .action(editor, 76)
-                    .action(settings, 76);
+            ChaosMenuLayout layout = new ChaosMenuLayout(context.skin).header(title, subtitle).action(start, 84).action(editor, 76).action(settings, 76);
             if (saved != null) {
                 layout.notice(saved);
             }

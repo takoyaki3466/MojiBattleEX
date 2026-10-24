@@ -10,9 +10,10 @@ import jp.takoa.mojibattle.battle.status.StatusSpec;
 import jp.takoa.mojibattle.battle.status.StatusStacking;
 import jp.takoa.mojibattle.resource.ResourceId;
 
-/** 味方へ継続回復を付与する補助スキル。 */
-public final class PetalRebirthSupportSkill
-        extends AbstractRuntime<PetalRebirthSupportSkill.Config> implements SupportAbilityRuntime {
+/**
+ * 味方へ継続回復を付与する補助スキル。
+ */
+public final class PetalRebirthSupportSkill extends AbstractRuntime<PetalRebirthSupportSkill.Config> implements SupportAbilityRuntime {
     public PetalRebirthSupportSkill(Config config) {
         super(config);
     }
@@ -20,14 +21,14 @@ public final class PetalRebirthSupportSkill
     @Override
     public boolean activate(SupportAbilityActivationContext context) {
         for (CombatantView ally : context.actions().statusEffectAlliesOf(context.owner())) {
-            context.actions().applyStatus(context.owner(), ally, new StatusSpec(
-                    new ResourceId("mojibattle", "petal_rebirth_hot"), StatusEffectType.HEAL_OVER_TIME,
-                    15f, StatusDuration.seconds(7f), StatusStacking.ADD_STACK, 3, 1f));
+            context.actions().applyStatus(context.owner(), ally, new StatusSpec(new ResourceId("mojibattle", "petal_rebirth_hot"), StatusEffectType.HEAL_OVER_TIME, 15f, StatusDuration.seconds(7f), StatusStacking.ADD_STACK, 3, 1f));
         }
         return true;
     }
 
-    /** 固有設定を持たないことを表す設定record。 */
+    /**
+     * 固有設定を持たないことを表す設定record。
+     */
     public record Config() {
     }
 }

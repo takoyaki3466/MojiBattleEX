@@ -1,6 +1,8 @@
 package jp.takoa.mojibattle.domain.status;
 
-/** 戦闘計算へ適用可能な一時状態の分類。 */
+/**
+ * 戦闘計算へ適用可能な一時状態の分類。
+ */
 public enum StatusType {
     ATTACK_UP,
     ATTACK_DOWN,

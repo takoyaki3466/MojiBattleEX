@@ -2,7 +2,9 @@ package jp.takoa.mojibattle.lwjgl3;
 
 import com.badlogic.gdx.backends.lwjgl3.Lwjgl3Application;
 import com.badlogic.gdx.backends.lwjgl3.Lwjgl3ApplicationConfiguration;
+import com.badlogic.gdx.controllers.desktop.JamepadControllerManager;
 import com.badlogic.gdx.utils.Json;
+import com.studiohartman.jamepad.Configuration;
 import jp.takoa.mojibattle.GameApplication;
 import jp.takoa.mojibattle.GameContext;
 import jp.takoa.mojibattle.bootstrap.GameBootstrap;
@@ -32,21 +34,28 @@ public final class Lwjgl3Launcher {
 
     public static void main(String[] args) throws Throwable {
         StartupLog.beginSession();
+
         Thread.setDefaultUncaughtExceptionHandler((thread, error) -> StartupLog.error("Uncaught exception in thread " + thread.getName(), error));
+
         StartupLog.info("Lwjgl3Launcher.main started; log=" + StartupLog.file());
+
         ModLoader modLoader = null;
         try {
             if (StartupHelper.startNewJvmIfRequired()) {
                 StartupLog.info("StartupHelper requested a replacement JVM; current JVM is exiting");
                 return;
             }
+
+            configureControllerBackend();
             StartupLog.info("Loading graphics configuration " + GRAPHICS_CONFIG_RESOURCE);
+
             GraphicsConfig graphics = readGraphicsConfig();
             StartupLog.info("Graphics configuration loaded");
 
             Lwjgl3ApplicationConfiguration configuration = createConfiguration(graphics);
             Path modsDirectory = Path.of(System.getProperty("mojibattle.modsDir", "mods")).toAbsolutePath().normalize();
             StartupLog.info("MOD directory=" + modsDirectory);
+
             modLoader = new ModLoader(modsDirectory);
             ModDiscovery discovery = discoverMods(modLoader);
             DiagnosticLog.setLoadedMods(discovery.descriptions());
@@ -62,14 +71,30 @@ public final class Lwjgl3Launcher {
         }
     }
 
+    /**
+     * Controllers初回参照より前に、SDL/Jamepadの管理台数と入力方式を固定する。
+     */
+    private static void configureControllerBackend() {
+        Configuration controllerConfiguration = new Configuration();
+        // Joy-Con以外が先に列挙されても、4本のJoy-Conを発見できるだけの探索枠を確保する。
+        // 実際のプレイヤー割り当て上限はJoyConInputManagerのP1〜P4である。
+        controllerConfiguration.maxNumControllers = 16;
+        controllerConfiguration.useRawInput = false;
+        JamepadControllerManager.jamepadConfiguration = controllerConfiguration;
+        StartupLog.info("Controller backend configured; discoverySlots=16, assignedJoyCons=4, rawInput=false");
+    }
+
     private static Lwjgl3ApplicationConfiguration createConfiguration(GraphicsConfig graphics) {
         Lwjgl3ApplicationConfiguration configuration = new Lwjgl3ApplicationConfiguration();
         configuration.setTitle("MojiBattleEX");
+
         if (graphics.fullscreen) {
             configuration.setFullscreenMode(Lwjgl3ApplicationConfiguration.getDisplayMode());
+
         } else {
             configuration.setWindowedMode(graphics.windowWidth, graphics.windowHeight);
         }
+
         configuration.useVsync(true);
         configuration.setForegroundFPS(120);
         return configuration;
@@ -78,14 +103,18 @@ public final class Lwjgl3Launcher {
     private static ModDiscovery discoverMods(ModLoader modLoader) {
         List<GameMod> mods = new ArrayList<>();
         List<String> descriptions = new ArrayList<>();
+
         StartupLog.info("Discovering built-in MODs from the application classpath");
         ServiceLoader.load(GameMod.class).forEach(mods::add);
         mods.stream().map(mod -> mod.id() + "@classpath").forEach(descriptions::add);
+
         StartupLog.info("Built-in MOD discovery complete; count=" + mods.size() + ", ids=" + mods.stream().map(GameMod::id).toList());
         StartupLog.info("Calling ModLoader.load() for external MODs");
+
         List<LoadedMod> externalMods = modLoader.load();
         externalMods.stream().map(LoadedMod::instance).forEach(mods::add);
         externalMods.stream().map(mod -> mod.metadata().id + "@" + mod.metadata().version).forEach(descriptions::add);
+
         StartupLog.info("ModLoader.load() complete; external count=" + externalMods.size() + ", external ids=" + externalMods.stream().map(mod -> mod.metadata().id).toList() + ", total count=" + mods.size());
         return new ModDiscovery(List.copyOf(mods), List.copyOf(descriptions));
     }
@@ -114,6 +143,7 @@ public final class Lwjgl3Launcher {
         } catch (Throwable closeError) {
             try {
                 failure.addSuppressed(closeError);
+
             } catch (RuntimeException ignored) {
                 StartupLog.error("Unable to attach MOD loader cleanup failure", closeError);
             }
@@ -122,11 +152,14 @@ public final class Lwjgl3Launcher {
 
     private static GraphicsConfig readGraphicsConfig() {
         InputStream stream = Lwjgl3Launcher.class.getResourceAsStream(GRAPHICS_CONFIG_RESOURCE);
+
         if (stream == null) {
             throw new IllegalStateException("Cannot load startup graphics config from application resources: " + GRAPHICS_CONFIG_RESOURCE);
         }
+
         try (InputStreamReader reader = new InputStreamReader(stream, StandardCharsets.UTF_8)) {
             return new Json().fromJson(GraphicsConfig.class, reader);
+
         } catch (IOException | RuntimeException error) {
             throw new IllegalStateException("Cannot parse startup graphics config: " + GRAPHICS_CONFIG_RESOURCE, error);
         }

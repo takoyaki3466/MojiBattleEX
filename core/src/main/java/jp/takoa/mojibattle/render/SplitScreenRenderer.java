@@ -26,12 +26,8 @@ public final class SplitScreenRenderer implements Disposable {
     private final ArenaRenderer arena;
     private final EnumMap<PlayerId, PlayerCameraController> cameras = new EnumMap<>(PlayerId.class);
 
-    public SplitScreenRenderer(BattleConfig battle, GraphicsConfig graphics, List<BattleTeamDefinition> teams,
-                               List<AbilityConfigs.ProjectileSkill> skills,
-                               List<AbilityConfigs.AreaUltimate> ultimates, String awakeningTexturePath,
-                               Iterable<CombatEffectDefinition> effects, ResourceManager resources) {
-        arena = new ArenaRenderer(battle, teams, skills, ultimates, awakeningTexturePath, effects,
-                resources);
+    public SplitScreenRenderer(BattleConfig battle, GraphicsConfig graphics, List<BattleTeamDefinition> teams, List<AbilityConfigs.ProjectileSkill> skills, List<AbilityConfigs.AreaUltimate> ultimates, String awakeningTexturePath, Iterable<CombatEffectDefinition> effects, ResourceManager resources) {
+        arena = new ArenaRenderer(battle, teams, skills, ultimates, awakeningTexturePath, effects, resources);
 
         for (int index = 0; index < teams.size(); index++) {
             cameras.put(PlayerId.values()[index], new PlayerCameraController(graphics));

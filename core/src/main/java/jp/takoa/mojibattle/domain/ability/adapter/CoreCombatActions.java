@@ -108,9 +108,7 @@ public final class CoreCombatActions implements CombatActions {
             case REFRESH -> StatusStackRule.REFRESH;
             case ADD_STACK -> StatusStackRule.STACK;
         };
-        StatusEffect effect = new StatusEffect(spec.id().toString(), battle.ownerOf(sourceRuntime),
-                statusType(spec.type(), spec.magnitude()), spec.magnitude(), spec.duration().seconds(), stacking,
-                spec.maximumStacks()).tickEvery(spec.tickIntervalSeconds());
+        StatusEffect effect = new StatusEffect(spec.id().toString(), battle.ownerOf(sourceRuntime), statusType(spec.type(), spec.magnitude()), spec.magnitude(), spec.duration().seconds(), stacking, spec.maximumStacks()).tickEvery(spec.tickIntervalSeconds());
         if (spec.duration().permanentFlag()) {
             effect.permanent();
         }
@@ -155,7 +153,7 @@ public final class CoreCombatActions implements CombatActions {
     @Override
     public void spawnProjectilePattern(CombatantView source, ProjectilePatternSpec spec) {
         CharacterRuntime owner = runtime(source);
-        if (!spec.pointsOnHit()) {
+        if (!spec.pointsOnHit() && battle.awardsSkillUltimatePoints()) {
             battle.addSkillUltimatePoints(owner, spec.ultimatePointsPerHit() * spec.shots().size());
         }
         if (spec.activationEffectId() != null) {
@@ -173,7 +171,7 @@ public final class CoreCombatActions implements CombatActions {
             Vector3 start = new Vector3(owner.position).mulAdd(direction, 1f);
             if (!spec.radial()) start.mulAdd(right, shot.lateralOffset());
             start.y += 1.1f + shot.verticalOffset();
-            Projectile projectile = new Projectile(attackId, owner.playerId, shot.glyph(), string(shot.texture()), string(spec.hitEffectId()), start, direction.scl(spec.speed() * 1.3f), spec.radius(), shot.baseDamage() * .55f, shot.stunSeconds(), shot.bindSeconds(), spec.lifetimeSeconds(), spec.boomerang(), spec.boomerangDistance(), spec.pointsOnHit() ? spec.ultimatePointsPerHit() : 0).attackTraits(spec.ultimateAttack(), false).source(owner);
+            Projectile projectile = new Projectile(attackId, owner.playerId, shot.glyph(), string(shot.texture()), string(spec.hitEffectId()), start, direction.scl(spec.speed() * 1.3f), spec.radius(), shot.baseDamage() * .55f, shot.stunSeconds(), shot.bindSeconds(), spec.lifetimeSeconds(), spec.boomerang(), spec.boomerangDistance(), spec.pointsOnHit() && battle.awardsSkillUltimatePoints() ? spec.ultimatePointsPerHit() : 0).attackTraits(spec.ultimateAttack(), false).source(owner);
             if (spec.followUpTexture() != null) {
                 projectile.followUp(spec.followUpGlyph(), spec.followUpTexture().toString(), spec.followUpDamage() * .55f, spec.followUpRadius(), spec.followUpSpeed());
             }
@@ -254,6 +252,16 @@ public final class CoreCombatActions implements CombatActions {
     }
 
     @Override
+    public void enhanceNormalAttack(CombatantView source, String glyph, ResourceId texture, float intervalMultiplier, float durationSeconds) {
+        requirePositive(intervalMultiplier, "Normal attack interval multiplier");
+        requirePositive(durationSeconds, "Normal attack enhancement duration");
+        if (glyph == null || glyph.isBlank() || texture == null) {
+            throw new IllegalArgumentException("Normal attack enhancement requires glyph and texture");
+        }
+        runtime(source).enhanceNormalAttack(glyph, texture.toString(), intervalMultiplier, durationSeconds);
+    }
+
+    @Override
     public void detonateOwnedMarkers(CombatantView source, DetonationSpec spec) {
         battle.detonateCashBundles(runtime(source), spec.damage().baseDamage(), spec.radius(), spec.warningSeconds(), spec.effectSeconds(), spec.incomingDamageMultiplier(), spec.debuffDurationSeconds(), string(spec.texture()), string(spec.warningEffectId()), string(spec.impactEffectId()));
     }
@@ -265,9 +273,11 @@ public final class CoreCombatActions implements CombatActions {
         long count = battle.objects().stream().filter(object -> object instanceof CashBundle cash && cash.owner == owner.playerId).count();
         if (count >= maximumOwned) return false;
         long interval = (long) Math.floor(battle.elapsedSeconds());
-        float angle = Math.floorMod(interval * 137L + owner.playerId.ordinal() * 71L, 360L);
-        float radius = 3f + Math.floorMod(interval, 4L) * 1.3f;
-        Vector3 position = new Vector3(owner.position).add(MathUtils.cosDeg(angle) * radius, 0, MathUtils.sinDeg(angle) * radius);
+        float angle = Math.floorMod(interval * 137L + count * 97L + owner.playerId.ordinal() * 71L, 360L);
+        float radius = 1.2f + Math.floorMod(count, 3L) * .65f;
+        CharacterRuntime target = battle.targetOf(owner.playerId);
+        Vector3 center = target == null ? owner.position : target.position;
+        Vector3 position = new Vector3(center).add(MathUtils.cosDeg(angle) * radius, 0, MathUtils.sinDeg(angle) * radius);
         float edge = battle.arenaHalfExtent() - .8f;
         position.x = MathUtils.clamp(position.x, -edge, edge);
         position.z = MathUtils.clamp(position.z, -edge, edge);
@@ -357,8 +367,7 @@ public final class CoreCombatActions implements CombatActions {
 
     @Override
     public void knockbackAwayFrom(CombatantView source, CombatantView target, float distance) {
-        battle.knockbackAwayFrom(combatant(source),
-                CoreCombatantResolver.requirePresent(battle, target), distance);
+        battle.knockbackAwayFrom(combatant(source), CoreCombatantResolver.requirePresent(battle, target), distance);
     }
 
     @Override
@@ -417,6 +426,12 @@ public final class CoreCombatActions implements CombatActions {
         }
     }
 
+    private static void requirePositive(float value, String name) {
+        if (!Float.isFinite(value) || value <= 0) {
+            throw new IllegalArgumentException(name + " must be finite and positive");
+        }
+    }
+
     private static String string(ResourceId id) {
         return id == null ? null : id.toString();
     }
@@ -424,8 +439,8 @@ public final class CoreCombatActions implements CombatActions {
     private static StatusType statusType(StatusEffectType type, float magnitude) {
         return switch (type) {
             case ATTACK_MULTIPLIER -> magnitude < 1f ? StatusType.ATTACK_DOWN : StatusType.ATTACK_UP;
-            case INCOMING_DAMAGE_MULTIPLIER -> magnitude > 1f
-                    ? StatusType.DAMAGE_TAKEN_UP : StatusType.DAMAGE_TAKEN_DOWN;
+            case INCOMING_DAMAGE_MULTIPLIER ->
+                    magnitude > 1f ? StatusType.DAMAGE_TAKEN_UP : StatusType.DAMAGE_TAKEN_DOWN;
             case MOVE_SPEED_MULTIPLIER -> magnitude < 1f ? StatusType.MOVE_DOWN : StatusType.MOVE_UP;
             case CRITICAL_RATE_ADDITION -> StatusType.CRITICAL_RATE_UP;
             case CRITICAL_DAMAGE_MULTIPLIER -> StatusType.CRITICAL_DAMAGE_UP;

@@ -42,6 +42,7 @@ public final class MojiBattleRegistries {
 
     public MojiBattleRegistries(RegistryManager manager) {
         this.manager = manager;
+
         skillImplementations = manager.create(SKILL_IMPLEMENTATIONS, "skill implementation", SkillImpl::id);
         ultimateImplementations = manager.create(ULTIMATE_IMPLEMENTATIONS, "ultimate implementation", UltimateImpl::id);
         passiveImplementations = manager.create(PASSIVE_IMPLEMENTATIONS, "passive implementation", PassiveImpl::id);
@@ -49,15 +50,9 @@ public final class MojiBattleRegistries {
         supportAbilityImplementations = manager.create(SUPPORT_ABILITY_IMPLEMENTATIONS, "support ability implementation", SupportAbilityImpl::id);
         supportPassiveImplementations = manager.create(SUPPORT_PASSIVE_IMPLEMENTATIONS, "support passive implementation", SupportPassiveImpl::id);
         effects = manager.create(EFFECTS, "combat effect", CombatEffectDefinition::id);
-        characters = manager.create(CHARACTERS, "character data",
-                value -> value.character().toString(),
-                (id, value) -> validateResourceOwner("character", value.getClass(), id, value.character()));
-        supportCharacters = manager.create(SUPPORT_CHARACTERS, "support character data",
-                value -> value.support().toString(),
-                (id, value) -> validateResourceOwner("support character", value.getClass(), id, value.support()));
-        fieldEffects = manager.create(FIELD_EFFECTS, "field effect data",
-                value -> value.fieldEffect().toString(),
-                (id, value) -> validateResourceOwner("field effect", value.getClass(), id, value.fieldEffect()));
+        characters = manager.create(CHARACTERS, "character data", value -> value.character().toString(), (id, value) -> validateResourceOwner("character", value.getClass(), id, value.character()));
+        supportCharacters = manager.create(SUPPORT_CHARACTERS, "support character data", value -> value.support().toString(), (id, value) -> validateResourceOwner("support character", value.getClass(), id, value.support()));
+        fieldEffects = manager.create(FIELD_EFFECTS, "field effect data", value -> value.fieldEffect().toString(), (id, value) -> validateResourceOwner("field effect", value.getClass(), id, value.fieldEffect()));
         skillDefinitions = manager.create(SKILL_DEFINITIONS, "skill definition", value -> value.id);
         ultimateDefinitions = manager.create(ULTIMATE_DEFINITIONS, "ultimate definition", value -> value.id);
         passiveDefinitions = manager.create(PASSIVE_DEFINITIONS, "passive definition", value -> value.id);
@@ -75,15 +70,12 @@ public final class MojiBattleRegistries {
         return RegistryKey.create("mojibattle:" + path, type);
     }
 
-    /** 登録名とリソースパスは独立させつつ、MOD所有境界だけを検証する。 */
-    private static void validateResourceOwner(String type, Class<?> valueType,
-                                              RegistryId registrationId, ResourceId resourceId) {
+    /**
+     * 登録名とリソースパスは独立させつつ、MOD所有境界だけを検証する。
+     */
+    private static void validateResourceOwner(String type, Class<?> valueType, RegistryId registrationId, ResourceId resourceId) {
         if (!registrationId.namespace().equals(resourceId.namespace())) {
-            throw new IllegalArgumentException("Invalid registration: registry=" + type + " data"
-                    + ", valueType=" + valueType.getName()
-                    + ", registrationId=" + registrationId
-                    + ", resourceId=" + resourceId
-                    + ", rule=Resource namespace must match registration namespace");
+            throw new IllegalArgumentException("Invalid registration: registry=" + type + " data" + ", valueType=" + valueType.getName() + ", registrationId=" + registrationId + ", resourceId=" + resourceId + ", rule=Resource namespace must match registration namespace");
         }
     }
 }

@@ -6,10 +6,11 @@ import jp.takoa.mojibattle.item.ability.NewCharacterAbilities;
 import jp.takoa.mojibattle.item.ability.StandardUltimates;
 import jp.takoa.mojibattle.registry.MojiBattleRegister;
 
-/** メインキャラクターの必殺技だけを登録する。 */
+/**
+ * メインキャラクターの必殺技だけを登録する。
+ */
 public final class UltimatesInit {
-    public static final MojiBattleRegister.Ultimate REGISTER =
-            MojiBattleRegister.createUltimate(ItemContentModule.MOD_ID);
+    public static final MojiBattleRegister.Ultimate REGISTER = MojiBattleRegister.createUltimate(ItemContentModule.MOD_ID);
 
     static {
         register("area", StandardUltimates.Area.class);
@@ -28,9 +29,7 @@ public final class UltimatesInit {
     private UltimatesInit() {
     }
 
-    private static <R extends UltimateRuntime> void register(
-            String path, Class<R> runtimeType) {
-        REGISTER.registerWithPresentation(path, runtimeType,
-                AbilityRegistrationSupport::presentation);
+    private static <R extends UltimateRuntime> void register(String path, Class<R> runtimeType) {
+        REGISTER.registerWithPresentation(path, runtimeType, AbilityRegistrationSupport::presentation);
     }
 }

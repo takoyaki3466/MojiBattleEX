@@ -42,23 +42,25 @@ public final class ChaosMenuLayout {
         return this;
     }
 
-    /** 大型ボタンを左右交互にずらし、参考画像の不均衡な勢いを作る。 */
+    /**
+     * 大型ボタンを左右交互にずらし、参考画像の不均衡な勢いを作る。
+     */
     public ChaosMenuLayout action(Actor button, float height) {
         Table row = new Table();
         boolean right = (actionIndex++ & 1) == 1;
         float leading = right ? 120 : 34;
         float trailing = right ? 34 : 120;
 
-        row.add(rail(actionIndex % 3 == 0 ? "gauge-ultimate" : "gauge-support-skill"))
-                .width(12).height(height - 18).padRight(7);
+        row.add(rail(actionIndex % 3 == 0 ? "gauge-ultimate" : "gauge-support-skill")).width(12).height(height - 18).padRight(7);
         row.add(button).width(Value.percentWidth(.78f, row)).height(height);
-        row.add(rail(actionIndex % 2 == 0 ? "gauge-support-ultimate" : "gauge-skill"))
-                .width(12).height(height - 18).padLeft(7);
+        row.add(rail(actionIndex % 2 == 0 ? "gauge-support-ultimate" : "gauge-skill")).width(12).height(height - 18).padLeft(7);
         surface.add(row).growX().height(height + 8).padLeft(leading).padRight(trailing).row();
         return this;
     }
 
-    /** 対戦人数画面用の左右対向ボタン列。 */
+    /**
+     * 対戦人数画面用の左右対向ボタン列。
+     */
     public ChaosMenuLayout pair(Actor left, Actor right, float height) {
         Table row = new Table();
         row.add(left).growX().height(height).padRight(4);
@@ -78,13 +80,14 @@ public final class ChaosMenuLayout {
         return this;
     }
 
-    /** キャラクター選択専用の、左右分割＋下部プレイヤー帯レイアウト。 */
+    /**
+     * キャラクター選択専用の、左右分割＋下部プレイヤー帯レイアウト。
+     */
     public static Table selection(Skin skin, Table roster, Table information, Table playerPreviews) {
         Table upper = new Table();
         upper.add(rail(skin, "gauge-skill")).width(8).growY().padRight(3);
         upper.add(roster).grow().minWidth(0).minHeight(0).top().padRight(5);
-        upper.add(information).width(Value.percentWidth(.31f, upper))
-                .growY().minWidth(330).minHeight(0).top().padLeft(5);
+        upper.add(information).width(Value.percentWidth(.31f, upper)).growY().minWidth(330).minHeight(0).top().padLeft(5);
         upper.add(rail(skin, "gauge-support-ultimate")).width(8).growY().padLeft(3);
 
         Table shell = new Table(skin);

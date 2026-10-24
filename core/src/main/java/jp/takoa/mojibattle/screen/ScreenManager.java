@@ -42,9 +42,7 @@ public final class ScreenManager {
             if (game.getScreen() != previous) {
                 game.setScreen(previous);
             }
-            DiagnosticLog.setCurrentScreen(previous == null
-                    ? "none"
-                    : previous.getClass().getSimpleName());
+            DiagnosticLog.setCurrentScreen(previous == null ? "none" : previous.getClass().getSimpleName());
         } catch (RuntimeException | Error rollbackError) {
             failure.addSuppressed(rollbackError);
         }

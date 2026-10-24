@@ -64,14 +64,15 @@ public final class RecordConfigParser<C> {
         try {
             constructor = configType.getConstructor(parameterTypes);
         } catch (NoSuchMethodException exception) {
-            throw new IllegalArgumentException(
-                    "Config canonical constructor must be public: " + configType.getName(), exception);
+            throw new IllegalArgumentException("Config canonical constructor must be public: " + configType.getName(), exception);
         }
         bindings = List.copyOf(parsedBindings);
         displayIndexes = List.copyOf(parsedDisplayIndexes);
     }
 
-    /** 全項目を解析・検証して独立した設定recordを生成する。 */
+    /**
+     * 全項目を解析・検証して独立した設定recordを生成する。
+     */
     public C parse(ConfigView source) {
         Objects.requireNonNull(source, "Config source is required");
         Object[] values = new Object[bindings.size()];
@@ -87,8 +88,7 @@ public final class RecordConfigParser<C> {
             if (cause instanceof RuntimeException runtime) {
                 throw runtime;
             }
-            throw new IllegalArgumentException("Config constructor rejected values: "
-                    + constructor.getDeclaringClass().getName(), cause);
+            throw new IllegalArgumentException("Config constructor rejected values: " + constructor.getDeclaringClass().getName(), cause);
         }
     }
 
@@ -104,14 +104,14 @@ public final class RecordConfigParser<C> {
         Object[] values = new Object[displayIndexes.size()];
         for (int index = 0; index < displayIndexes.size(); index++) {
             Object value = bindings.get(displayIndexes.get(index)).access(config);
-            values[index] = value instanceof Number number
-                    ? number.floatValue() * numericMultiplier
-                    : value;
+            values[index] = value instanceof Number number ? number.floatValue() * numericMultiplier : value;
         }
         return values;
     }
 
-    /** 設定ビューを検証済みrecordへ変換してから表示引数を取得する。 */
+    /**
+     * 設定ビューを検証済みrecordへ変換してから表示引数を取得する。
+     */
     public Object[] displayValues(ConfigView source, float numericMultiplier) {
         return displayValues(parse(source), numericMultiplier);
     }
@@ -169,8 +169,7 @@ public final class RecordConfigParser<C> {
         } else if (annotation instanceof ConfigResource rule) {
             requireType(component, ResourceId.class, ConfigResource.class);
             key = key(component, rule.name());
-            ResourceId parsedDefault = rule.nullable() && rule.defaultValue().isBlank()
-                    ? null : parseResource(rule.defaultValue(), key, "default");
+            ResourceId parsedDefault = rule.nullable() && rule.defaultValue().isBlank() ? null : parseResource(rule.defaultValue(), key, "default");
             defaultValue = parsedDefault;
             converter = raw -> {
                 if (raw == null && rule.nullable()) {
@@ -189,22 +188,18 @@ public final class RecordConfigParser<C> {
             converter = raw -> readList(raw, rule, key, 1);
         }
 
-        return new ComponentBinding(key, defaultValue,
-                component.isAnnotationPresent(RequiredConfig.class), converter, component);
+        return new ComponentBinding(key, defaultValue, component.isAnnotationPresent(RequiredConfig.class), converter, component);
     }
 
     private static void validateFloatRule(ConfigFloat rule, RecordComponent component) {
-        if (!Float.isFinite(rule.defaultValue()) || Float.isNaN(rule.min()) || Float.isNaN(rule.max())
-                || rule.min() > rule.max()
-                || ((rule.exclusiveMin() || rule.exclusiveMax()) && rule.min() == rule.max())) {
+        if (!Float.isFinite(rule.defaultValue()) || Float.isNaN(rule.min()) || Float.isNaN(rule.max()) || rule.min() > rule.max() || ((rule.exclusiveMin() || rule.exclusiveMax()) && rule.min() == rule.max())) {
             throw definitionError(component, "Invalid float bounds or default");
         }
         checkFloatRange(rule.defaultValue(), rule, component.getName(), "default");
     }
 
     private static void validateIntRule(ConfigInt rule, RecordComponent component) {
-        if (rule.min() > rule.max()
-                || ((rule.exclusiveMin() || rule.exclusiveMax()) && rule.min() == rule.max())) {
+        if (rule.min() > rule.max() || ((rule.exclusiveMin() || rule.exclusiveMax()) && rule.min() == rule.max())) {
             throw definitionError(component, "Invalid int bounds");
         }
         checkIntRange(rule.defaultValue(), rule, component.getName(), "default");
@@ -224,8 +219,7 @@ public final class RecordConfigParser<C> {
             throw typeError(key, "integer", raw);
         }
         double value = number.doubleValue();
-        if (!Double.isFinite(value) || value != Math.rint(value)
-                || value < Integer.MIN_VALUE || value > Integer.MAX_VALUE) {
+        if (!Double.isFinite(value) || value != Math.rint(value) || value < Integer.MIN_VALUE || value > Integer.MAX_VALUE) {
             throw new IllegalArgumentException("Config '" + key + "' must be an exact int, but was " + raw);
         }
         int result = (int) value;
@@ -234,21 +228,14 @@ public final class RecordConfigParser<C> {
     }
 
     private static void checkFloatRange(float value, ConfigFloat rule, String key, String origin) {
-        if (!Float.isFinite(value)
-                || (rule.exclusiveMin() ? value <= rule.min() : value < rule.min())
-                || (rule.exclusiveMax() ? value >= rule.max() : value > rule.max())) {
-            throw new IllegalArgumentException("Config '" + key + "' " + origin
-                    + " is outside " + range(rule.min(), rule.max(), rule.exclusiveMin(), rule.exclusiveMax())
-                    + ": " + value);
+        if (!Float.isFinite(value) || (rule.exclusiveMin() ? value <= rule.min() : value < rule.min()) || (rule.exclusiveMax() ? value >= rule.max() : value > rule.max())) {
+            throw new IllegalArgumentException("Config '" + key + "' " + origin + " is outside " + range(rule.min(), rule.max(), rule.exclusiveMin(), rule.exclusiveMax()) + ": " + value);
         }
     }
 
     private static void checkIntRange(int value, ConfigInt rule, String key, String origin) {
-        if ((rule.exclusiveMin() ? value <= rule.min() : value < rule.min())
-                || (rule.exclusiveMax() ? value >= rule.max() : value > rule.max())) {
-            throw new IllegalArgumentException("Config '" + key + "' " + origin
-                    + " is outside " + range(rule.min(), rule.max(), rule.exclusiveMin(), rule.exclusiveMax())
-                    + ": " + value);
+        if ((rule.exclusiveMin() ? value <= rule.min() : value < rule.min()) || (rule.exclusiveMax() ? value >= rule.max() : value > rule.max())) {
+            throw new IllegalArgumentException("Config '" + key + "' " + origin + " is outside " + range(rule.min(), rule.max(), rule.exclusiveMin(), rule.exclusiveMax()) + ": " + value);
         }
     }
 
@@ -262,8 +249,7 @@ public final class RecordConfigParser<C> {
         try {
             return ResourceId.parse(value);
         } catch (IllegalArgumentException exception) {
-            throw new IllegalArgumentException("Config '" + key + "' has an invalid resource ID "
-                    + origin + ": " + value, exception);
+            throw new IllegalArgumentException("Config '" + key + "' has an invalid resource ID " + origin + ": " + value, exception);
         }
     }
 
@@ -278,8 +264,7 @@ public final class RecordConfigParser<C> {
                 converted.add(readList(value, rule, key + "[" + index + "]", dimension + 1));
             } else if (rule.value() == ConfigList.ValueType.STRING && value instanceof String text) {
                 converted.add(text);
-            } else if (rule.value() == ConfigList.ValueType.FLOAT && value instanceof Number number
-                    && Float.isFinite(number.floatValue())) {
+            } else if (rule.value() == ConfigList.ValueType.FLOAT && value instanceof Number number && Float.isFinite(number.floatValue())) {
                 converted.add(number.floatValue());
             } else {
                 throw typeError(key + "[" + index + "]", rule.value().name().toLowerCase(), value);
@@ -295,9 +280,7 @@ public final class RecordConfigParser<C> {
         Type expectedElement = rule.value() == ConfigList.ValueType.STRING ? String.class : Float.class;
         Type actual = component.getGenericType();
         for (int dimension = 0; dimension < rule.dimensions(); dimension++) {
-            if (!(actual instanceof ParameterizedType parameterized)
-                    || parameterized.getRawType() != List.class
-                    || parameterized.getActualTypeArguments().length != 1) {
+            if (!(actual instanceof ParameterizedType parameterized) || parameterized.getRawType() != List.class || parameterized.getActualTypeArguments().length != 1) {
                 throw definitionError(component, "@ConfigList generic type does not match its dimensions");
             }
             actual = parameterized.getActualTypeArguments()[0];
@@ -307,11 +290,9 @@ public final class RecordConfigParser<C> {
         }
     }
 
-    private static void requireType(RecordComponent component, Class<?> expected,
-                                    Class<? extends Annotation> annotation) {
+    private static void requireType(RecordComponent component, Class<?> expected, Class<? extends Annotation> annotation) {
         if (component.getType() != expected) {
-            throw definitionError(component, "@" + annotation.getSimpleName()
-                    + " requires " + expected.getSimpleName() + " but found " + component.getType().getTypeName());
+            throw definitionError(component, "@" + annotation.getSimpleName() + " requires " + expected.getSimpleName() + " but found " + component.getType().getTypeName());
         }
     }
 
@@ -329,8 +310,7 @@ public final class RecordConfigParser<C> {
     }
 
     private static IllegalArgumentException definitionError(RecordComponent component, String message) {
-        return new IllegalArgumentException(message + " at "
-                + component.getDeclaringRecord().getName() + "." + component.getName());
+        return new IllegalArgumentException(message + " at " + component.getDeclaringRecord().getName() + "." + component.getName());
     }
 
     private static void add(List<Annotation> annotations, Annotation annotation) {

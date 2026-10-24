@@ -8,6 +8,7 @@ import jp.takoa.mojibattle.resource.ResourceKind;
 import jp.takoa.mojibattle.resource.ResourceManager;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.text.MessageFormat;
@@ -30,12 +31,16 @@ public final class LocalizationManager {
         this(language, new ClasspathResourceManager(LocalizationManager.class.getClassLoader()), List.of());
     }
 
-    /** 指定リソース層から言語辞書を読み込む。 */
+    /**
+     * 指定リソース層から言語辞書を読み込む。
+     */
     public LocalizationManager(String language, ResourceManager resources) {
         this(language, resources, List.of());
     }
 
-    /** 標準辞書の後にMOD辞書を登録順で読み、キーの上書きを拒否する。 */
+    /**
+     * 標準辞書の後にMOD辞書を登録順で読み、キーの上書きを拒否する。
+     */
     public LocalizationManager(String language, ResourceManager resources, List<ResourceId> additionalDictionaries) {
         load(resources, new ResourceId("mojibattle", "i18n/" + language + ".json"));
         additionalDictionaries.forEach(id -> load(resources, id));
@@ -43,9 +48,10 @@ public final class LocalizationManager {
 
     private void load(ResourceManager resources, ResourceId id) {
         JsonValue root;
-        try (var stream = resources.open(ResourceKind.ASSET, id);
-             var reader = new InputStreamReader(stream, StandardCharsets.UTF_8)) {
+
+        try (InputStream stream = resources.open(ResourceKind.ASSET, id); InputStreamReader reader = new InputStreamReader(stream, StandardCharsets.UTF_8)) {
             root = new JsonReader().parse(reader);
+
         } catch (IOException | RuntimeException error) {
             throw new IllegalStateException("Cannot load translation resource: " + id, error);
         }

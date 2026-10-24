@@ -63,7 +63,9 @@ public interface ConfigView {
         return EmptyConfigView.INSTANCE;
     }
 
-    /** 値を一つも持たない共有実装。設定省略時のnull代替として使用する。 */
+    /**
+     * 値を一つも持たない共有実装。設定省略時のnull代替として使用する。
+     */
     final class EmptyConfigView implements ConfigView {
         private static final EmptyConfigView INSTANCE = new EmptyConfigView();
 

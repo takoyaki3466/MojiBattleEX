@@ -1,6 +1,8 @@
 package jp.takoa.mojibattle.config;
 
-/** ウィンドウ、カメラ追従および視野角に関する描画設定DTO。 */
+/**
+ * ウィンドウ、カメラ追従および視野角に関する描画設定DTO。
+ */
 public final class GraphicsConfig {
     public int windowWidth;
     public int windowHeight;

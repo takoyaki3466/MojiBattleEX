@@ -13,13 +13,15 @@ import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
 import jp.takoa.mojibattle.GameContext;
 import jp.takoa.mojibattle.domain.BattleController;
 import jp.takoa.mojibattle.domain.BattleMode;
+import jp.takoa.mojibattle.domain.BattleModeRoster;
 import jp.takoa.mojibattle.domain.BattleTeamDefinition;
 import jp.takoa.mojibattle.domain.CharacterDefinition;
 import jp.takoa.mojibattle.domain.PlayerId;
 import jp.takoa.mojibattle.domain.support.SupportCharacterDefinition;
 import jp.takoa.mojibattle.domain.TrainingDummy;
-import jp.takoa.mojibattle.input.InputBindingManager;
+import jp.takoa.mojibattle.input.InputDeviceMode;
 import jp.takoa.mojibattle.input.PlayerCommand;
+import jp.takoa.mojibattle.input.PlayerInputManager;
 import jp.takoa.mojibattle.render.SplitScreenRenderer;
 import jp.takoa.mojibattle.ui.BattleHud;
 import jp.takoa.mojibattle.ui.UiThemeManager;
@@ -36,7 +38,7 @@ public final class BattleScreen extends ScreenAdapter {
     private final GameContext context;
     private final ScreenManager screens;
     private final BattleController battle;
-    private final InputBindingManager input;
+    private final PlayerInputManager input;
     private final SplitScreenRenderer renderer;
     private final BattleHud hud;
     private final Table pauseMenu;
@@ -48,30 +50,35 @@ public final class BattleScreen extends ScreenAdapter {
         this.context = context;
         this.screens = screens;
 
-        BattleController createdBattle = null;
-        InputBindingManager createdInput = null;
+        BattleController createdBattle;
+
+        PlayerInputManager createdInput = null;
         SplitScreenRenderer createdRenderer = null;
         BattleHud createdHud = null;
+
         Table createdPauseMenu;
+
         try {
             List<BattleTeamDefinition> teams = buildTeams(context, mode, mainIds, supportIds, supportCount);
-            createdBattle = new BattleController(context.config.battle, context.config.critical,
-                    context.config.awakening, context.abilities, mode, teams, context.config.fieldEffects(),
-                    context.registries.supportAbilityImplementations, context.registries.supportPassiveImplementations,
-                    context.events.gameplay());
-            context.config.graphics.ultimateCutIns = Gdx.app.getPreferences(UiThemeManager.PREFERENCES_NAME)
-                    .getBoolean("ultimateCutIns", context.config.graphics.ultimateCutIns);
+
+            createdBattle = new BattleController(context.config.battle, context.config.critical, context.config.awakening, context.abilities, mode, teams, context.config.fieldEffects(), context.registries.supportAbilityImplementations, context.registries.supportPassiveImplementations, context.events.gameplay());
+
+            context.config.graphics.ultimateCutIns = Gdx.app.getPreferences(UiThemeManager.PREFERENCES_NAME).getBoolean("ultimateCutIns", context.config.graphics.ultimateCutIns);
+
             createdBattle.setCutInsEnabled(context.config.graphics.ultimateCutIns);
-            createdInput = new InputBindingManager(context.config.controls);
-            createdRenderer = new SplitScreenRenderer(context.config.battle, context.config.graphics, teams,
-                    context.config.skills(), context.config.ultimates(), context.config.awakening.texturePath,
-                    context.registries.effects.values(), context.resources);
+
+            InputDeviceMode inputMode = InputDeviceMode.load(Gdx.app.getPreferences(UiThemeManager.PREFERENCES_NAME));
+
+            createdInput = new PlayerInputManager(context.config.controls, context.joyCons, inputMode);
+            createdRenderer = new SplitScreenRenderer(context.config.battle, context.config.graphics, teams, context.config.skills(), context.config.ultimates(), context.config.awakening.texturePath, context.registries.effects.values(), context.resources);
             createdHud = new BattleHud(context, createdBattle);
             createdPauseMenu = createPauseMenu(createdHud);
+
         } catch (RuntimeException | Error error) {
             disposeAfterConstructionFailure(error, createdInput, createdRenderer, createdHud);
             throw error;
         }
+
         battle = createdBattle;
         input = createdInput;
         renderer = createdRenderer;
@@ -79,20 +86,27 @@ public final class BattleScreen extends ScreenAdapter {
         pauseMenu = createdPauseMenu;
     }
 
-    static List<BattleTeamDefinition> buildTeams(GameContext context, BattleMode mode,
-                                                  List<String> mainIds, List<String> supportIds,
-                                                  int supportCount) {
-        int mainCount = mode == BattleMode.CHAOS ? 3 : 1;
+    static List<BattleTeamDefinition> buildTeams(GameContext context, BattleMode mode, List<String> mainIds, List<String> supportIds, int supportCount) {
+        int mainCount = BattleModeRoster.mainCount(mode);
+
+        if (mode == BattleMode.MEGA_GALAXY && (mainIds.size() != 2 * mainCount || supportCount != BattleModeRoster.supportCount(mode) || supportIds.size() != 2 * supportCount)) {
+            throw new IllegalArgumentException("Mega Galaxy mode requires 2 complete teams");
+        }
+
         int playerCount = mode == BattleMode.TRAINING ? 1 : mainIds.size() / mainCount;
+
         List<BattleTeamDefinition> teams = new ArrayList<>();
 
         for (int player = 0; player < playerCount; player++) {
             int mainOffset = player * mainCount;
+
             CharacterDefinition representative = context.characters.require(mainIds.get(mainOffset));
             List<CharacterDefinition> subMains = new ArrayList<>();
+
             for (int slot = 1; slot < mainCount; slot++) {
                 subMains.add(context.characters.require(mainIds.get(mainOffset + slot)));
             }
+
             List<SupportCharacterDefinition> playerSupports = new ArrayList<>();
 
             for (int slot = 0; slot < supportCount; slot++) {
@@ -127,6 +141,7 @@ public final class BattleScreen extends ScreenAdapter {
                     case Input.Keys.F3 -> battle.trainingResetStatistics();
                     case Input.Keys.F4 -> battle.trainingSetElapsed(battle.timer().elapsed() + 30);
                     case Input.Keys.F5 -> battle.trainingSpawnAwakening();
+
                     default -> {
                         return false;
                     }
@@ -149,6 +164,7 @@ public final class BattleScreen extends ScreenAdapter {
             accumulator += frameDelta;
 
             while (accumulator >= context.config.battle.fixedStepSeconds) {
+                input.refreshControllers();
                 EnumMap<PlayerId, PlayerCommand> commands = new EnumMap<>(PlayerId.class);
 
                 for (PlayerId id : battle.playerIds()) {
@@ -196,8 +212,10 @@ public final class BattleScreen extends ScreenAdapter {
 
         TextButton resume = new TextButton(context.i18n.text("menu.resume"), context.skin);
         table.add(resume).row();
+
         TextButton quit = new TextButton(context.i18n.text("menu.quit"), context.skin);
         table.add(quit);
+
         resume.addListener(new ChangeListener() {
             public void changed(ChangeEvent event, Actor actor) {
                 togglePause();
@@ -213,14 +231,15 @@ public final class BattleScreen extends ScreenAdapter {
         return table;
     }
 
-    private static void disposeAfterConstructionFailure(Throwable failure, InputBindingManager input,
-                                                        SplitScreenRenderer renderer, BattleHud hud) {
+    private static void disposeAfterConstructionFailure(Throwable failure, PlayerInputManager input, SplitScreenRenderer renderer, BattleHud hud) {
         if (hud != null) {
             closeAfterFailure(failure, hud::dispose);
         }
+
         if (renderer != null) {
             closeAfterFailure(failure, renderer::dispose);
         }
+
         if (input != null) {
             closeAfterFailure(failure, input::clear);
         }

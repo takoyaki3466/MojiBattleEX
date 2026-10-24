@@ -33,25 +33,60 @@ import java.util.List;
  * <p>単純な倍率と状態を持つイベント駆動効果を同じ拡張点で表し、未使用機能はdefault実装で省略できるようにするために作成された。</p>
  */
 public interface PassiveRuntime {
-    default float attackMultiplier(CombatantView owner) { return 1f; }
-    default float moveSpeedMultiplier(CombatantView owner) { return 1f; }
-    default float skillCooldownMultiplier(CombatantView owner) { return 1f; }
-    default float ultimateGainMultiplier(CombatantView owner) { return 1f; }
-    default float incomingDamageMultiplier(CombatantView owner) { return 1f; }
-    default float hitboxMultiplier(CombatantView owner) { return 1f; }
-    default float stunMultiplier(CombatantView owner) { return 1f; }
-    default long additionalUltimateAttackCount(CombatantView owner) { return 0L; }
-    /** 固定ステップごとに1回呼ばれる。ポーズ中と戦闘終了後は呼ばれない。 */
+
+    default float attackMultiplier(CombatantView owner) {
+        return 1f;
+    }
+
+    default float moveSpeedMultiplier(CombatantView owner) {
+        return 1f;
+    }
+
+    default float skillCooldownMultiplier(CombatantView owner) {
+        return 1f;
+    }
+
+    default float ultimateGainMultiplier(CombatantView owner) {
+        return 1f;
+    }
+
+    default float incomingDamageMultiplier(CombatantView owner) {
+        return 1f;
+    }
+
+    default float hitboxMultiplier(CombatantView owner) {
+        return 1f;
+    }
+
+    default float stunMultiplier(CombatantView owner) {
+        return 1f;
+    }
+
+    default long additionalUltimateAttackCount(CombatantView owner) {
+        return 0L;
+    }
+
+    /**
+     * 固定ステップごとに1回呼ばれる。ポーズ中と戦闘終了後は呼ばれない。
+     */
     default void update(PassiveUpdateContext context) {
     }
 
     default void onSkillActivated(AbilityActivationContext context) {
     }
 
+    /**
+     * 所有者が通常攻撃を開始した直後に、攻撃対象を含むコンテキストで呼ばれる。
+     */
+    default void onNormalAttack(AbilityActivationContext context) {
+    }
+
     default void onUltimateActivated(AbilityActivationContext context) {
     }
 
-    /** 必殺技ダメージを確定するたびに評価される。 */
+    /**
+     * 必殺技ダメージを確定するたびに評価される。
+     */
     default float ultimateDamageMultiplier(CombatantView owner) {
         return 1f;
     }
@@ -64,17 +99,23 @@ public interface PassiveRuntime {
         return 0f;
     }
 
-    /** trueの間、所有者が発生させる全攻撃は防御倍率を無視する。 */
+    /**
+     * trueの間、所有者が発生させる全攻撃は防御倍率を無視する。
+     */
     default boolean ignoresDefense(CombatantView owner) {
         return false;
     }
 
-    /** 通常攻撃を行うたびに再評価される補正。 */
+    /**
+     * 通常攻撃を行うたびに再評価される補正。
+     */
     default List<NormalAttackModifier> normalAttackModifiers(CombatantView owner) {
         return List.of();
     }
 
-    /** HUD更新時に取得され、priority降順・翻訳キー順で最大8件表示される。 */
+    /**
+     * HUD更新時に取得され、priority降順・翻訳キー順で最大8件表示される。
+     */
     default List<AbilityStateLine> stateLines(CombatantView owner) {
         return List.of();
     }

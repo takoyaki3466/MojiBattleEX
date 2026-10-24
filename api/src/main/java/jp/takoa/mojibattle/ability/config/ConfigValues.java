@@ -3,7 +3,9 @@ package jp.takoa.mojibattle.ability.config;
 import jp.takoa.mojibattle.ability.config.annotations.ConfigView;
 import jp.takoa.mojibattle.resource.ResourceId;
 
-/** ConfigViewから基本型を厳密に読み取り、既定値を含めて検証する。 */
+/**
+ * ConfigViewから基本型を厳密に読み取り、既定値を含めて検証する。
+ */
 public final class ConfigValues {
     private ConfigValues() {
     }
@@ -78,15 +80,13 @@ public final class ConfigValues {
             throw typeError(key, "integer", raw);
         }
         double value = number.doubleValue();
-        if (!Double.isFinite(value) || value != Math.rint(value)
-                || value < Integer.MIN_VALUE || value > Integer.MAX_VALUE) {
+        if (!Double.isFinite(value) || value != Math.rint(value) || value < Integer.MIN_VALUE || value > Integer.MAX_VALUE) {
             throw new IllegalArgumentException(key + " must be an exact int");
         }
         return (int) value;
     }
 
     private static IllegalArgumentException typeError(String key, String expected, Object raw) {
-        return new IllegalArgumentException(key + " must be " + expected + ", but was "
-                + (raw == null ? "null" : raw.getClass().getName()));
+        return new IllegalArgumentException(key + " must be " + expected + ", but was " + (raw == null ? "null" : raw.getClass().getName()));
     }
 }

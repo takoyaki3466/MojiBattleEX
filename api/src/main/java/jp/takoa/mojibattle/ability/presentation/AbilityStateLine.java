@@ -23,12 +23,12 @@ import java.util.Objects;
  * <p>Runtimeへフォント・色・座標などの描画依存を持ち込まず、ローカライズ可能な意味データだけを受け渡すために作成された。</p>
  *
  * @param translationKey 翻訳辞書キー
- * @param arguments 翻訳へ渡す不変引数列
- * @param priority 大きい値を先に表示する優先順位
- * @param iconId 任意の名前空間付きアイコン。未指定時は{@code null}
+ * @param arguments      翻訳へ渡す不変引数列
+ * @param priority       大きい値を先に表示する優先順位
+ * @param iconId         任意の名前空間付きアイコン。未指定時は{@code null}
  */
-public record AbilityStateLine(String translationKey, List<Object> arguments, int priority,
-                               ResourceId iconId) {
+public record AbilityStateLine(String translationKey, List<Object> arguments, int priority, ResourceId iconId) {
+
     public AbilityStateLine {
         if (translationKey == null || translationKey.isBlank()) {
             throw new IllegalArgumentException("translationKey is required");

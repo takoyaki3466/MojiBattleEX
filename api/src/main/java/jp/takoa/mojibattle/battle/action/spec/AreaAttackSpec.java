@@ -21,21 +21,20 @@ import java.util.Objects;
  * <h2>設計理由</h2>
  * <p>予告、待機、範囲判定、命中をホストへ委譲し、Abilityが独自タイマーを持たずに遅延範囲攻撃を表現するために作成された。</p>
  *
- * @param delaySeconds 発動までの非負秒
- * @param radius 攻撃半径
- * @param damage 各対象へ適用するダメージ要求
+ * @param delaySeconds    発動までの非負秒
+ * @param radius          攻撃半径
+ * @param damage          各対象へ適用するダメージ要求
  * @param warningEffectId 任意の予告演出ID
- * @param impactEffectId 任意の命中演出ID
- * @param objectTexture 任意の表示オブジェクト画像ID
- * @param effectScale 非負の演出倍率
+ * @param impactEffectId  任意の命中演出ID
+ * @param objectTexture   任意の表示オブジェクト画像ID
+ * @param effectScale     非負の演出倍率
  */
-public record AreaAttackSpec(float delaySeconds, float radius, DamageRequest damage,
-                             ResourceId warningEffectId, ResourceId impactEffectId,
-                             ResourceId objectTexture, float effectScale) {
+public record AreaAttackSpec(float delaySeconds, float radius, DamageRequest damage, ResourceId warningEffectId,
+                             ResourceId impactEffectId, ResourceId objectTexture, float effectScale) {
     public AreaAttackSpec {
         Objects.requireNonNull(damage, "damage");
-        if (!Float.isFinite(delaySeconds) || delaySeconds < 0 || !Float.isFinite(radius) || radius <= 0
-                || !Float.isFinite(effectScale) || effectScale < 0) {
+
+        if (!Float.isFinite(delaySeconds) || delaySeconds < 0 || !Float.isFinite(radius) || radius <= 0 || !Float.isFinite(effectScale) || effectScale < 0) {
             throw new IllegalArgumentException("Area attack timing, radius, or scale is invalid");
         }
     }

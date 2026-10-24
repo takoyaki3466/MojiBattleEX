@@ -21,23 +21,20 @@ import java.util.Objects;
  * <h2>設計理由</h2>
  * <p>全敵の移動と周期判定を単一のホスト管理オブジェクトへまとめ、Abilityごとの走査処理を不要にするために作成された。</p>
  *
- * @param durationSeconds 効果を維持する正の秒数
+ * @param durationSeconds     効果を維持する正の秒数
  * @param tickIntervalSeconds ダメージ判定の正の周期秒
- * @param pullUnitsPerSecond 敵を中央へ移動させる秒間距離
- * @param damagePerTick 一周期ごとのダメージ要求
- * @param effectId 継続演出ID
- * @param effectScale 演出倍率
+ * @param pullUnitsPerSecond  敵を中央へ移動させる秒間距離
+ * @param damagePerTick       一周期ごとのダメージ要求
+ * @param effectId            継続演出ID
+ * @param effectScale         演出倍率
  */
-public record BattlefieldPulseSpec(float durationSeconds, float tickIntervalSeconds,
-                                   float pullUnitsPerSecond, DamageRequest damagePerTick,
-                                   ResourceId effectId, float effectScale) {
+public record BattlefieldPulseSpec(float durationSeconds, float tickIntervalSeconds, float pullUnitsPerSecond,
+                                   DamageRequest damagePerTick, ResourceId effectId, float effectScale) {
     public BattlefieldPulseSpec {
         Objects.requireNonNull(damagePerTick, "damagePerTick");
         Objects.requireNonNull(effectId, "effectId");
-        if (!Float.isFinite(durationSeconds) || durationSeconds <= 0
-                || !Float.isFinite(tickIntervalSeconds) || tickIntervalSeconds <= 0
-                || !Float.isFinite(pullUnitsPerSecond) || pullUnitsPerSecond < 0
-                || !Float.isFinite(effectScale) || effectScale < 0) {
+
+        if (!Float.isFinite(durationSeconds) || durationSeconds <= 0 || !Float.isFinite(tickIntervalSeconds) || tickIntervalSeconds <= 0 || !Float.isFinite(pullUnitsPerSecond) || pullUnitsPerSecond < 0 || !Float.isFinite(effectScale) || effectScale < 0) {
             throw new IllegalArgumentException("Battlefield pulse values are invalid");
         }
     }

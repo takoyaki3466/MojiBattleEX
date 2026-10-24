@@ -11,10 +11,11 @@ import jp.takoa.mojibattle.item.ability.support.skill.standard.TrainChargeSuppor
 import jp.takoa.mojibattle.item.ability.support.skill.standard.WindPullSupportSkill;
 import jp.takoa.mojibattle.registry.MojiBattleRegister;
 
-/** 補助キャラクターのスキルだけを登録する。 */
+/**
+ * 補助キャラクターのスキルだけを登録する。
+ */
 public final class SupportSkillsInit {
-    public static final MojiBattleRegister.SupportAbility REGISTER =
-            MojiBattleRegister.createSupportAbility(ItemContentModule.MOD_ID);
+    public static final MojiBattleRegister.SupportAbility REGISTER = MojiBattleRegister.createSupportAbility(ItemContentModule.MOD_ID);
 
     static {
         REGISTER.register("ally_attack_up", AllyAttackUpSupportSkill.class);

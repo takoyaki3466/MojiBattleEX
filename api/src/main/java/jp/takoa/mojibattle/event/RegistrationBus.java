@@ -8,8 +8,12 @@ import java.util.function.Consumer;
  * <p>イベントの発行権限を公開せず、ホストが配送する登録イベントへの購読だけを許可する。</p>
  */
 public interface RegistrationBus {
-    /** この購読境界を所有するMOD namespace。ホスト内部Busではnull。 */
-    default String ownerNamespace() { return null; }
+    /**
+     * この購読境界を所有するMOD namespace。ホスト内部Busではnull。
+     */
+    default String ownerNamespace() {
+        return null;
+    }
 
     /**
      * 指定したイベント型のリスナーを登録する。

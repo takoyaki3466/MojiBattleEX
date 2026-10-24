@@ -25,22 +25,44 @@ import java.util.Objects;
  * <p>投射物数ではなく「攻撃動作」を契機とするパッシブを、命中処理やcore攻撃者型へ依存せず実装するために作成された。</p>
  *
  * @param attackerInstanceId 戦闘内で一意な攻撃者個体ID
- * @param characterId 攻撃者のキャラクター定義ID
- * @param team 攻撃者の陣営
- * @param attackerType 攻撃者の個体区分
+ * @param characterId        攻撃者のキャラクター定義ID
+ * @param team               攻撃者の陣営
+ * @param attackerType       攻撃者の個体区分
  */
-public record NormalAttackEvent(String attackerInstanceId, ResourceId characterId, Team team, AttackerType attackerType) {
+public record NormalAttackEvent(String attackerInstanceId, ResourceId characterId, Team team,
+                                AttackerType attackerType) {
     public NormalAttackEvent {
         Objects.requireNonNull(attackerInstanceId, "attackerInstanceId");
         Objects.requireNonNull(characterId, "characterId");
         Objects.requireNonNull(team, "team");
         Objects.requireNonNull(attackerType, "attackerType");
     }
-    /** 攻撃者が属する戦闘上の陣営。 */
-    public enum Team { ALLY, ENEMY }
-    /** 攻撃者がメイン、補助、召喚のどれであるかを表す。 */
-    public enum AttackerType { MAIN, SUPPORT, SUMMON }
-    public AttackType attackType() { return AttackType.NORMAL; }
-    /** 将来のイベント共通化に備えた攻撃種別。現在は通常攻撃だけを表す。 */
-    public enum AttackType { NORMAL }
+
+    /**
+     * 攻撃者が属する戦闘上の陣営。
+     */
+    public enum Team {
+        ALLY,
+        ENEMY
+    }
+
+    /**
+     * 攻撃者がメイン、補助、召喚のどれであるかを表す。
+     */
+    public enum AttackerType {
+        MAIN,
+        SUPPORT,
+        SUMMON
+    }
+
+    public AttackType attackType() {
+        return AttackType.NORMAL;
+    }
+
+    /**
+     * 将来のイベント共通化に備えた攻撃種別。現在は通常攻撃だけを表す。
+     */
+    public enum AttackType {
+        NORMAL
+    }
 }

@@ -1,6 +1,8 @@
 package jp.takoa.mojibattle.resource;
 
-/** JAR内で名前空間化されるリソースルート。 */
+/**
+ * JAR内で名前空間化されるリソースルート。
+ */
 public enum ResourceKind {
     ASSET("assets"),
     DATA("data");

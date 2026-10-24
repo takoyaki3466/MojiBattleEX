@@ -20,20 +20,18 @@ import java.util.Objects;
  * <h2>設計理由</h2>
  * <p>分裂後の個体ごとに異なる見た目と能力値を指定しながら、coreの召喚実装をAPIへ公開しないために作成された。</p>
  *
- * @param displayGlyph 画像が使用できない場合にも表示できる代替文字
- * @param texture 召喚個体の画像ID
- * @param attackDamage 通常攻撃一回の基礎ダメージ
+ * @param displayGlyph          画像が使用できない場合にも表示できる代替文字
+ * @param texture               召喚個体の画像ID
+ * @param attackDamage          通常攻撃一回の基礎ダメージ
  * @param attackIntervalSeconds 通常攻撃間隔秒
- * @param moveSpeed 秒あたりの移動速度
+ * @param moveSpeed             秒あたりの移動速度
  */
-public record SupportSplitMemberSpec(String displayGlyph, ResourceId texture, float attackDamage,
-                                     float attackIntervalSeconds, float moveSpeed) {
+public record SupportSplitMemberSpec(String displayGlyph, ResourceId texture, float attackDamage, float attackIntervalSeconds, float moveSpeed) {
     public SupportSplitMemberSpec {
         Objects.requireNonNull(displayGlyph, "displayGlyph");
         Objects.requireNonNull(texture, "texture");
-        if (!Float.isFinite(attackDamage) || attackDamage < 0
-                || !Float.isFinite(attackIntervalSeconds) || attackIntervalSeconds <= 0
-                || !Float.isFinite(moveSpeed) || moveSpeed < 0) {
+
+        if (!Float.isFinite(attackDamage) || attackDamage < 0 || !Float.isFinite(attackIntervalSeconds) || attackIntervalSeconds <= 0 || !Float.isFinite(moveSpeed) || moveSpeed < 0) {
             throw new IllegalArgumentException("Invalid split member statistics");
         }
     }

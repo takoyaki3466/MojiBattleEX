@@ -317,7 +317,8 @@ public final class CharacterEditorScreen extends StageScreen {
             }
         }
 
-        navigation(4, () -> {});
+        navigation(4, () -> {
+        });
     }
 
     private String savedSlotLabel(int slot, CustomCharacterData saved) {

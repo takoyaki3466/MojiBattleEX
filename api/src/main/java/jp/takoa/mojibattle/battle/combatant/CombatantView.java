@@ -20,14 +20,19 @@ package jp.takoa.mojibattle.battle.combatant;
  * <p>coreの可変エンティティをAPIから隔離し、識別・現在値・位置だけを安定した契約として公開するために作成された。</p>
  */
 public interface CombatantView {
+
     String id();
 
-    /** 戦闘中の個体を一意に表すID。旧ホストでは定義IDへフォールバックする。 */
+    /**
+     * 戦闘中の個体を一意に表すID。旧ホストでは定義IDへフォールバックする。
+     */
     default String instanceId() {
         return id();
     }
 
-    /** この個体がメイン、補助、召喚のどれであるかを返す。 */
+    /**
+     * この個体がメイン、補助、召喚のどれであるかを返す。
+     */
     default CombatantKind kind() {
         return CombatantKind.MAIN;
     }
@@ -38,19 +43,25 @@ public interface CombatantView {
 
     float ultimatePoints();
 
-    /** 必殺ゲージ上限。旧ホストでは100を既定値とする。 */
+    /**
+     * 必殺ゲージ上限。旧ホストでは100を既定値とする。
+     */
     default float maximumUltimatePoints() {
         return 100f;
     }
 
     boolean alive();
 
-    /** 防御を含む現在の被ダメージ倍率。1が無補正。 */
+    /**
+     * 防御を含む現在の被ダメージ倍率。1が無補正。
+     */
     default float defenseMultiplier() {
         return 1f;
     }
 
-    /** coreの描画型に依存しない現在位置。 */
+    /**
+     * coreの描画型に依存しない現在位置。
+     */
     default CombatantPosition position() {
         return CombatantPosition.ORIGIN;
     }

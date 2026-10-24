@@ -4,7 +4,7 @@ plugins {
 
 allprojects {
     group = "jp.takoa.mojibattle"
-    version = "v0.9-beta-4"
+    version = "v1.0-release-0"
 
     repositories {
         mavenCentral()

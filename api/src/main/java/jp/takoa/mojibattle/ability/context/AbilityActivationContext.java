@@ -24,8 +24,8 @@ import jp.takoa.mojibattle.battle.combatant.CombatantView;
  * <h2>設計理由</h2>
  * <p>Ability実装がcoreの可変クラスを保持・変更することを防ぎ、許可された操作だけを明示するために作成された。</p>
  *
- * @param user Abilityの使用者
- * @param target 現在の対象。存在しない場合は{@code null}
+ * @param user    Abilityの使用者
+ * @param target  現在の対象。存在しない場合は{@code null}
  * @param actions 所属戦闘だけを操作できる境界
  */
 public record AbilityActivationContext(CombatantView user, CombatantView target, CombatActions actions) {

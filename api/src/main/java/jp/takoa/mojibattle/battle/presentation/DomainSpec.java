@@ -21,19 +21,18 @@ import java.util.Objects;
  * <h2>設計理由</h2>
  * <p>能力値効果と視覚領域を分離し、複数領域を同時合成しても個別のRuntime状態へ依存しないようにするために作成された。</p>
  *
- * @param id 領域の安定ID
+ * @param id              領域の安定ID
  * @param durationSeconds 有効時間
- * @param visualStyle 戦場の視覚テーマ
- * @param intensity 0から1までの演出強度
+ * @param visualStyle     戦場の視覚テーマ
+ * @param intensity       0から1までの演出強度
  * @param ambientEffectId 任意の継続演出ID
  */
-public record DomainSpec(ResourceId id, float durationSeconds, DomainVisualStyle visualStyle,
-                         float intensity, ResourceId ambientEffectId) {
+public record DomainSpec(ResourceId id, float durationSeconds, DomainVisualStyle visualStyle, float intensity, ResourceId ambientEffectId) {
     public DomainSpec {
         Objects.requireNonNull(id, "id");
         Objects.requireNonNull(visualStyle, "visualStyle");
-        if (!Float.isFinite(durationSeconds) || durationSeconds <= 0
-                || !Float.isFinite(intensity) || intensity < 0 || intensity > 1) {
+
+        if (!Float.isFinite(durationSeconds) || durationSeconds <= 0 || !Float.isFinite(intensity) || intensity < 0 || intensity > 1) {
             throw new IllegalArgumentException("Domain duration or intensity is invalid");
         }
     }

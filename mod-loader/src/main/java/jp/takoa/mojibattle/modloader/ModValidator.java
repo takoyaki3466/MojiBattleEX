@@ -8,7 +8,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-/** metadataの必須値、ID、version、重複をClassLoader生成前に検証する。 */
+/**
+ * metadataの必須値、ID、version、重複をClassLoader生成前に検証する。
+ */
 final class ModValidator {
     private static final int SUPPORTED_SCHEMA = 1;
     private static final String HOST_MOD_ID = "mojibattle_game";
@@ -78,7 +80,9 @@ final class ModValidator {
         }
     }
 
-    /** 初期形式では完全一致または最小版指定だけを受け付ける。 */
+    /**
+     * 初期形式では完全一致または最小版指定だけを受け付ける。
+     */
     private static void validateGameVersion(String requirement) {
         if (requirement == null || requirement.isBlank()) {
             throw new IllegalArgumentException("Game version is required");

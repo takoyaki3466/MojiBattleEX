@@ -30,11 +30,26 @@ import java.util.List;
  * <p>補助はメインパッシブと異なる開始・終了・通常攻撃通知を必要とするため、専用ライフサイクルとして分離された。</p>
  */
 public interface SupportPassiveRuntime {
-    default void onBattleStart(SupportPassiveContext context) { }
-    default void update(SupportPassiveContext context, float deltaSeconds) { }
-    default void onSkillActivated(SupportPassiveContext context) { }
-    default void onUltimateActivated(SupportPassiveContext context) { }
-    default void onNormalAttack(SupportPassiveContext context, NormalAttackEvent event) { }
-    default List<AbilityStateLine> stateLines(SupportPassiveContext context) { return List.of(); }
-    default void onBattleEnd(SupportPassiveContext context) { }
+
+    default void onBattleStart(SupportPassiveContext context) {
+    }
+
+    default void update(SupportPassiveContext context, float deltaSeconds) {
+    }
+
+    default void onSkillActivated(SupportPassiveContext context) {
+    }
+
+    default void onUltimateActivated(SupportPassiveContext context) {
+    }
+
+    default void onNormalAttack(SupportPassiveContext context, NormalAttackEvent event) {
+    }
+
+    default List<AbilityStateLine> stateLines(SupportPassiveContext context) {
+        return List.of();
+    }
+
+    default void onBattleEnd(SupportPassiveContext context) {
+    }
 }

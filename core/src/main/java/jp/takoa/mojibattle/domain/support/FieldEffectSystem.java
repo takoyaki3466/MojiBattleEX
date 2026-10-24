@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.LinkedHashSet;
 import java.util.Set;
+
 import jp.takoa.mojibattle.domain.CharacterRuntime;
 import jp.takoa.mojibattle.domain.PlayerId;
 
@@ -22,8 +23,7 @@ public final class FieldEffectSystem {
     }
 
     public void activate(FieldEffectDefinition effect, PlayerId owner) {
-        Activation activation = active.computeIfAbsent(effect.id,
-                ignored -> new Activation(effect, new LinkedHashSet<>()));
+        Activation activation = active.computeIfAbsent(effect.id, ignored -> new Activation(effect, new LinkedHashSet<>()));
         activation.owners.add(owner);
     }
 
@@ -61,8 +61,7 @@ public final class FieldEffectSystem {
             if (effect.type.equals(type) && applies(activation, target)) {
                 float value = effect.magnitude;
                 if (effect.intervalSeconds > 0) {
-                    value = Math.min(effect.maximum,
-                            (float) Math.floor(elapsed / effect.intervalSeconds) * effect.magnitude);
+                    value = Math.min(effect.maximum, (float) Math.floor(elapsed / effect.intervalSeconds) * effect.magnitude);
                 }
                 result *= ATTACK_GROWTH_TYPE.equals(type) ? 1f + value : value;
             }
@@ -77,8 +76,7 @@ public final class FieldEffectSystem {
             if (effect.type.equals(type) && applies(activation, target)) {
                 float value = effect.magnitude;
                 if (effect.intervalSeconds > 0) {
-                    value = Math.min(effect.maximum,
-                            (float) Math.floor(elapsed / effect.intervalSeconds) * effect.magnitude);
+                    value = Math.min(effect.maximum, (float) Math.floor(elapsed / effect.intervalSeconds) * effect.magnitude);
                 }
                 result *= ATTACK_GROWTH_TYPE.equals(type) ? 1f + value : value;
             }
@@ -140,8 +138,7 @@ public final class FieldEffectSystem {
 
     public Set<PlayerId> ownersOfType(String type) {
         LinkedHashSet<PlayerId> result = new LinkedHashSet<>();
-        active.values().stream().filter(value -> value.definition.type.equals(type))
-                .forEach(value -> result.addAll(value.owners));
+        active.values().stream().filter(value -> value.definition.type.equals(type)).forEach(value -> result.addAll(value.owners));
         return Set.copyOf(result);
     }
 
@@ -157,8 +154,7 @@ public final class FieldEffectSystem {
         };
         if (!teamMatch) return false;
         if (java.util.Arrays.asList(effect.excludeCharacterIds).contains(target.definition.id)) return false;
-        return effect.includeCharacterIds.length == 0
-                || java.util.Arrays.asList(effect.includeCharacterIds).contains(target.definition.id);
+        return effect.includeCharacterIds.length == 0 || java.util.Arrays.asList(effect.includeCharacterIds).contains(target.definition.id);
     }
 
     private static boolean applies(Activation activation, SupportCharacterRuntime target) {
@@ -173,7 +169,6 @@ public final class FieldEffectSystem {
         };
         if (!teamMatch) return false;
         if (java.util.Arrays.asList(effect.excludeCharacterIds).contains(target.definition.id)) return false;
-        return effect.includeCharacterIds.length == 0
-                || java.util.Arrays.asList(effect.includeCharacterIds).contains(target.definition.id);
+        return effect.includeCharacterIds.length == 0 || java.util.Arrays.asList(effect.includeCharacterIds).contains(target.definition.id);
     }
 }

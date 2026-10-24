@@ -1,5 +1,6 @@
 package jp.takoa.mojibattle.domain.support;
 
+import jp.takoa.mojibattle.ability.runtime.SupportAbilityRuntime;
 import jp.takoa.mojibattle.audio.BattleSoundCue;
 import jp.takoa.mojibattle.domain.BattleController;
 import jp.takoa.mojibattle.domain.PlayerTeam;
@@ -49,6 +50,7 @@ public final class SupportAbilityService {
         }
 
         long previousCutInRevision = battle.cutInRevision();
+
         if (execute(battle, team, support, ability, true)) {
             support.spendUltimate(ability.pointCost);
             if (battle.cutInRevision() == previousCutInRevision) {
@@ -63,13 +65,14 @@ public final class SupportAbilityService {
     /**
      * 実装IDを解決して固有処理を呼び、補助能力共通の効果音と多重リング演出を重ねる。
      */
-    private boolean execute(BattleController battle, PlayerTeam team, SupportCharacterRuntime support,
-                            SupportAbilityDefinition ability, boolean ultimate) {
+    private boolean execute(BattleController battle, PlayerTeam team, SupportCharacterRuntime support, SupportAbilityDefinition ability, boolean ultimate) {
         SupportAbilityImpl implementation = implementations.require(ability.type);
-        var runtime = implementation.factory().create(MapConfigView.of(ability));
+        SupportAbilityRuntime runtime = implementation.factory().create(MapConfigView.of(ability));
+
         if (runtime == null || !runtime.activate(ExternalSupportAbilityContexts.create(battle, team, support, ability))) {
             return false;
         }
+
         battle.emitSound(BattleSoundCue.SUPPORT);
 
         for (int ring = 0; ring < (ultimate ? 4 : 2); ring++) {

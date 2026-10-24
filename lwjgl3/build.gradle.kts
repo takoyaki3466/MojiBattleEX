@@ -12,17 +12,20 @@ plugins {
 val packageVersion = project.version.toString()
 
 fun toJpackageVersion(version: String): String {
-    val pattern = Regex("""^v?(\d+)\.(\d+)(?:\.(\d+))?(?:-beta-(\d+))?$""")
+    val pattern = Regex("""^v?(\d+)\.(\d+)(?:\.(\d+))?(?:-(?:beta|release)-(\d+))?$""")
+
     val match = pattern.matchEntire(version) ?: throw GradleException("Unsupported package version: $version")
 
     val major = match.groupValues[1]
     val minor = match.groupValues[2]
     val patch = match.groupValues[3]
-    val beta = match.groupValues[4]
+    val revision = match.groupValues[4]
 
-    val revision = beta.ifEmpty { patch.ifEmpty { "0" } }
+    val buildNumber = revision.ifEmpty {
+        patch.ifEmpty { "0" }
+    }
 
-    return "$major.$minor.$revision"
+    return "$major.$minor.$buildNumber"
 }
 
 val jpackageVersion = toJpackageVersion(packageVersion)
@@ -36,6 +39,10 @@ dependencies {
     implementation(project(":core"))
     implementation(project(":mod-loader"))
     implementation("com.badlogicgames.gdx:gdx-backend-lwjgl3:${property("gdxVersion")}")
+    implementation("com.badlogicgames.gdx-controllers:gdx-controllers-desktop:${property("gdxControllersVersion")}")
+    implementation("com.badlogicgames.jamepad:jamepad:${property("jamepadVersion")}") {
+        exclude(group = "com.badlogicgames.gdx", module = "gdx-jnigen-loader")
+    }
     runtimeOnly("com.badlogicgames.gdx:gdx-platform:${property("gdxVersion")}:natives-desktop")
     runtimeOnly("com.badlogicgames.gdx:gdx-freetype-platform:${property("gdxVersion")}:natives-desktop")
     testImplementation("org.junit.jupiter:junit-jupiter:5.12.1")
@@ -78,6 +85,13 @@ tasks.named<JavaExec>("run") {
     dependsOn(prepareRunMods)
     workingDir = rootProject.file("assets")
 
+    environment("SDL_JOYSTICK_HIDAPI_COMBINE_JOY_CONS", "0")
+    environment("SDL_JOYSTICK_HIDAPI_VERTICAL_JOY_CONS", "0")
+    environment("SDL_JOYSTICK_HIDAPI_JOY_CONS", "1")
+    if (System.getProperty("mojibattle.controllerDiagnostics") == "true") {
+        environment("SDL_JOYSTICK_ALLOW_BACKGROUND_EVENTS", "1")
+    }
+
     doFirst {
         systemProperty(
             "mojibattle.modsDir", developmentModsDirectory.get().asFile.absolutePath
@@ -100,7 +114,7 @@ tasks.test {
 
 val packageName = "MojiBattleEX"
 val packageVendor = "takoa"
-val packageDescription = "A loud local two-player 3D character battle game"
+val packageDescription = "A loud local multiplayer 3D character battle game"
 val packageIcon = rootProject.layout.projectDirectory.file("packaging/windows/MojiBattleEX.ico")
 val packageRoot = layout.buildDirectory.dir("jpackage")
 val installDistribution = tasks.named<Sync>("installDist")
@@ -112,6 +126,7 @@ val prepareJpackageInput = tasks.register<Sync>("prepareJpackageInput") {
 val javaToolchains = extensions.getByType<JavaToolchainService>()
 val jpackageExecutable = javaToolchains.launcherFor {
     languageVersion.set(JavaLanguageVersion.of(21))
+    vendor.set(JvmVendorSpec.ORACLE)
 }.map { launcher ->
     val executable = if (System.getProperty("os.name").lowercase().contains("windows")) "jpackage.exe" else "jpackage"
     launcher.metadata.installationPath.file("bin/$executable").asFile
@@ -162,14 +177,24 @@ fun verifyApplicationImage(image: File) {
     require(appDirectory.resolve("api-$packageVersion.jar").isFile) { "API JAR is missing" }
     require(appDirectory.resolve("core-$packageVersion.jar").isFile) { "Core JAR is missing" }
     require(appDirectory.resolve("mod-loader-$packageVersion.jar").isFile) { "MOD loader JAR is missing" }
+    require(
+        appDirectory.listFiles()
+        ?.any { it.name.startsWith("gdx-controllers-desktop-") && it.extension == "jar" } == true) {
+        "gdx-controllers desktop backend is missing"
+    }
+    require(appDirectory.listFiles()?.any { it.name.startsWith("jamepad-") && it.extension == "jar" } == true) {
+        "Jamepad controller runtime (including Windows natives) is missing"
+    }
     val modsDirectory = appDirectory.resolve("mods")
 
     require(modsDirectory.isDirectory) {
         "MOD directory is missing"
     }
 
-    require(modsDirectory.listFiles()?.none { it.extension.equals("jar", ignoreCase = true) } == true) {
-        "Core-only package must not contain bundled MOD JARs"
+    val bundledMods = modsDirectory.listFiles()?.filter { it.extension.equals("jar", ignoreCase = true) }.orEmpty()
+    val standardModName = standardItemJar.get().archiveFile.get().asFile.name
+    require(bundledMods.size == 1 && bundledMods.single().name == standardModName) {
+        "Package must contain exactly the standard item MOD"
     }
 
     require(image.resolve("runtime/bin/server/jvm.dll").isFile) { "Bundled JVM is missing" }
@@ -194,7 +219,7 @@ fun registerJpackageAppImage(
 ) = tasks.register<Exec>(taskName) {
     group = "distribution"
     description = taskDescription
-    dependsOn(prepareJpackageInput)
+    dependsOn(prepareJpackageInput, standardItemJar)
     doFirst {
         if (console && !System.getProperty("os.name").lowercase().contains("windows")) {
             throw GradleException("The debug app image with --win-console can only be built on Windows.")
@@ -219,6 +244,8 @@ fun registerJpackageAppImage(
                 "Failed to create MOD directory: ${modsDirectory.absolutePath}"
             )
         }
+        val standardMod = standardItemJar.get().archiveFile.get().asFile
+        standardMod.copyTo(modsDirectory.resolve(standardMod.name), overwrite = true)
 
         verifyApplicationImage(image)
     }

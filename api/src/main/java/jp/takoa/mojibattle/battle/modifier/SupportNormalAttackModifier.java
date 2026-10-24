@@ -26,33 +26,33 @@ import java.util.Objects;
  * <h2>設計理由</h2>
  * <p>補助能力では加算・乗算・置換の意図が異なるため、メイン用のdelta型補正と分離して明示的に合成できるようにした。</p>
  *
- * @param id 補正の安定ID
- * @param priority REPLACE値と画像・演出の選択優先度
- * @param stacking 数値の合成方式
- * @param damageMultiplier ダメージの合成値
+ * @param id                 補正の安定ID
+ * @param priority           REPLACE値と画像・演出の選択優先度
+ * @param stacking           数値の合成方式
+ * @param damageMultiplier   ダメージの合成値
  * @param intervalMultiplier 攻撃間隔の合成値
- * @param projectileCount 投射物数の合成値
- * @param hitsPerAttack 一回の攻撃あたりhit数の合成値
- * @param spreadAngle 弾列全体の扇角度
- * @param projectileTexture 任意の弾画像ID
- * @param effect 任意の発射・命中演出ID
+ * @param projectileCount    投射物数の合成値
+ * @param hitsPerAttack      一回の攻撃あたりhit数の合成値
+ * @param spreadAngle        弾列全体の扇角度
+ * @param projectileTexture  任意の弾画像ID
+ * @param effect             任意の発射・命中演出ID
  */
-public record SupportNormalAttackModifier(ResourceId id, int priority, Stacking stacking,
-        float damageMultiplier, float intervalMultiplier, int projectileCount, int hitsPerAttack,
-        float spreadAngle, ResourceId projectileTexture, ResourceId effect) {
+public record SupportNormalAttackModifier(ResourceId id, int priority, Stacking stacking, float damageMultiplier,
+                                          float intervalMultiplier, int projectileCount, int hitsPerAttack,
+                                          float spreadAngle, ResourceId projectileTexture, ResourceId effect) {
     public SupportNormalAttackModifier {
         Objects.requireNonNull(id, "id");
         Objects.requireNonNull(stacking, "stacking");
-        boolean invalidInterval = stacking == Stacking.ADD
-                ? intervalMultiplier <= -1f
-                : intervalMultiplier < 0f;
-        if (!Float.isFinite(damageMultiplier) || !Float.isFinite(intervalMultiplier)
-                || !Float.isFinite(spreadAngle) || invalidInterval || spreadAngle < 0) {
-            throw new IllegalArgumentException("Invalid support normal attack modifier: stacking=" + stacking
-                    + ", damage=" + damageMultiplier + ", interval=" + intervalMultiplier
-                    + ", spread=" + spreadAngle);
+
+        boolean invalidInterval = stacking == Stacking.ADD ? intervalMultiplier <= -1f : intervalMultiplier < 0f;
+
+        if (!Float.isFinite(damageMultiplier) || !Float.isFinite(intervalMultiplier) || !Float.isFinite(spreadAngle) || invalidInterval || spreadAngle < 0) {
+            throw new IllegalArgumentException("Invalid support normal attack modifier: stacking=" + stacking + ", damage=" + damageMultiplier + ", interval=" + intervalMultiplier + ", spread=" + spreadAngle);
         }
     }
-    /** 補助通常攻撃補正を既存値へ合成する方式。 */
-    public enum Stacking { ADD, MULTIPLY, REPLACE }
+
+    /**
+     * 補助通常攻撃補正を既存値へ合成する方式。
+     */
+    public enum Stacking {ADD, MULTIPLY, REPLACE}
 }

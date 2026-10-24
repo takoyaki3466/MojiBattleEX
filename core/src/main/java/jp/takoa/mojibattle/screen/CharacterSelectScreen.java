@@ -1,5 +1,6 @@
 package jp.takoa.mojibattle.screen;
 
+import com.badlogic.gdx.Input;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
@@ -19,6 +20,7 @@ import com.badlogic.gdx.utils.Align;
 import com.badlogic.gdx.utils.Scaling;
 import jp.takoa.mojibattle.GameContext;
 import jp.takoa.mojibattle.domain.BattleMode;
+import jp.takoa.mojibattle.domain.BattleModeRoster;
 import jp.takoa.mojibattle.domain.CharacterDefinition;
 import jp.takoa.mojibattle.domain.support.SupportCharacterDefinition;
 import jp.takoa.mojibattle.domain.ability.AbilityConfigs;
@@ -42,9 +44,9 @@ import java.util.Map;
 public final class CharacterSelectScreen extends StageScreen {
     private static final float MENU_WIDTH_RATIO = .997f;
     private static final float MENU_HEIGHT_RATIO = .992f;
-    private static final int CARD_COLUMNS = 7;
-    private static final float CARD_WIDTH = 104f;
-    private static final float CARD_HEIGHT = 92f;
+    private static final int CARD_COLUMNS = 5;
+    private static final float CARD_WIDTH = 128f;
+    private static final float CARD_HEIGHT = 112f;
 
     private final BattleMode mode;
     private final int playerCount;
@@ -80,9 +82,9 @@ public final class CharacterSelectScreen extends StageScreen {
         this.mode = mode;
         chaosUi = UiThemeManager.selected() == UiTheme.CHAOS;
         textureLoader = new GdxTextureLoader(context.resources);
-        this.playerCount = mode == BattleMode.TRAINING ? 1 : Math.max(2, Math.min(4, playerCount));
-        mainCount = mode == BattleMode.CHAOS ? 3 : 1;
-        supportCount = mode == BattleMode.CHAOS ? 4 : 1;
+        this.playerCount = mode == BattleMode.TRAINING ? 1 : mode == BattleMode.MEGA_GALAXY ? 2 : Math.max(2, Math.min(4, playerCount));
+        mainCount = BattleModeRoster.mainCount(mode);
+        supportCount = BattleModeRoster.supportCount(mode);
 
         Table root = new Table();
         root.setFillParent(true);
@@ -104,12 +106,8 @@ public final class CharacterSelectScreen extends StageScreen {
         roster.add(chosen).left().padBottom(4).row();
 
         Label supportCountLabel = new Label(context.i18n.text("select.support_count"), context.skin);
-        TextButton oneSupport = chaosUi
-                ? new ChaosButton(context.i18n.text("select.support_count_one"), context.skin, ChaosButton.Accent.CYAN)
-                : new TextButton(context.i18n.text("select.support_count_one"), context.skin);
-        TextButton twoSupports = chaosUi
-                ? new ChaosButton(context.i18n.text("select.support_count_two"), context.skin, ChaosButton.Accent.MAGENTA)
-                : new TextButton(context.i18n.text("select.support_count_two"), context.skin);
+        TextButton oneSupport = chaosUi ? new ChaosButton(context.i18n.text("select.support_count_one"), context.skin, ChaosButton.Accent.CYAN) : new TextButton(context.i18n.text("select.support_count_one"), context.skin);
+        TextButton twoSupports = chaosUi ? new ChaosButton(context.i18n.text("select.support_count_two"), context.skin, ChaosButton.Accent.MAGENTA) : new TextButton(context.i18n.text("select.support_count_two"), context.skin);
 
         supportCountControls.add(supportCountLabel).padRight(8);
         supportCountControls.add(oneSupport).width(150).height(42).padRight(4);
@@ -129,12 +127,8 @@ public final class CharacterSelectScreen extends StageScreen {
         });
 
         Table tabs = new Table();
-        existingTab = chaosUi
-                ? new ChaosButton(context.i18n.text("select.existing"), context.skin, ChaosButton.Accent.YELLOW)
-                : new TextButton(context.i18n.text("select.existing"), context.skin);
-        customTab = chaosUi
-                ? new ChaosButton(context.i18n.text("select.custom"), context.skin, ChaosButton.Accent.CYAN)
-                : new TextButton(context.i18n.text("select.custom"), context.skin);
+        existingTab = chaosUi ? new ChaosButton(context.i18n.text("select.existing"), context.skin, ChaosButton.Accent.YELLOW) : new TextButton(context.i18n.text("select.existing"), context.skin);
+        customTab = chaosUi ? new ChaosButton(context.i18n.text("select.custom"), context.skin, ChaosButton.Accent.CYAN) : new TextButton(context.i18n.text("select.custom"), context.skin);
 
         tabs.add(existingTab).width(230).height(44).padRight(4);
         tabs.add(customTab).width(230).height(44).padLeft(4);
@@ -164,16 +158,14 @@ public final class CharacterSelectScreen extends StageScreen {
         showDetailHint();
 
         Table decisions = new Table();
-        cancel = chaosUi
-                ? new ChaosButton(context.i18n.text("select.cancel"), context.skin, ChaosButton.Accent.CYAN)
-                : new TextButton(context.i18n.text("select.cancel"), context.skin);
-        confirm = chaosUi
-                ? new ChaosButton(context.i18n.text("select.confirm"), context.skin, ChaosButton.Accent.ORANGE)
-                : new TextButton(context.i18n.text("select.confirm"), context.skin);
+        TextButton back = chaosUi ? new ChaosButton(context.i18n.text("menu.back"), context.skin, ChaosButton.Accent.STEEL) : new TextButton(context.i18n.text("menu.back"), context.skin);
+        cancel = chaosUi ? new ChaosButton(context.i18n.text("select.cancel"), context.skin, ChaosButton.Accent.CYAN) : new TextButton(context.i18n.text("select.cancel"), context.skin);
+        confirm = chaosUi ? new ChaosButton(context.i18n.text("select.confirm"), context.skin, ChaosButton.Accent.ORANGE) : new TextButton(context.i18n.text("select.confirm"), context.skin);
 
         confirm.setDisabled(true);
 
-        decisions.add(cancel).growX().height(46).padRight(4);
+        decisions.add(back).growX().height(46).padRight(4);
+        decisions.add(cancel).growX().height(46).pad(0, 2, 0, 2);
         decisions.add(confirm).growX().height(46).padLeft(4);
 
         information.add(decisions).growX().height(52).padTop(4);
@@ -183,9 +175,24 @@ public final class CharacterSelectScreen extends StageScreen {
                 clearCandidate();
             }
         });
+        back.addListener(new ChangeListener() {
+            public void changed(ChangeEvent event, Actor actor) {
+                screens.show(new ModeSelectScreen(context, screens));
+            }
+        });
         confirm.addListener(new ChangeListener() {
             public void changed(ChangeEvent event, Actor actor) {
                 confirmCandidate();
+            }
+        });
+        stage.addListener(new InputListener() {
+            @Override
+            public boolean keyDown(InputEvent event, int keycode) {
+                if (keycode == Input.Keys.ENTER && pendingId != null && !confirm.isDisabled()) {
+                    confirmCandidate();
+                    return true;
+                }
+                return false;
             }
         });
 
@@ -195,8 +202,7 @@ public final class CharacterSelectScreen extends StageScreen {
         } else {
             Table upper = new Table();
             upper.add(roster).grow().minWidth(0).minHeight(0).top().padRight(3);
-            upper.add(information).width(com.badlogic.gdx.scenes.scene2d.ui.Value.percentWidth(.31f, upper))
-                    .growY().minWidth(330).minHeight(0).top().padLeft(3);
+            upper.add(information).width(com.badlogic.gdx.scenes.scene2d.ui.Value.percentWidth(.31f, upper)).growY().minWidth(330).minHeight(0).top().padLeft(3);
 
             shell = new Table(context.skin);
             shell.setBackground("bar-bg");
@@ -307,9 +313,9 @@ public final class CharacterSelectScreen extends StageScreen {
         summaryLabel.setAlignment(Align.center);
         summaryLabel.setFontScale(.47f);
 
-        card.add(image).size(45, 45).row();
-        card.add(glyphLabel).width(90).height(18).row();
-        card.add(summaryLabel).width(90).height(22).top();
+        card.add(image).size(60, 60).row();
+        card.add(glyphLabel).width(112).height(20).row();
+        card.add(summaryLabel).width(112).height(24).top();
 
         card.addListener(new InputListener() {
             @Override
@@ -353,24 +359,7 @@ public final class CharacterSelectScreen extends StageScreen {
         AbilityConfigs.AreaUltimate ultimate = context.config.ultimate(character.ultimateId);
 
         String style = context.i18n.text(styleDescriptionKey(character, skill));
-        showDetailCards(
-                name(character),
-                new DetailSection(
-                        context.i18n.text("guide.skill", context.i18n.text(skill.nameKey)),
-                        skillDetail(skill),
-                        new Color(.20f, .88f, 1f, 1f)),
-                new DetailSection(
-                        context.i18n.text("guide.ultimate", context.i18n.text(ultimate.nameKey)),
-                        ultimateDetail(ultimate) + "\n" + context.i18n.text("guide.cost", Math.round(ultimate.pointCost)),
-                        new Color(1f, .72f, .12f, 1f)),
-                new DetailSection(
-                        context.i18n.text("guide.passive", passiveNames(character)),
-                        passiveDescriptions(character),
-                        new Color(.55f, 1f, .34f, 1f)),
-                new DetailSection(
-                        context.i18n.text("select.style", ""),
-                        style,
-                        new Color(1f, .50f, .78f, 1f)));
+        showDetailCards(name(character), new DetailSection(context.i18n.text("guide.skill", context.i18n.text(skill.nameKey)), skillDetail(skill), new Color(.20f, .88f, 1f, 1f)), new DetailSection(context.i18n.text("guide.ultimate", context.i18n.text(ultimate.nameKey)), ultimateDetail(ultimate) + "\n" + context.i18n.text("guide.cost", Math.round(ultimate.pointCost)), new Color(1f, .72f, .12f, 1f)), new DetailSection(context.i18n.text("guide.passive", passiveNames(character)), passiveDescriptions(character), new Color(.55f, 1f, .34f, 1f)), new DetailSection(context.i18n.text("select.style", ""), style, new Color(1f, .50f, .78f, 1f)));
     }
 
     private void showSupport(SupportCharacterDefinition support) {
@@ -382,17 +371,12 @@ public final class CharacterSelectScreen extends StageScreen {
         String ultimate = context.i18n.text("guide.support_ultimate", context.i18n.text(support.ultimate.nameKey), Math.round(support.ultimate.pointCost));
         String style = support.custom ? context.i18n.text("select.custom_style") : context.i18n.text(support.styleKey);
 
-        showDetailCards(
-                name(support),
-                new DetailSection(skill, context.i18n.text(skillDescriptionKey), new Color(.20f, .88f, 1f, 1f)),
-                new DetailSection(ultimate, context.i18n.text(ultimateDescriptionKey), new Color(1f, .72f, .12f, 1f)),
-                new DetailSection(context.i18n.text("guide.field_passives_title"), fieldDetails(support),
-                        new Color(.55f, 1f, .34f, 1f)),
-                new DetailSection(context.i18n.text("select.style", ""), style,
-                        new Color(1f, .50f, .78f, 1f)));
+        showDetailCards(name(support), new DetailSection(skill, context.i18n.text(skillDescriptionKey), new Color(.20f, .88f, 1f, 1f)), new DetailSection(ultimate, context.i18n.text(ultimateDescriptionKey), new Color(1f, .72f, .12f, 1f)), new DetailSection(context.i18n.text("guide.field_passives_title"), fieldDetails(support), new Color(.55f, 1f, .34f, 1f)), new DetailSection(context.i18n.text("select.style", ""), style, new Color(1f, .50f, .78f, 1f)));
     }
 
-    /** 右側の解説を、強調見出しと本文を持つ独立した枠へ組み直す。 */
+    /**
+     * 右側の解説を、強調見出しと本文を持つ独立した枠へ組み直す。
+     */
     private void showDetailCards(String title, DetailSection... sections) {
         detailsContent.clearChildren();
 
@@ -514,15 +498,11 @@ public final class CharacterSelectScreen extends StageScreen {
         int supportSelection = Math.max(0, phase - mainSelectionCount());
         int player = selectingMain() ? phase / mainCount + 1 : supportSelection / supportCount + 1;
 
-        supportCountControls.setVisible(mode != BattleMode.CHAOS && !selectingMain());
+        supportCountControls.setVisible(!BattleModeRoster.chaosFormation(mode) && !selectingMain());
 
         if (selectingMain()) {
-            if (mode == BattleMode.CHAOS) {
-                prompt.setText(context.i18n.text(
-                        "select.chaos_main_prompt",
-                        player,
-                        phase % mainCount + 1,
-                        mainCount));
+            if (BattleModeRoster.chaosFormation(mode)) {
+                prompt.setText(context.i18n.text("select.chaos_main_prompt", player, phase % mainCount + 1, mainCount));
             } else {
                 prompt.setText(context.i18n.text("select.main_prompt", player));
             }
@@ -535,13 +515,7 @@ public final class CharacterSelectScreen extends StageScreen {
 
     private void startBattle() {
         try {
-            screens.show(new BattleScreen(
-                    context,
-                    screens,
-                    mode,
-                    List.copyOf(mainIds),
-                    List.copyOf(supportIds),
-                    supportCount));
+            screens.show(new BattleScreen(context, screens, mode, List.copyOf(mainIds), List.copyOf(supportIds), supportCount));
         } catch (RuntimeException | Error error) {
             DiagnosticLog.error("Battle screen transition failed", error);
             rollbackLastSelection();
@@ -564,9 +538,7 @@ public final class CharacterSelectScreen extends StageScreen {
 
     private void showBattleStartError() {
         Dialog dialog = new Dialog(context.i18n.text("battle.start.error.title"), context.skin);
-        Label message = new Label(
-                context.i18n.text("battle.start.error.message", DiagnosticLog.file()),
-                context.skin);
+        Label message = new Label(context.i18n.text("battle.start.error.message", DiagnosticLog.file()), context.skin);
         message.setWrap(true);
         dialog.getContentTable().add(message).width(720).pad(24);
         dialog.button(context.i18n.text("battle.start.error.dismiss"));
@@ -596,8 +568,13 @@ public final class CharacterSelectScreen extends StageScreen {
     private void refreshPlayerPreviews() {
         playerPreviews.clearChildren();
 
+        if (mode == BattleMode.MEGA_GALAXY) {
+            refreshMegaPlayerPreviews();
+            return;
+        }
+
         boolean denseChaos = mode == BattleMode.CHAOS && playerCount > 2;
-        boolean compact = mode == BattleMode.CHAOS || playerCount > 2 && supportCount > 1;
+        boolean compact = BattleModeRoster.chaosFormation(mode) || playerCount > 2 && supportCount > 1;
         float mainSize = denseChaos ? 34 : compact ? 42 : playerCount > 2 ? 48 : 66;
         float supportSize = denseChaos ? 28 : compact ? 34 : playerCount > 2 ? 40 : 52;
 
@@ -622,15 +599,35 @@ public final class CharacterSelectScreen extends StageScreen {
         }
     }
 
+    /**
+     * 大量の選択画像を一度に並べず、代表と選択数だけを表示する。
+     */
+    private void refreshMegaPlayerPreviews() {
+        for (int player = 0; player < playerCount; player++) {
+            Table card = new Table(context.skin);
+            card.setBackground("panel");
+            card.pad(5);
+
+            int mainSelected = Math.max(0, Math.min(mainCount, mainIds.size() - player * mainCount));
+            int supportSelected = Math.max(0, Math.min(supportCount, supportIds.size() - player * supportCount));
+            String progress = "P" + (player + 1) + "  MAIN " + mainSelected + "/" + mainCount + "  SUPPORT " + supportSelected + "/" + supportCount;
+
+            card.add(new Label(progress, context.skin)).left().expandX().row();
+            int representativeIndex = player * mainCount;
+            if (representativeIndex < mainIds.size()) {
+                CharacterDefinition representative = context.characters.require(mainIds.get(representativeIndex));
+                card.add(new Label(name(representative), context.skin)).left().expandX();
+            }
+            playerPreviews.add(card).expandX().fillX().height(106).pad(2);
+        }
+    }
+
     private void addMainPreview(Table portraits, int player, int slot, float imageSize) {
         int index = player * mainCount + slot;
-        String mainId = index < mainIds.size()
-                ? mainIds.get(index)
-                : selectingMain() && index == phase ? pendingId : null;
+        String mainId = index < mainIds.size() ? mainIds.get(index) : selectingMain() && index == phase ? pendingId : null;
 
         if (mainId == null) {
-            portraits.add(new Label(context.i18n.text("select.unselected"), context.skin))
-                    .width(imageSize).height(imageSize).center().pad(2);
+            portraits.add(new Label(context.i18n.text("select.unselected"), context.skin)).width(imageSize).height(imageSize).center().pad(2);
             return;
         }
 

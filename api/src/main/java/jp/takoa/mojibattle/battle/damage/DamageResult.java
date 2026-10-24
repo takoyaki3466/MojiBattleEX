@@ -17,8 +17,8 @@ package jp.takoa.mojibattle.battle.damage;
  * <h2>設計理由</h2>
  * <p>基礎値と実際に減ったHPを区別し、Ability側で防御・会心計算を再現する必要をなくすために作成された。</p>
  *
- * @param dealtDamage HPへ実際に適用された非負ダメージ
- * @param critical 会心判定が成立したか
+ * @param dealtDamage    HPへ実際に適用された非負ダメージ
+ * @param critical       会心判定が成立したか
  * @param defenseIgnored 防御倍率を迂回したか
  */
 public record DamageResult(float dealtDamage, boolean critical, boolean defenseIgnored) {

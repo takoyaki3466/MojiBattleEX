@@ -22,26 +22,26 @@ public final class Registry<T> {
         if (kind == null || kind.isBlank() || idExtractor == null) {
             throw new IllegalArgumentException("Registry metadata is required");
         }
+
         this.kind = kind;
         this.idExtractor = idExtractor;
+
         this.registrationValidator = (registrationId, value) -> {
             RegistryId valueId = RegistryId.parse(idExtractor.apply(value));
             if (!registrationId.equals(valueId)) {
-                throw new IllegalArgumentException("Invalid registration: registry=" + kind
-                        + ", valueType=" + value.getClass().getName()
-                        + ", registrationId=" + registrationId
-                        + ", valueId=" + valueId
-                        + ", rule=Value ID must match registration ID");
+                throw new IllegalArgumentException("Invalid registration: registry=" + kind + ", valueType=" + value.getClass().getName() + ", registrationId=" + registrationId + ", valueId=" + valueId + ", rule=Value ID must match registration ID");
             }
         };
     }
 
-    /** 値から推定する既定IDと、明示IDの型固有検証を別々に指定する。 */
-    Registry(String kind, Function<T, String> idExtractor,
-             BiConsumer<RegistryId, T> registrationValidator) {
+    /**
+     * 値から推定する既定IDと、明示IDの型固有検証を別々に指定する。
+     */
+    Registry(String kind, Function<T, String> idExtractor, BiConsumer<RegistryId, T> registrationValidator) {
         if (kind == null || kind.isBlank() || idExtractor == null || registrationValidator == null) {
             throw new IllegalArgumentException("Registry metadata is required");
         }
+
         this.kind = kind;
         this.idExtractor = idExtractor;
         this.registrationValidator = registrationValidator;
@@ -57,6 +57,7 @@ public final class Registry<T> {
     public T register(RegistryId id, T value) {
         ensureMutable();
         validate(id, value);
+
         if (values.putIfAbsent(id, value) != null) {
             throw new IllegalArgumentException("Duplicate " + kind + " ID: " + id);
         }
@@ -70,7 +71,9 @@ public final class Registry<T> {
         if (id == null || value == null) {
             throw new IllegalArgumentException(kind + " ID and value are required");
         }
+
         registrationValidator.accept(id, value);
+
         if (values.containsKey(id)) {
             throw new IllegalArgumentException("Duplicate " + kind + " ID: " + id);
         }
@@ -81,6 +84,7 @@ public final class Registry<T> {
         if (value == null) {
             throw new IllegalArgumentException("Unknown " + kind + " ID: " + id);
         }
+
         return value;
     }
 
@@ -91,12 +95,15 @@ public final class Registry<T> {
     public void replace(String id, T value) {
         ensureMutable();
         RegistryId key = RegistryId.parse(id);
+
         if (!values.containsKey(key)) {
             throw new IllegalArgumentException("Cannot replace unknown " + kind + " ID: " + id);
         }
+
         if (value == null) {
             throw new IllegalArgumentException(kind + " must not be null");
         }
+
         registrationValidator.accept(key, value);
         values.put(key, value);
     }
@@ -127,6 +134,7 @@ public final class Registry<T> {
         if (state != RegistryState.DECLARING) {
             throw new IllegalStateException(kind + " registry cannot begin registration from " + state);
         }
+
         state = RegistryState.REGISTERING;
     }
 

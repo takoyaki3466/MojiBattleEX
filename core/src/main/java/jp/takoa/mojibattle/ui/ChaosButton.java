@@ -4,15 +4,12 @@ import com.badlogic.gdx.scenes.scene2d.ui.Skin;
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
 import com.badlogic.gdx.utils.Align;
 
-/** UI 3専用の、色別ネオン枠と矢印形状を持つアクションボタン。 */
+/**
+ * UI 3専用の、色別ネオン枠と矢印形状を持つアクションボタン。
+ */
 public final class ChaosButton extends TextButton {
     public enum Accent {
-        MAGENTA("magenta"),
-        CYAN("cyan"),
-        YELLOW("yellow"),
-        LIME("lime"),
-        ORANGE("orange"),
-        STEEL("steel");
+        MAGENTA("magenta"), CYAN("cyan"), YELLOW("yellow"), LIME("lime"), ORANGE("orange"), STEEL("steel");
 
         private final String resourceName;
 
@@ -27,7 +24,9 @@ public final class ChaosButton extends TextButton {
         pad(8, 34, 10, 34);
     }
 
-    /** キャラクターカードをIDごとに安定したネオン色へ振り分ける。 */
+    /**
+     * キャラクターカードをIDごとに安定したネオン色へ振り分ける。
+     */
     public static String cardBackground(String id) {
         return "chaos-card-" + Math.floorMod(id.hashCode(), Accent.values().length);
     }

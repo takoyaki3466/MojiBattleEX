@@ -19,10 +19,15 @@ package jp.takoa.mojibattle.ability.support;
  * <p>補助ゲージという固有情報を一般の{@code CombatantView}へ押し込まず、補助能力に必要な最小情報だけを公開する。</p>
  */
 public interface SupportView {
+
     String id();
 
-    /** 戦闘内で一意な個体ID。同じ定義を複数編成しても異なる。 */
-    default String instanceId() { return id(); }
+    /**
+     * 戦闘内で一意な個体ID。同じ定義を複数編成しても異なる。
+     */
+    default String instanceId() {
+        return id();
+    }
 
     float ultimatePoints();
 

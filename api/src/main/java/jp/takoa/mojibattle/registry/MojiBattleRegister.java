@@ -32,11 +32,13 @@ import java.util.function.Supplier;
  * @param <T> 登録要素型
  */
 public class MojiBattleRegister<T> {
-    private static final Consumer<ConfigView> NO_VALIDATION = ignored -> { };
+    private static final Consumer<ConfigView> NO_VALIDATION = ignored -> {
+    };
 
     private final RegistryKey<T> registryKey;
     private final String namespace;
     private final Map<RegistryHandle<T>, Supplier<? extends T>> entries = new LinkedHashMap<>();
+
     private EventSubscription subscription;
     private boolean resolved;
 
@@ -45,37 +47,51 @@ public class MojiBattleRegister<T> {
         this.namespace = RegistryId.of(namespace, "validation").namespace();
     }
 
-    /** 任意の公開レジストリへ登録する汎用レジスターを作成する。 */
+    /**
+     * 任意の公開レジストリへ登録する汎用レジスターを作成する。
+     */
     public static <T> MojiBattleRegister<T> create(RegistryKey<T> registryKey, String namespace) {
         return new MojiBattleRegister<>(registryKey, namespace);
     }
 
-    /** スキル実装用の型付きレジスターを作成する。 */
+    /**
+     * スキル実装用の型付きレジスターを作成する。
+     */
     public static Skill createSkill(String namespace) {
         return new Skill(namespace);
     }
 
-    /** 必殺技実装用の型付きレジスターを作成する。 */
+    /**
+     * 必殺技実装用の型付きレジスターを作成する。
+     */
     public static Ultimate createUltimate(String namespace) {
         return new Ultimate(namespace);
     }
 
-    /** パッシブ実装用の型付きレジスターを作成する。 */
+    /**
+     * パッシブ実装用の型付きレジスターを作成する。
+     */
     public static Passive createPassive(String namespace) {
         return new Passive(namespace);
     }
 
-    /** 補助スキル・補助必殺技共用の型付きレジスターを作成する。 */
+    /**
+     * 補助スキル・補助必殺技共用の型付きレジスターを作成する。
+     */
     public static SupportAbility createSupportAbility(String namespace) {
         return new SupportAbility(namespace);
     }
 
-    /** 補助パッシブ実装用の型付きレジスターを作成する。 */
+    /**
+     * 補助パッシブ実装用の型付きレジスターを作成する。
+     */
     public static SupportPassive createSupportPassive(String namespace) {
         return new SupportPassive(namespace);
     }
 
-    /** 従来どおり、登録要素を生成する任意のFactoryで宣言する。 */
+    /**
+     * 従来どおり、登録要素を生成する任意のFactoryで宣言する。
+     */
     public RegistryHandle<T> register(String path, Supplier<? extends T> factory) {
         if (subscription != null || resolved) {
             throw new IllegalStateException("Cannot declare entries after DeferredRegister attachment");
@@ -91,18 +107,24 @@ public class MojiBattleRegister<T> {
         return handle;
     }
 
-    /** 登録イベントを受け取るため、購読専用バスへ一度だけ接続する。 */
+    /**
+     * 登録イベントを受け取るため、購読専用バスへ一度だけ接続する。
+     */
     public void attach(RegistrationBus registrationBus) {
         if (subscription != null) {
             throw new IllegalStateException("DeferredRegister is already attached: " + registryKey.id());
         }
+
         if (registrationBus == null) {
             throw new IllegalArgumentException("Registration bus is required");
         }
+
         String owner = registrationBus.ownerNamespace();
+
         if (owner != null && !owner.equals(namespace)) {
             throw new IllegalArgumentException("MOD " + owner + " cannot attach registrations for namespace " + namespace);
         }
+
         subscription = registrationBus.subscribe(RegisterEvent.class, this::onRegister);
     }
 
@@ -118,258 +140,238 @@ public class MojiBattleRegister<T> {
         return RegistryId.of(namespace, path).toString();
     }
 
-    /** 全Factoryを先に評価・検証し、成功した場合だけ登録とHandle束縛を行う。 */
+    /**
+     * 全Factoryを先に評価・検証し、成功した場合だけ登録とHandle束縛を行う。
+     */
     @SuppressWarnings("unchecked")
     private void onRegister(RegisterEvent<?> rawEvent) {
         if (!registryKey.equals(rawEvent.key())) {
             return;
         }
+
         if (resolved) {
             throw new IllegalStateException("DeferredRegister was resolved twice: " + registryKey.id());
         }
+
         Registry<T> registry = (Registry<T>) rawEvent.registry();
         List<Map.Entry<RegistryHandle<T>, T>> staged = new ArrayList<>();
-        for (Map.Entry<RegistryHandle<T>, Supplier<? extends T>> entry : entries.entrySet()) {
-            T value = entry.getValue().get();
-            registry.validate(entry.getKey().id(), value);
-            if (staged.stream().anyMatch(valueEntry -> valueEntry.getKey().id().equals(entry.getKey().id()))) {
-                throw new IllegalArgumentException("Duplicate staged registration: " + entry.getKey().id());
+
+        entries.forEach((key, value1) -> {
+            T value = value1.get();
+            registry.validate(key.id(), value);
+            if (staged.stream().anyMatch(valueEntry -> valueEntry.getKey().id().equals(key.id()))) {
+                throw new IllegalArgumentException("Duplicate staged registration: " + key.id());
             }
-            staged.add(Map.entry(entry.getKey(), value));
-        }
-        for (Map.Entry<RegistryHandle<T>, T> entry : staged) {
-            registry.register(entry.getKey().id(), entry.getValue());
-        }
-        for (Map.Entry<RegistryHandle<T>, T> entry : staged) {
-            entry.getKey().bind(entry.getValue());
-        }
+            staged.add(Map.entry(key, value));
+        });
+
+        staged.forEach(entry -> registry.register(entry.getKey().id(), entry.getValue()));
+        staged.forEach(entry -> entry.getKey().bind(entry.getValue()));
+
         resolved = true;
         subscription.close();
     }
 
-    /** スキルの簡易登録と従来の詳細登録を提供する。 */
+    /**
+     * スキルの簡易登録と従来の詳細登録を提供する。
+     */
     public static class Skill extends MojiBattleRegister<SkillImpl> {
         public Skill(String namespace) {
             super(MojiBattleRegistries.SKILL_IMPLEMENTATIONS, namespace);
         }
 
-        /** publicな{@code (ConfigRecord)}コンストラクタからスキルを登録する。 */
+        /**
+         * publicな{@code (ConfigRecord)}コンストラクタからスキルを登録する。
+         */
         public <R extends SkillRuntime> RegistryHandle<SkillImpl> register(String path, Class<R> runtimeType) {
             return register(path, runtimeType, NO_VALIDATION);
         }
 
-        /** Config自動検証に、複数項目間などの追加検証を合成して登録する。 */
-        public <R extends SkillRuntime> RegistryHandle<SkillImpl> register(
-                String path, Class<R> runtimeType, Consumer<ConfigView> additionalValidator) {
-            RuntimeClassRegistration<SkillRuntime> registration = new RuntimeClassRegistration<>(
-                    registrationId(path), SkillRuntime.class, runtimeType, additionalValidator);
-            return register(path, registration.factory(), registration.validator(),
-                    (source, multiplier) -> AbilityPresentation.fromDescription(
-                            source, registration.displayValues(source, multiplier)));
+        /**
+         * Config自動検証に、複数項目間などの追加検証を合成して登録する。
+         */
+        public <R extends SkillRuntime> RegistryHandle<SkillImpl> register(String path, Class<R> runtimeType, Consumer<ConfigView> additionalValidator) {
+            RuntimeClassRegistration<SkillRuntime> registration = new RuntimeClassRegistration<>(registrationId(path), SkillRuntime.class, runtimeType, additionalValidator);
+            return register(path, registration.factory(), registration.validator(), (source, multiplier) -> AbilityPresentation.fromDescription(source, registration.displayValues(source, multiplier)));
         }
 
-        /** Runtimeクラスの簡易生成と独自Presentationを、追加検証なしで組み合わせて登録する。 */
-        public <R extends SkillRuntime> RegistryHandle<SkillImpl> registerWithPresentation(
-                String path, Class<R> runtimeType,
-                BiFunction<ConfigView, Float, AbilityPresentation> presentation) {
+        /**
+         * Runtimeクラスの簡易生成と独自Presentationを、追加検証なしで組み合わせて登録する。
+         */
+        public <R extends SkillRuntime> RegistryHandle<SkillImpl> registerWithPresentation(String path, Class<R> runtimeType, BiFunction<ConfigView, Float, AbilityPresentation> presentation) {
             return register(path, runtimeType, NO_VALIDATION, presentation);
         }
 
-        /** Runtimeクラスの簡易生成と独自Presentationを組み合わせて登録する。 */
-        public <R extends SkillRuntime> RegistryHandle<SkillImpl> register(
-                String path, Class<R> runtimeType, Consumer<ConfigView> additionalValidator,
-                BiFunction<ConfigView, Float, AbilityPresentation> presentation) {
-            RuntimeClassRegistration<SkillRuntime> registration = new RuntimeClassRegistration<>(
-                    registrationId(path), SkillRuntime.class, runtimeType, additionalValidator);
+        /**
+         * Runtimeクラスの簡易生成と独自Presentationを組み合わせて登録する。
+         */
+        public <R extends SkillRuntime> RegistryHandle<SkillImpl> register(String path, Class<R> runtimeType, Consumer<ConfigView> additionalValidator, BiFunction<ConfigView, Float, AbilityPresentation> presentation) {
+            RuntimeClassRegistration<SkillRuntime> registration = new RuntimeClassRegistration<>(registrationId(path), SkillRuntime.class, runtimeType, additionalValidator);
             return register(path, registration.factory(), registration.validator(), presentation);
         }
 
-        public RegistryHandle<SkillImpl> register(
-                String path, AbilityFactory<? extends SkillRuntime> factory,
-                Consumer<ConfigView> validator,
-                BiFunction<ConfigView, Float, AbilityPresentation> presentation) {
+        public RegistryHandle<SkillImpl> register(String path, AbilityFactory<? extends SkillRuntime> factory, Consumer<ConfigView> validator, BiFunction<ConfigView, Float, AbilityPresentation> presentation) {
             String id = registrationId(path);
             return register(path, () -> new SkillImpl(id, factory, validator, presentation));
         }
 
-        public <C> RegistryHandle<SkillImpl> register(
-                String path, Function<ConfigView, C> configFactory,
-                Function<C, ? extends SkillRuntime> runtimeFactory) {
-            return register(path, source -> runtimeFactory.apply(configFactory.apply(source)),
-                    configFactory::apply, (source, multiplier) -> AbilityPresentation.fromDescription(source, 0f));
+        public <C> RegistryHandle<SkillImpl> register(String path, Function<ConfigView, C> configFactory, Function<C, ? extends SkillRuntime> runtimeFactory) {
+            return register(path, source -> runtimeFactory.apply(configFactory.apply(source)), configFactory::apply, (source, multiplier) -> AbilityPresentation.fromDescription(source, 0f));
         }
     }
 
-    /** 必殺技の簡易登録と詳細登録を提供する。 */
+    /**
+     * 必殺技の簡易登録と詳細登録を提供する。
+     */
     public static final class Ultimate extends MojiBattleRegister<UltimateImpl> {
         public Ultimate(String namespace) {
             super(MojiBattleRegistries.ULTIMATE_IMPLEMENTATIONS, namespace);
         }
 
-        /** publicな{@code (ConfigRecord)}コンストラクタから必殺技を登録する。 */
+        /**
+         * publicな{@code (ConfigRecord)}コンストラクタから必殺技を登録する。
+         */
         public <R extends UltimateRuntime> RegistryHandle<UltimateImpl> register(String path, Class<R> runtimeType) {
             return register(path, runtimeType, NO_VALIDATION);
         }
 
-        public <R extends UltimateRuntime> RegistryHandle<UltimateImpl> register(
-                String path, Class<R> runtimeType, Consumer<ConfigView> additionalValidator) {
-            RuntimeClassRegistration<UltimateRuntime> registration = new RuntimeClassRegistration<>(
-                    registrationId(path), UltimateRuntime.class, runtimeType, additionalValidator);
-            return register(path, registration.factory(), registration.validator(),
-                    source -> AbilityPresentation.fromDescription(
-                            source, registration.displayValues(source, 1f)));
+        public <R extends UltimateRuntime> RegistryHandle<UltimateImpl> register(String path, Class<R> runtimeType, Consumer<ConfigView> additionalValidator) {
+            RuntimeClassRegistration<UltimateRuntime> registration = new RuntimeClassRegistration<>(registrationId(path), UltimateRuntime.class, runtimeType, additionalValidator);
+            return register(path, registration.factory(), registration.validator(), source -> AbilityPresentation.fromDescription(source, registration.displayValues(source, 1f)));
         }
 
-        /** Runtimeクラスの簡易生成と独自Presentationを、追加検証なしで組み合わせて登録する。 */
-        public <R extends UltimateRuntime> RegistryHandle<UltimateImpl> registerWithPresentation(
-                String path, Class<R> runtimeType,
-                Function<ConfigView, AbilityPresentation> presentation) {
+        /**
+         * Runtimeクラスの簡易生成と独自Presentationを、追加検証なしで組み合わせて登録する。
+         */
+        public <R extends UltimateRuntime> RegistryHandle<UltimateImpl> registerWithPresentation(String path, Class<R> runtimeType, Function<ConfigView, AbilityPresentation> presentation) {
             return register(path, runtimeType, NO_VALIDATION, presentation);
         }
 
-        /** Runtimeクラスの簡易生成と独自Presentationを組み合わせて登録する。 */
-        public <R extends UltimateRuntime> RegistryHandle<UltimateImpl> register(
-                String path, Class<R> runtimeType, Consumer<ConfigView> additionalValidator,
-                Function<ConfigView, AbilityPresentation> presentation) {
-            RuntimeClassRegistration<UltimateRuntime> registration = new RuntimeClassRegistration<>(
-                    registrationId(path), UltimateRuntime.class, runtimeType, additionalValidator);
+        /**
+         * Runtimeクラスの簡易生成と独自Presentationを組み合わせて登録する。
+         */
+        public <R extends UltimateRuntime> RegistryHandle<UltimateImpl> register(String path, Class<R> runtimeType, Consumer<ConfigView> additionalValidator, Function<ConfigView, AbilityPresentation> presentation) {
+            RuntimeClassRegistration<UltimateRuntime> registration = new RuntimeClassRegistration<>(registrationId(path), UltimateRuntime.class, runtimeType, additionalValidator);
             return register(path, registration.factory(), registration.validator(), presentation);
         }
 
-        public RegistryHandle<UltimateImpl> register(
-                String path, AbilityFactory<? extends UltimateRuntime> factory,
-                Consumer<ConfigView> validator, Function<ConfigView, AbilityPresentation> presentation) {
+        public RegistryHandle<UltimateImpl> register(String path, AbilityFactory<? extends UltimateRuntime> factory, Consumer<ConfigView> validator, Function<ConfigView, AbilityPresentation> presentation) {
             String id = registrationId(path);
             return register(path, () -> new UltimateImpl(id, factory, validator, presentation));
         }
 
-        public <C> RegistryHandle<UltimateImpl> register(
-                String path, Function<ConfigView, C> configFactory,
-                Function<C, ? extends UltimateRuntime> runtimeFactory) {
-            return register(path, source -> runtimeFactory.apply(configFactory.apply(source)),
-                    configFactory::apply, source -> AbilityPresentation.fromDescription(source));
+        public <C> RegistryHandle<UltimateImpl> register(String path, Function<ConfigView, C> configFactory, Function<C, ? extends UltimateRuntime> runtimeFactory) {
+            return register(path, source -> runtimeFactory.apply(configFactory.apply(source)), configFactory::apply, source -> AbilityPresentation.fromDescription(source));
         }
     }
 
-    /** メインパッシブの簡易登録と詳細登録を提供する。 */
+    /**
+     * メインパッシブの簡易登録と詳細登録を提供する。
+     */
     public static final class Passive extends MojiBattleRegister<PassiveImpl> {
         public Passive(String namespace) {
             super(MojiBattleRegistries.PASSIVE_IMPLEMENTATIONS, namespace);
         }
 
-        /** publicな{@code (ConfigRecord)}コンストラクタからメインパッシブを登録する。 */
+        /**
+         * publicな{@code (ConfigRecord)}コンストラクタからメインパッシブを登録する。
+         */
         public <R extends PassiveRuntime> RegistryHandle<PassiveImpl> register(String path, Class<R> runtimeType) {
             return register(path, runtimeType, NO_VALIDATION);
         }
 
-        public <R extends PassiveRuntime> RegistryHandle<PassiveImpl> register(
-                String path, Class<R> runtimeType, Consumer<ConfigView> additionalValidator) {
-            RuntimeClassRegistration<PassiveRuntime> registration = new RuntimeClassRegistration<>(
-                    registrationId(path), PassiveRuntime.class, runtimeType, additionalValidator);
-            return register(path, registration.factory(), registration.validator(),
-                    source -> AbilityPresentation.fromDescription(
-                            source, registration.displayValues(source, 1f)));
+        public <R extends PassiveRuntime> RegistryHandle<PassiveImpl> register(String path, Class<R> runtimeType, Consumer<ConfigView> additionalValidator) {
+            RuntimeClassRegistration<PassiveRuntime> registration = new RuntimeClassRegistration<>(registrationId(path), PassiveRuntime.class, runtimeType, additionalValidator);
+            return register(path, registration.factory(), registration.validator(), source -> AbilityPresentation.fromDescription(source, registration.displayValues(source, 1f)));
         }
 
-        /** Runtimeクラスの簡易生成と独自Presentationを、追加検証なしで組み合わせて登録する。 */
-        public <R extends PassiveRuntime> RegistryHandle<PassiveImpl> registerWithPresentation(
-                String path, Class<R> runtimeType,
-                Function<ConfigView, AbilityPresentation> presentation) {
+        /**
+         * Runtimeクラスの簡易生成と独自Presentationを、追加検証なしで組み合わせて登録する。
+         */
+        public <R extends PassiveRuntime> RegistryHandle<PassiveImpl> registerWithPresentation(String path, Class<R> runtimeType, Function<ConfigView, AbilityPresentation> presentation) {
             return register(path, runtimeType, NO_VALIDATION, presentation);
         }
 
-        /** Runtimeクラスの簡易生成と独自Presentationを組み合わせて登録する。 */
-        public <R extends PassiveRuntime> RegistryHandle<PassiveImpl> register(
-                String path, Class<R> runtimeType, Consumer<ConfigView> additionalValidator,
-                Function<ConfigView, AbilityPresentation> presentation) {
-            RuntimeClassRegistration<PassiveRuntime> registration = new RuntimeClassRegistration<>(
-                    registrationId(path), PassiveRuntime.class, runtimeType, additionalValidator);
+        /**
+         * Runtimeクラスの簡易生成と独自Presentationを組み合わせて登録する。
+         */
+        public <R extends PassiveRuntime> RegistryHandle<PassiveImpl> register(String path, Class<R> runtimeType, Consumer<ConfigView> additionalValidator, Function<ConfigView, AbilityPresentation> presentation) {
+            RuntimeClassRegistration<PassiveRuntime> registration = new RuntimeClassRegistration<>(registrationId(path), PassiveRuntime.class, runtimeType, additionalValidator);
             return register(path, registration.factory(), registration.validator(), presentation);
         }
 
-        public RegistryHandle<PassiveImpl> register(
-                String path, AbilityFactory<? extends PassiveRuntime> factory,
-                Consumer<ConfigView> validator, Function<ConfigView, AbilityPresentation> presentation) {
+        public RegistryHandle<PassiveImpl> register(String path, AbilityFactory<? extends PassiveRuntime> factory, Consumer<ConfigView> validator, Function<ConfigView, AbilityPresentation> presentation) {
             String id = registrationId(path);
             return register(path, () -> new PassiveImpl(id, factory, validator, presentation));
         }
 
-        public <C> RegistryHandle<PassiveImpl> register(
-                String path, Function<ConfigView, C> configFactory,
-                Function<C, ? extends PassiveRuntime> runtimeFactory) {
-            return register(path, source -> runtimeFactory.apply(configFactory.apply(source)),
-                    configFactory::apply, source -> AbilityPresentation.fromDescription(source));
+        public <C> RegistryHandle<PassiveImpl> register(String path, Function<ConfigView, C> configFactory, Function<C, ? extends PassiveRuntime> runtimeFactory) {
+            return register(path, source -> runtimeFactory.apply(configFactory.apply(source)), configFactory::apply, source -> AbilityPresentation.fromDescription(source));
         }
     }
 
-    /** 補助スキルと補助必殺技に共通する簡易登録と詳細登録を提供する。 */
+    /**
+     * 補助スキルと補助必殺技に共通する簡易登録と詳細登録を提供する。
+     */
     public static final class SupportAbility extends MojiBattleRegister<SupportAbilityImpl> {
         public SupportAbility(String namespace) {
             super(MojiBattleRegistries.SUPPORT_ABILITY_IMPLEMENTATIONS, namespace);
         }
 
-        /** publicな{@code (ConfigRecord)}コンストラクタから補助発動能力を登録する。 */
-        public <R extends SupportAbilityRuntime> RegistryHandle<SupportAbilityImpl> register(
-                String path, Class<R> runtimeType) {
+        /**
+         * publicな{@code (ConfigRecord)}コンストラクタから補助発動能力を登録する。
+         */
+        public <R extends SupportAbilityRuntime> RegistryHandle<SupportAbilityImpl> register(String path, Class<R> runtimeType) {
             return register(path, runtimeType, NO_VALIDATION);
         }
 
-        public <R extends SupportAbilityRuntime> RegistryHandle<SupportAbilityImpl> register(
-                String path, Class<R> runtimeType, Consumer<ConfigView> additionalValidator) {
-            RuntimeClassRegistration<SupportAbilityRuntime> registration = new RuntimeClassRegistration<>(
-                    registrationId(path), SupportAbilityRuntime.class, runtimeType, additionalValidator);
+        public <R extends SupportAbilityRuntime> RegistryHandle<SupportAbilityImpl> register(String path, Class<R> runtimeType, Consumer<ConfigView> additionalValidator) {
+            RuntimeClassRegistration<SupportAbilityRuntime> registration = new RuntimeClassRegistration<>(registrationId(path), SupportAbilityRuntime.class, runtimeType, additionalValidator);
             return register(path, registration.factory(), registration.validator());
         }
 
-        public RegistryHandle<SupportAbilityImpl> register(
-                String path, AbilityFactory<? extends SupportAbilityRuntime> factory,
-                Consumer<ConfigView> validator) {
+        public RegistryHandle<SupportAbilityImpl> register(String path, AbilityFactory<? extends SupportAbilityRuntime> factory, Consumer<ConfigView> validator) {
             String id = registrationId(path);
             return register(path, () -> new SupportAbilityImpl(id, factory, validator));
         }
 
-        public <C> RegistryHandle<SupportAbilityImpl> register(
-                String path, Function<ConfigView, C> configFactory,
-                Function<C, ? extends SupportAbilityRuntime> runtimeFactory) {
-            AbilityFactory<? extends SupportAbilityRuntime> factory =
-                    source -> runtimeFactory.apply(configFactory.apply(source));
+        public <C> RegistryHandle<SupportAbilityImpl> register(String path, Function<ConfigView, C> configFactory, Function<C, ? extends SupportAbilityRuntime> runtimeFactory) {
+            AbilityFactory<? extends SupportAbilityRuntime> factory = source -> runtimeFactory.apply(configFactory.apply(source));
             Consumer<ConfigView> validator = configFactory::apply;
+
             return register(path, factory, validator);
         }
     }
 
-    /** 補助パッシブの簡易登録と詳細登録を提供する。 */
+    /**
+     * 補助パッシブの簡易登録と詳細登録を提供する。
+     */
     public static final class SupportPassive extends MojiBattleRegister<SupportPassiveImpl> {
         public SupportPassive(String namespace) {
             super(MojiBattleRegistries.SUPPORT_PASSIVE_IMPLEMENTATIONS, namespace);
         }
 
-        /** publicな{@code (ConfigRecord)}コンストラクタから補助パッシブを登録する。 */
-        public <R extends SupportPassiveRuntime> RegistryHandle<SupportPassiveImpl> register(
-                String path, Class<R> runtimeType) {
+        /**
+         * publicな{@code (ConfigRecord)}コンストラクタから補助パッシブを登録する。
+         */
+        public <R extends SupportPassiveRuntime> RegistryHandle<SupportPassiveImpl> register(String path, Class<R> runtimeType) {
             return register(path, runtimeType, NO_VALIDATION);
         }
 
-        public <R extends SupportPassiveRuntime> RegistryHandle<SupportPassiveImpl> register(
-                String path, Class<R> runtimeType, Consumer<ConfigView> additionalValidator) {
-            RuntimeClassRegistration<SupportPassiveRuntime> registration = new RuntimeClassRegistration<>(
-                    registrationId(path), SupportPassiveRuntime.class, runtimeType, additionalValidator);
+        public <R extends SupportPassiveRuntime> RegistryHandle<SupportPassiveImpl> register(String path, Class<R> runtimeType, Consumer<ConfigView> additionalValidator) {
+            RuntimeClassRegistration<SupportPassiveRuntime> registration = new RuntimeClassRegistration<>(registrationId(path), SupportPassiveRuntime.class, runtimeType, additionalValidator);
             return register(path, registration.factory(), registration.validator());
         }
 
-        public RegistryHandle<SupportPassiveImpl> register(
-                String path, AbilityFactory<? extends SupportPassiveRuntime> factory,
-                Consumer<ConfigView> validator) {
+        public RegistryHandle<SupportPassiveImpl> register(String path, AbilityFactory<? extends SupportPassiveRuntime> factory, Consumer<ConfigView> validator) {
             String id = registrationId(path);
             return register(path, () -> new SupportPassiveImpl(id, factory, validator));
         }
 
-        public <C> RegistryHandle<SupportPassiveImpl> register(
-                String path, Function<ConfigView, C> configFactory,
-                Function<C, ? extends SupportPassiveRuntime> runtimeFactory) {
-            AbilityFactory<? extends SupportPassiveRuntime> factory =
-                    source -> runtimeFactory.apply(configFactory.apply(source));
+        public <C> RegistryHandle<SupportPassiveImpl> register(String path, Function<ConfigView, C> configFactory, Function<C, ? extends SupportPassiveRuntime> runtimeFactory) {
+            AbilityFactory<? extends SupportPassiveRuntime> factory = source -> runtimeFactory.apply(configFactory.apply(source));
             Consumer<ConfigView> validator = configFactory::apply;
+
             return register(path, factory, validator);
         }
     }

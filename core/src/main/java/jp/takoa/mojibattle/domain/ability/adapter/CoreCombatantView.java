@@ -5,7 +5,9 @@ import jp.takoa.mojibattle.battle.combatant.CombatantPosition;
 import jp.takoa.mojibattle.domain.CharacterRuntime;
 import jp.takoa.mojibattle.domain.BattleController;
 
-/** CharacterRuntimeを公開読取り契約だけへ射影する。 */
+/**
+ * CharacterRuntimeを公開読取り契約だけへ射影する。
+ */
 public final class CoreCombatantView implements CombatantView {
     private final CharacterRuntime runtime;
     private final BattleController battle;
@@ -25,9 +27,7 @@ public final class CoreCombatantView implements CombatantView {
 
     @Override
     public String instanceId() {
-        return battle == null ? runtime.playerId.name().toLowerCase() + ":main:" + runtime.definition.id
-                + ":" + Integer.toUnsignedString(System.identityHashCode(runtime), 36)
-                : battle.instanceIdOf(runtime);
+        return battle == null ? runtime.playerId.name().toLowerCase() + ":main:" + runtime.definition.id + ":" + Integer.toUnsignedString(System.identityHashCode(runtime), 36) : battle.instanceIdOf(runtime);
     }
 
     @Override
@@ -55,11 +55,13 @@ public final class CoreCombatantView implements CombatantView {
         return runtime.isAlive();
     }
 
-    @Override public CombatantPosition position() {
+    @Override
+    public CombatantPosition position() {
         return new CombatantPosition(runtime.position.x, runtime.position.y, runtime.position.z);
     }
 
-    @Override public float defenseMultiplier() {
+    @Override
+    public float defenseMultiplier() {
         return battle == null ? 1f : battle.combatantDefenseMultiplier(runtime);
     }
 }

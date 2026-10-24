@@ -18,6 +18,7 @@ public final class AbilityRegistry {
     private final Map<String, Supplier<ConfiguredSkill>> skills = new LinkedHashMap<>();
     private final Map<String, Supplier<ConfiguredUltimate>> ultimates = new LinkedHashMap<>();
     private final Map<String, Supplier<PassiveRuntime>> passives = new LinkedHashMap<>();
+
     private boolean frozen;
 
     public void registerSkill(String id, Supplier<ConfiguredSkill> factory) {
@@ -32,11 +33,14 @@ public final class AbilityRegistry {
         register(passives, id, factory, "passive");
     }
 
-    /** CharacterDefinitionを基に、1体専用の実行Ability群を生成する。 */
+    /**
+     * CharacterDefinitionを基に、1体専用の実行Ability群を生成する。
+     */
     public AbilityLoadout createLoadout(CharacterDefinition definition) {
         if (!frozen) {
             throw new IllegalStateException("Ability factory registry must be frozen before creating loadouts");
         }
+
         return new AbilityLoadout(definition, Map.copyOf(skills), Map.copyOf(ultimates), Map.copyOf(passives));
     }
 
@@ -48,20 +52,27 @@ public final class AbilityRegistry {
         if (frozen) {
             throw new IllegalStateException("Ability factory registry is frozen");
         }
+
         if (factory == null) {
             throw new IllegalArgumentException(kind + " factory is required");
         }
+
         String normalized = RegistryId.parse(id).toString();
+
         if (values.containsKey(normalized) || values.containsKey(id)) {
             throw new IllegalArgumentException("Duplicate " + kind + " definition: " + normalized);
         }
+
         values.put(normalized, factory);
+
         if (!id.contains(":")) {
             values.put(id, factory);
         }
     }
 
-    public record ConfiguredSkill(String id, float cooldownSeconds, int maximumStocks, int initialStocks,
-                                  float stockRechargeSeconds, float healthCostRatio, SkillRuntime runtime) { }
-    public record ConfiguredUltimate(String id, String nameKey, float pointCost, UltimateRuntime runtime) { }
+    public record ConfiguredSkill(String id, float cooldownSeconds, int maximumStocks, int initialStocks, float stockRechargeSeconds, float healthCostRatio, SkillRuntime runtime) {
+    }
+
+    public record ConfiguredUltimate(String id, String nameKey, float pointCost, UltimateRuntime runtime) {
+    }
 }

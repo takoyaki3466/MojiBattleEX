@@ -11,8 +11,7 @@ public final class FieldEffectImplementations {
 
     public static FieldEffectImpl create(String id) {
         return new FieldEffectImpl("mojibattle:" + id, effect -> {
-            if (effect.floatValue("magnitude", 0) < 0 || effect.floatValue("intervalSeconds", 0) < 0
-                    || effect.floatValue("durationSeconds", 0) < 0 || effect.floatValue("maximum", 0) < 0) {
+            if (effect.floatValue("magnitude", 0) < 0 || effect.floatValue("intervalSeconds", 0) < 0 || effect.floatValue("durationSeconds", 0) < 0 || effect.floatValue("maximum", 0) < 0) {
                 throw new IllegalArgumentException("Field-effect values are invalid: " + effect.stringValue("id", id));
             }
         });

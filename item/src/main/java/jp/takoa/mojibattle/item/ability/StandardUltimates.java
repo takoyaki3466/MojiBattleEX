@@ -301,7 +301,9 @@ public final class StandardUltimates {
             context.actions().startProjectileBarrage(context.user(), new ProjectileBarrageSpec(
                     config.count(), config.interval(), damage(config), config.projectileSpeed(),
                     config.projectileLifetimeSeconds(), config.projectileRadius(), config.objectTexture(),
-                    config.impactEffect(), "寿司", .45f));
+                    config.impactEffect(), null, 0f));
+            context.actions().enhanceNormalAttack(context.user(), "寿司", config.objectTexture(), .45f,
+                    config.enhancedNormalDurationSeconds());
             return true;
         }
 
@@ -313,6 +315,7 @@ public final class StandardUltimates {
                 @ConfigFloat(defaultValue = 1f, exclusiveMin = true) float projectileSpeed,
                 @ConfigFloat(defaultValue = 1f, exclusiveMin = true) float projectileLifetimeSeconds,
                 @ConfigFloat(defaultValue = .5f, exclusiveMin = true) float projectileRadius,
+                @ConfigFloat(defaultValue = 30f, exclusiveMin = true) float enhancedNormalDurationSeconds,
                 @ConfigResource(defaultValue = "", nullable = true) ResourceId objectTexture,
                 @ConfigResource(name = "impactEffectId", defaultValue = "", nullable = true) ResourceId impactEffect
         ) implements DamageConfig {

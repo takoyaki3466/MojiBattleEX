@@ -11,10 +11,7 @@ import java.util.List;
  * @param subMains 代表へ追従してスキルと必殺技を自動発動するメインキャラクター
  * @param supports 自動能力と補助必殺を提供する補助キャラクター
  */
-public record PlayerTeam(
-        CharacterRuntime main,
-        List<CharacterRuntime> subMains,
-        List<SupportCharacterRuntime> supports) {
+public record PlayerTeam(CharacterRuntime main, List<CharacterRuntime> subMains, List<SupportCharacterRuntime> supports) {
     public PlayerTeam {
         subMains = List.copyOf(subMains);
         supports = List.copyOf(supports);

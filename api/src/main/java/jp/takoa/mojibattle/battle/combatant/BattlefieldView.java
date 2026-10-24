@@ -20,13 +20,27 @@ import java.util.List;
  * <p>Abilityがcoreの参加者コレクションを直接変更しないよう、スナップショット的な検索境界として作成された。</p>
  */
 public interface BattlefieldView {
+
     BattlefieldView EMPTY = new BattlefieldView() {
-        @Override public List<CombatantView> livingCombatants() { return List.of(); }
-        @Override public List<CombatantView> alliesOf(CombatantView combatant) { return List.of(); }
-        @Override public List<CombatantView> enemiesOf(CombatantView combatant) { return List.of(); }
+        @Override
+        public List<CombatantView> livingCombatants() {
+            return List.of();
+        }
+
+        @Override
+        public List<CombatantView> alliesOf(CombatantView combatant) {
+            return List.of();
+        }
+
+        @Override
+        public List<CombatantView> enemiesOf(CombatantView combatant) {
+            return List.of();
+        }
     };
 
     List<CombatantView> livingCombatants();
+
     List<CombatantView> alliesOf(CombatantView combatant);
+
     List<CombatantView> enemiesOf(CombatantView combatant);
 }

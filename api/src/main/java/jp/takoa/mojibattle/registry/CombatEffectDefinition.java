@@ -11,5 +11,12 @@ public record CombatEffectDefinition(String id, String texturePath, float scale,
         usages = Set.copyOf(usages);
     }
 
-    public enum Usage {SKILL, PROJECTILE, HIT, ULTIMATE_WARNING, ULTIMATE_IMPACT, GENERAL}
+    public enum Usage {
+        SKILL,
+        PROJECTILE,
+        HIT,
+        ULTIMATE_WARNING,
+        ULTIMATE_IMPACT,
+        GENERAL
+    }
 }

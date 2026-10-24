@@ -22,25 +22,30 @@ import java.util.Objects;
  * <h2>設計理由</h2>
  * <p>ダメージとスタンを伴う移動障害物を共通化し、Runtimeから衝突状態と寿命管理を分離するために作成された。</p>
  *
- * @param count 生成数。1から64
- * @param speed 秒あたりの移動距離
- * @param radius 接触半径
- * @param damage 接触時ダメージ要求
- * @param stunSeconds 接触対象のスタン秒
+ * @param count           生成数。1から64
+ * @param speed           秒あたりの移動距離
+ * @param radius          接触半径
+ * @param damage          接触時ダメージ要求
+ * @param stunSeconds     接触対象のスタン秒
  * @param lifetimeSeconds 最大生存秒
- * @param texture 任意のハザード画像ID
- * @param impactEffectId 任意の接触演出ID
+ * @param texture         任意のハザード画像ID
+ * @param impactEffectId  任意の接触演出ID
  */
-public record MovingHazardSpec(int count, float speed, float radius, DamageRequest damage,
-                               float stunSeconds, float lifetimeSeconds, ResourceId texture,
-                               ResourceId impactEffectId) {
+public record MovingHazardSpec(int count, float speed, float radius, DamageRequest damage, float stunSeconds,
+                               float lifetimeSeconds, ResourceId texture, ResourceId impactEffectId) {
     public MovingHazardSpec {
         Objects.requireNonNull(damage, "damage");
-        if (count < 1 || count > 64 || !positive(speed) || !positive(radius)
-                || !nonNegative(stunSeconds) || !positive(lifetimeSeconds)) {
+
+        if (count < 1 || count > 64 || !positive(speed) || !positive(radius) || !nonNegative(stunSeconds) || !positive(lifetimeSeconds)) {
             throw new IllegalArgumentException("Moving hazard values are invalid");
         }
     }
-    private static boolean positive(float value) { return Float.isFinite(value) && value > 0; }
-    private static boolean nonNegative(float value) { return Float.isFinite(value) && value >= 0; }
+
+    private static boolean positive(float value) {
+        return Float.isFinite(value) && value > 0;
+    }
+
+    private static boolean nonNegative(float value) {
+        return Float.isFinite(value) && value >= 0;
+    }
 }

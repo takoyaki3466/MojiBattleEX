@@ -9,6 +9,7 @@ import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
 import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
 import com.badlogic.gdx.utils.Align;
 import jp.takoa.mojibattle.GameContext;
+import jp.takoa.mojibattle.input.InputDeviceMode;
 import jp.takoa.mojibattle.ui.UiTheme;
 import jp.takoa.mojibattle.ui.UiThemeManager;
 
@@ -29,12 +30,12 @@ public final class SettingsScreen extends StageScreen {
         Table table = new Table(context.skin);
         table.setBackground("panel");
         table.pad(26);
-        table.defaults().growX().height(46).pad(3);
+        table.defaults().growX().height(42).pad(2);
 
         Label title = new Label(context.i18n.text("menu.settings"), context.skin, "title");
         title.setFontScale(.54f);
         title.setAlignment(Align.center);
-        table.add(title).height(76).row();
+        table.add(title).height(62).row();
 
         int[] resolutionIndex = {1};
 
@@ -154,6 +155,27 @@ public final class SettingsScreen extends StageScreen {
             }
         });
 
+        InputDeviceMode selectedInput = InputDeviceMode.load(preferences);
+        TextButton inputMode = new TextButton(inputModeLabel(selectedInput), context.skin);
+        table.add(inputMode).row();
+
+        inputMode.addListener(new ChangeListener() {
+            public void changed(ChangeEvent event, Actor actor) {
+                InputDeviceMode next = InputDeviceMode.load(preferences).next();
+                next.save(preferences);
+                inputMode.setText(inputModeLabel(next));
+            }
+        });
+
+        TextButton controllerSettings = new TextButton(context.i18n.text("settings.controller.open"), context.skin);
+        table.add(controllerSettings).row();
+        controllerSettings.addListener(new ChangeListener() {
+            @Override
+            public void changed(ChangeEvent event, Actor actor) {
+                screens.show(new ControllerSettingsScreen(context, screens));
+            }
+        });
+
         table.add(new Label(context.i18n.text("settings.language", context.config.game.language), context.skin)).row();
         table.add(new Label(context.i18n.text("settings.keys"), context.skin)).row();
 
@@ -169,12 +191,16 @@ public final class SettingsScreen extends StageScreen {
         addStandardMenu(root, table);
     }
 
+    private String inputModeLabel(InputDeviceMode mode) {
+        String valueKey = mode == InputDeviceMode.KEYBOARD ? "settings.input.keyboard" : "settings.input.controller";
+        return context.i18n.text("settings.input", context.i18n.text(valueKey));
+    }
+
     private String themeLabel(UiTheme theme) {
         return context.i18n.text("settings.ui_theme", context.i18n.text(theme.translationKey()));
     }
 
     private String cutInLabel(boolean enabled) {
-        return context.i18n.text("settings.ultimate_cut_ins",
-                context.i18n.text(enabled ? "settings.enabled" : "settings.disabled"));
+        return context.i18n.text("settings.ultimate_cut_ins", context.i18n.text(enabled ? "settings.enabled" : "settings.disabled"));
     }
 }

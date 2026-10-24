@@ -18,22 +18,27 @@ import jp.takoa.mojibattle.resource.ResourceId;
  * <h2>設計理由</h2>
  * <p>編隊全体の速度・寿命と、各弾固有の見た目・配置・行動不能効果を分けて記述するために作成された。</p>
  *
- * @param glyph 画像がない場合にも表示できる代替文字
- * @param texture 任意の弾画像ID
- * @param lateralOffset 編隊中心からの横方向オフセット
+ * @param glyph          画像がない場合にも表示できる代替文字
+ * @param texture        任意の弾画像ID
+ * @param lateralOffset  編隊中心からの横方向オフセット
  * @param verticalOffset 編隊中心からの縦方向オフセット
- * @param baseDamage 個別の基礎ダメージ
- * @param stunSeconds 命中時のスタン秒
- * @param bindSeconds 命中時の移動拘束秒
+ * @param baseDamage     個別の基礎ダメージ
+ * @param stunSeconds    命中時のスタン秒
+ * @param bindSeconds    命中時の移動拘束秒
  */
 public record ProjectileShotSpec(String glyph, ResourceId texture, float lateralOffset, float verticalOffset,
                                  float baseDamage, float stunSeconds, float bindSeconds) {
     public ProjectileShotSpec {
-        if (glyph == null || !finite(lateralOffset) || !finite(verticalOffset) || !nonNegative(baseDamage)
-                || !nonNegative(stunSeconds) || !nonNegative(bindSeconds)) {
+        if (glyph == null || !finite(lateralOffset) || !finite(verticalOffset) || !nonNegative(baseDamage) || !nonNegative(stunSeconds) || !nonNegative(bindSeconds)) {
             throw new IllegalArgumentException("Projectile shot values are invalid");
         }
     }
-    private static boolean finite(float value) { return Float.isFinite(value); }
-    private static boolean nonNegative(float value) { return finite(value) && value >= 0; }
+
+    private static boolean finite(float value) {
+        return Float.isFinite(value);
+    }
+
+    private static boolean nonNegative(float value) {
+        return finite(value) && value >= 0;
+    }
 }

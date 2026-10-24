@@ -1,5 +1,6 @@
 package jp.takoa.mojibattle.domain;
 
+import jp.takoa.mojibattle.ability.context.AbilityActivationContext;
 import jp.takoa.mojibattle.ability.support.SupportSplitMemberSpec;
 import jp.takoa.mojibattle.ability.support.SupportSplitSpec;
 import jp.takoa.mojibattle.ability.context.PassiveUpdateContext;
@@ -24,6 +25,7 @@ import jp.takoa.mojibattle.event.EventBus;
 import jp.takoa.mojibattle.input.PlayerCommand;
 import jp.takoa.mojibattle.item.ability.NewSupportAbilities;
 import jp.takoa.mojibattle.item.ability.StandardPassives;
+import jp.takoa.mojibattle.item.ability.skill.character.PredatoryPounceSkill;
 import jp.takoa.mojibattle.registry.*;
 import jp.takoa.mojibattle.registry.impl.SupportAbilityImpl;
 import jp.takoa.mojibattle.registry.impl.SupportPassiveImpl;
@@ -320,6 +322,56 @@ final class CombatApi081IntegrationTest {
                 StatusEffectType.MOVE_SPEED_MULTIPLIER, .5f, StatusDuration.seconds(3)));
         f.actions.cleanseNegativeStatuses(temporaryView);
         assertEquals(1f, temporary.statuses.multiplier(StatusType.MOVE_DOWN), .0001f);
+    }
+
+    @Test void predatoryPounceKeepsDamageThenKnockbackValidWhenTargetsDie() {
+        SupportCharacterDefinition flower = support("flower");
+        SupportCharacterDefinition eyebrow = support("expansion_mod:eyebrow");
+        eyebrow.maxHp = 1f;
+        Fixture f = fixture(List.of(
+                team("mojibattle:beast", 500, List.of(flower)),
+                team("mojibattle:biang", 1, List.of(eyebrow)),
+                team("test:enemy", 1, List.of())));
+        FamilySummon family = new FamilySummon(PlayerId.TWO, new com.badlogic.gdx.math.Vector3(2, 0, 2),
+                "glyphs/test.png", 1, 0, 1, 10, 10, "test:impact", 0, 2);
+        TemporarySupportSummon temporary = new TemporarySupportSummon(PlayerId.TWO, "two:support:0",
+                "two:support:0:split:pounce", "expansion_mod:eyebrow", "眉", "glyphs/test.png",
+                new com.badlogic.gdx.math.Vector3(3, 0, 2), 1, 1, 10, 1, null, 3f, false);
+        f.battle.spawn(family);
+        f.battle.spawn(temporary);
+        List<CombatantView> targets = f.actions.enemiesOf(f.one);
+
+        PredatoryPounceSkill skill = new PredatoryPounceSkill(new PredatoryPounceSkill.Config());
+        assertDoesNotThrow(() -> skill.tryActivate(new AbilityActivationContext(f.one, f.two, f.actions)));
+        assertTrue(targets.stream().noneMatch(CombatantView::alive));
+
+        assertDoesNotThrow(() -> f.actions.knockbackAwayFrom(f.one, targets.getFirst(), 2.2f));
+        f.battle.update(.01f, commands());
+        assertThrows(IllegalArgumentException.class,
+                () -> f.actions.knockbackAwayFrom(f.one, targets.getFirst(), 2.2f));
+    }
+
+    @Test void predatoryPounceKnocksBackEachLivingCombatantKind() {
+        Fixture f = fixture(List.of(
+                team("mojibattle:beast", 500, List.of(support("flower"))),
+                team("mojibattle:biang", 500, List.of(support("expansion_mod:eyebrow"))),
+                team("test:enemy", 500, List.of())));
+        f.battle.spawn(new FamilySummon(PlayerId.TWO, new com.badlogic.gdx.math.Vector3(2, 0, 2),
+                "glyphs/test.png", 100, 0, 1, 10, 10, "test:impact", 0, 2));
+        f.battle.spawn(new TemporarySupportSummon(PlayerId.TWO, "two:support:0",
+                "two:support:0:split:pounce-living", "expansion_mod:eyebrow", "眉", "glyphs/test.png",
+                new com.badlogic.gdx.math.Vector3(3, 0, 2), 100, 1, 10, 1, null, 3f, false));
+        List<CombatantView> targets = f.actions.enemiesOf(f.one);
+        java.util.Map<String, CombatantPosition> before = targets.stream().collect(
+                java.util.stream.Collectors.toMap(CombatantView::instanceId, CombatantView::position));
+
+        PredatoryPounceSkill skill = new PredatoryPounceSkill(new PredatoryPounceSkill.Config());
+        assertTrue(skill.tryActivate(new AbilityActivationContext(f.one, f.two, f.actions)));
+
+        for (CombatantView target : targets) {
+            assertTrue(distance(before.get(target.instanceId()), target.position()) > .01f,
+                    () -> "Target was not knocked back: " + target.instanceId());
+        }
     }
 
     @Test void cinematicAndBattlefieldPulseActionsRemainValidForMainCharacters() {

@@ -7,13 +7,14 @@ import java.util.stream.Stream;
 /**
  * 1キャラクターと装備Abilityを構成するデータリソース一式。
  *
- * @param character キャラクター定義JSONのリソース参照ID（Registry登録IDではない）
- * @param skill スキル定義JSONのリソース参照ID（Registry登録IDではない）
- * @param ultimate 必殺技定義JSONのリソース参照ID（Registry登録IDではない）
- * @param passive パッシブ定義JSONのリソース参照ID（Registry登録IDではない）
+ * @param character            キャラクター定義JSONのリソース参照ID（Registry登録IDではない）
+ * @param skill                スキル定義JSONのリソース参照ID（Registry登録IDではない）
+ * @param ultimate             必殺技定義JSONのリソース参照ID（Registry登録IDではない）
+ * @param passive              パッシブ定義JSONのリソース参照ID（Registry登録IDではない）
  * @param translationDirectory 翻訳JSONを置くASSET相対ディレクトリ
  */
-public record CharacterDataRegistration(ResourceId character, ResourceId skill, ResourceId ultimate, ResourceId passive, String translationDirectory) {
+public record CharacterDataRegistration(ResourceId character, ResourceId skill, ResourceId ultimate, ResourceId passive,
+                                        String translationDirectory) {
 
     public CharacterDataRegistration {
         if (character == null || skill == null || ultimate == null || passive == null) {

@@ -19,24 +19,28 @@ import jp.takoa.mojibattle.resource.ResourceId;
  * <h2>設計理由</h2>
  * <p>召喚物の内部クラスを公開せず、数と基本能力だけで一貫した味方召喚を要求できるようにするために作成された。</p>
  *
- * @param count 生成数。1から64
- * @param texture 召喚個体の画像ID。ホスト既定表示を使う場合は{@code null}
- * @param maximumHp 一体ごとの最大HP
- * @param defense 一体ごとの防御値
- * @param attackDamage 通常攻撃の基礎ダメージ
- * @param attackInterval 通常攻撃間隔秒
+ * @param count           生成数。1から64
+ * @param texture         召喚個体の画像ID。ホスト既定表示を使う場合は{@code null}
+ * @param maximumHp       一体ごとの最大HP
+ * @param defense         一体ごとの防御値
+ * @param attackDamage    通常攻撃の基礎ダメージ
+ * @param attackInterval  通常攻撃間隔秒
  * @param projectileSpeed 通常攻撃弾の秒間速度
- * @param impactEffectId 任意の命中演出ID
+ * @param impactEffectId  任意の命中演出ID
  */
-public record CompanionSummonSpec(int count, ResourceId texture, float maximumHp, float defense,
-                                  float attackDamage, float attackInterval, float projectileSpeed,
-                                  ResourceId impactEffectId) {
+public record CompanionSummonSpec(int count, ResourceId texture, float maximumHp, float defense, float attackDamage,
+                                  float attackInterval, float projectileSpeed, ResourceId impactEffectId) {
     public CompanionSummonSpec {
-        if (count < 1 || count > 64 || !positive(maximumHp) || !nonNegative(defense)
-                || !positive(attackDamage) || !positive(attackInterval) || !positive(projectileSpeed)) {
+        if (count < 1 || count > 64 || !positive(maximumHp) || !nonNegative(defense) || !positive(attackDamage) || !positive(attackInterval) || !positive(projectileSpeed)) {
             throw new IllegalArgumentException("Companion summon values are invalid");
         }
     }
-    private static boolean positive(float value) { return Float.isFinite(value) && value > 0; }
-    private static boolean nonNegative(float value) { return Float.isFinite(value) && value >= 0; }
+
+    private static boolean positive(float value) {
+        return Float.isFinite(value) && value > 0;
+    }
+
+    private static boolean nonNegative(float value) {
+        return Float.isFinite(value) && value >= 0;
+    }
 }

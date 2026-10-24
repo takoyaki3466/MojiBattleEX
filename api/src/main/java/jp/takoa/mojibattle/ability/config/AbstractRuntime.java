@@ -11,7 +11,9 @@ import java.util.Objects;
 public abstract class AbstractRuntime<C> {
     private final C config;
 
-    /** Runtime個体専用のConfigを保持する。 */
+    /**
+     * Runtime個体専用のConfigを保持する。
+     */
     public AbstractRuntime(C config) {
         this.config = Objects.requireNonNull(config, "Config is required");
     }

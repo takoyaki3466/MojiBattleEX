@@ -28,12 +28,16 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-/** ゲーム本体と全MODの登録、データ解決、Registry凍結を調停するComposition Root。 */
+/**
+ * ゲーム本体と全MODの登録、データ解決、Registry凍結を調停するComposition Root。
+ */
 public final class GameBootstrap {
     private GameBootstrap() {
     }
 
-    /** 標準クラスパスリソースだけを使う従来呼出し向け入口。 */
+    /**
+     * 標準クラスパスリソースだけを使う従来呼出し向け入口。
+     */
     public static RegistrySnapshot bootstrap(Iterable<? extends GameMod> mods) {
         return bootstrap(mods, new ClasspathResourceManager(GameBootstrap.class.getClassLoader()));
     }
@@ -61,18 +65,9 @@ public final class GameBootstrap {
             var additionalSupports = List.copyOf(registries.supportCharacters.values());
             var additionalFieldEffects = List.copyOf(registries.fieldEffects.values());
 
-            ConfigManager config = new ConfigManager(registries, resources, additionalCharacters,
-                    additionalSupports, additionalFieldEffects);
+            ConfigManager config = new ConfigManager(registries, resources, additionalCharacters, additionalSupports, additionalFieldEffects);
             events.lifecycle().post(new DataLoadedEvent(config));
-            LocalizationManager i18n = new LocalizationManager(
-                    config.game.language,
-                    resources,
-                    java.util.stream.Stream.concat(additionalCharacters.stream()
-                            .map(registration -> registration.translation(config.game.language))
-                            , additionalSupports.stream()
-                                    .map(registration -> registration.translation(config.game.language)))
-                            .distinct()
-                            .toList());
+            LocalizationManager i18n = new LocalizationManager(config.game.language, resources, java.util.stream.Stream.concat(additionalCharacters.stream().map(registration -> registration.translation(config.game.language)), additionalSupports.stream().map(registration -> registration.translation(config.game.language))).distinct().toList());
             new TranslationDataValidator().validate(config, i18n);
 
             CustomCharacterStore customCharacters = new CustomCharacterStore(config);
@@ -95,8 +90,7 @@ public final class GameBootstrap {
             for (GameMod mod : orderedMods) {
                 mod.initialize(new ModContext(mod.id(), scoped(events.lifecycle(), mod.id()), resources));
             }
-            return new RegistrySnapshot(registries, config, i18n, characters, supports, abilities,
-                    customCharacters, events, resources);
+            return new RegistrySnapshot(registries, config, i18n, characters, supports, abilities, customCharacters, events, resources);
         } catch (RuntimeException error) {
             events.close();
             throw error;
@@ -120,9 +114,13 @@ public final class GameBootstrap {
 
     private static RegistrationBus scoped(RegistrationBus delegate, String namespace) {
         return new RegistrationBus() {
-            @Override public String ownerNamespace() { return namespace; }
-            @Override public <E> jp.takoa.mojibattle.event.EventSubscription subscribe(
-                    Class<E> eventType, java.util.function.Consumer<? super E> listener) {
+            @Override
+            public String ownerNamespace() {
+                return namespace;
+            }
+
+            @Override
+            public <E> jp.takoa.mojibattle.event.EventSubscription subscribe(Class<E> eventType, java.util.function.Consumer<? super E> listener) {
                 return delegate.subscribe(eventType, listener);
             }
         };

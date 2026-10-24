@@ -4,7 +4,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
 
-/** MODやゲーム本体のリソースを物理ファイルへ変換せずに読み出す公開契約。 */
+/**
+ * MODやゲーム本体のリソースを物理ファイルへ変換せずに読み出す公開契約。
+ */
 public interface ResourceManager {
     /**
      * 指定IDのリソースを開く。返されたstreamの所有権は呼出し側にある。

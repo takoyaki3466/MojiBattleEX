@@ -21,18 +21,24 @@ public final class UiThemeManager {
     private UiThemeManager() {
     }
 
-    /** 保存済みのテーマを返す。 */
+    /**
+     * 保存済みのテーマを返す。
+     */
     public static UiTheme selected() {
         return UiTheme.fromId(preferences().getInteger(PREFERENCE_KEY, UiTheme.CURRENT.id()));
     }
 
-    /** 選択を保存し、Skinへ即時反映する。 */
+    /**
+     * 選択を保存し、Skinへ即時反映する。
+     */
     public static void select(Skin skin, UiTheme theme) {
         preferences().putInteger(PREFERENCE_KEY, theme.id()).flush();
         apply(skin, theme);
     }
 
-    /** 配置を変更せず、Skinが解決する見た目だけをテーマへ置き換える。 */
+    /**
+     * 配置を変更せず、Skinが解決する見た目だけをテーマへ置き換える。
+     */
     public static void apply(Skin skin, UiTheme theme) {
         installDrawables(skin, theme);
 
@@ -86,7 +92,9 @@ public final class UiThemeManager {
         input.background = skin.newDrawable("bar-bg");
     }
 
-    /** Skinのスタイル生成に先立ち、選択テーマの共通Drawable名を用意する。 */
+    /**
+     * Skinのスタイル生成に先立ち、選択テーマの共通Drawable名を用意する。
+     */
     static void installDrawables(Skin skin, UiTheme theme) {
         alias(skin, "menu-green", theme.resource("background"));
         alias(skin, "panel", theme.resource("panel"));

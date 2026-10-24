@@ -6,10 +6,11 @@ import jp.takoa.mojibattle.item.ability.NewCharacterAbilities;
 import jp.takoa.mojibattle.item.ability.StandardPassives;
 import jp.takoa.mojibattle.registry.MojiBattleRegister;
 
-/** メインキャラクターのパッシブだけを登録する。 */
+/**
+ * メインキャラクターのパッシブだけを登録する。
+ */
 public final class PassivesInit {
-    public static final MojiBattleRegister.Passive REGISTER =
-            MojiBattleRegister.createPassive(ItemContentModule.MOD_ID);
+    public static final MojiBattleRegister.Passive REGISTER = MojiBattleRegister.createPassive(ItemContentModule.MOD_ID);
 
     static {
         register("compound_interest", StandardPassives.CompanyGrowth.class);
@@ -31,8 +32,7 @@ public final class PassivesInit {
     private PassivesInit() {
     }
 
-    private static <R extends PassiveRuntime> void register(
-            String path, Class<R> runtimeType) {
+    private static <R extends PassiveRuntime> void register(String path, Class<R> runtimeType) {
         REGISTER.registerWithPresentation(path, runtimeType, AbilityRegistrationSupport::presentation);
     }
 }

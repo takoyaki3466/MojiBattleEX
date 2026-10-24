@@ -206,7 +206,9 @@ public final class BattleHud implements Disposable {
         cutInLayer.setVisible(true);
     }
 
-    /** 1件分のカットインを所有し、同時発動数に応じた横スライス内だけへ描画する。 */
+    /**
+     * 1件分のカットインを所有し、同時発動数に応じた横スライス内だけへ描画する。
+     */
     private final class CutInView {
         private final Table panel = new Table();
         private final Image backdrop = new Image(context.skin.newDrawable("gauge-empty"));
@@ -233,8 +235,7 @@ public final class BattleHud implements Disposable {
             panel.addActor(title);
         }
 
-        private void update(jp.takoa.mojibattle.domain.CutInState state, float x, float width,
-                            float height, int simultaneousCount) {
+        private void update(jp.takoa.mojibattle.domain.CutInState state, float x, float width, float height, int simultaneousCount) {
             String imageId = state.spec().image().toString();
             Texture texture = cutInTextures.computeIfAbsent(imageId, id -> textureLoader.load(id, true));
             image.setDrawable(new TextureRegionDrawable(new TextureRegion(texture)));
@@ -251,11 +252,9 @@ public final class BattleHud implements Disposable {
             backdrop.setColor(0f, 0f, 0f, alpha * .72f);
             float imageWidth = width * (1.22f + progress * .12f);
             float imageHeight = height * (1.18f + progress * .08f);
-            float travelX = horizontal ? MathUtils.lerp(-width * .22f, width * .06f, progress)
-                    : MathUtils.lerp(width * .08f, -width * .14f, progress);
+            float travelX = horizontal ? MathUtils.lerp(-width * .22f, width * .06f, progress) : MathUtils.lerp(width * .08f, -width * .14f, progress);
             float travelY = MathUtils.sin(progress * MathUtils.PI) * height * .055f;
-            image.setBounds((width - imageWidth) * .5f + travelX,
-                    (height - imageHeight) * .5f + travelY, imageWidth, imageHeight);
+            image.setBounds((width - imageWidth) * .5f + travelX, (height - imageHeight) * .5f + travelY, imageWidth, imageHeight);
             image.setOrigin(imageWidth * .5f, imageHeight * .5f);
             image.setRotation((horizontal ? -2.4f : 3.2f) * (1f - progress));
             image.setColor(1f + pulse * .15f, 1f, 1f, alpha);
@@ -267,10 +266,8 @@ public final class BattleHud implements Disposable {
             bottomBar.setColor(0f, 0f, 0f, alpha);
             float streakWidth = width * 1.45f;
             float streakHeight = Math.max(5f, height * (.008f + pulse * .008f));
-            slashA.setBounds(-width * .2f + MathUtils.lerp(-width, width * .42f, enter),
-                    height * .62f, streakWidth, streakHeight);
-            slashB.setBounds(width * .45f - MathUtils.lerp(-width, width * .68f, enter),
-                    height * .34f, streakWidth, streakHeight * .7f);
+            slashA.setBounds(-width * .2f + MathUtils.lerp(-width, width * .42f, enter), height * .62f, streakWidth, streakHeight);
+            slashB.setBounds(width * .45f - MathUtils.lerp(-width, width * .68f, enter), height * .34f, streakWidth, streakHeight * .7f);
             slashA.setOrigin(streakWidth * .5f, streakHeight * .5f);
             slashB.setOrigin(streakWidth * .5f, streakHeight * .35f);
             slashA.setRotation(horizontal ? 0f : -11f);
@@ -279,11 +276,9 @@ public final class BattleHud implements Disposable {
             slashB.setColor(.12f, .78f, 1f, alpha * (.35f + (1f - pulse) * .65f));
 
             title.setBounds(width * .05f, height * (.11f + .04f * enter), width * .9f, height * .2f);
-            float compactScale = simultaneousCount == 1 ? 1f
-                    : Math.max(.58f, 1f - (simultaneousCount - 1) * .16f);
+            float compactScale = simultaneousCount == 1 ? 1f : Math.max(.58f, 1f - (simultaneousCount - 1) * .16f);
             title.setFontScale((1.55f + pulse * .42f) * compactScale);
-            title.setColor(1f, .12f + .88f * Math.abs(MathUtils.sin(rainbowPhase * MathUtils.degreesToRadians)),
-                    .08f, alpha);
+            title.setColor(1f, .12f + .88f * Math.abs(MathUtils.sin(rainbowPhase * MathUtils.degreesToRadians)), .08f, alpha);
             panel.setVisible(true);
         }
     }
@@ -389,9 +384,7 @@ public final class BattleHud implements Disposable {
             }
 
             String fields = String.join(" / ", battle.fieldEffectIds().stream().map(key -> context.i18n.text("field." + key)).toList());
-            String abilityLines = battle.abilityStateLines(player).stream()
-                    .map(this::formatAbilityState)
-                    .collect(java.util.stream.Collectors.joining("\n"));
+            String abilityLines = battle.abilityStateLines(player).stream().map(this::formatAbilityState).collect(java.util.stream.Collectors.joining("\n"));
             String base = statusBadges(player) + "  " + context.i18n.text("battle.field_effects", fields);
             details.setText(abilityLines.isEmpty() ? base : base + "\n" + abilityLines);
         }
@@ -458,7 +451,9 @@ public final class BattleHud implements Disposable {
             label.setText(context.i18n.text("battle.percent", Math.round(points)));
         }
 
-        /** 1体分の補助能力ゲージを所有し、他の補助枠と同じ幅で横並びにする。 */
+        /**
+         * 1体分の補助能力ゲージを所有し、他の補助枠と同じ幅で横並びにする。
+         */
         private final class SupportHud {
             private final Table panel = new Table();
             private final ContinuousImageGauge skill = gauge("gauge-support-skill");
@@ -482,29 +477,12 @@ public final class BattleHud implements Disposable {
                 skillState.setAlignment(com.badlogic.gdx.utils.Align.right);
                 ultimateState.setAlignment(com.badlogic.gdx.utils.Align.right);
                 panel.add(title).growX().left().row();
-                panel.add(supportMeter(
-                                "battle.support_ultimate_gauge",
-                                ultimate,
-                                ultimateState,
-                                scale))
-                        .growX()
-                        .padTop(1)
-                        .row();
-                panel.add(supportMeter(
-                                "battle.support_skill_gauge",
-                                skill,
-                                skillState,
-                                scale))
-                        .growX()
-                        .padTop(1).row();
+                panel.add(supportMeter("battle.support_ultimate_gauge", ultimate, ultimateState, scale)).growX().padTop(1).row();
+                panel.add(supportMeter("battle.support_skill_gauge", skill, skillState, scale)).growX().padTop(1).row();
                 panel.add(passiveState).growX().left().padTop(1);
             }
 
-            private Table supportMeter(
-                    String captionKey,
-                    ContinuousImageGauge gauge,
-                    Label state,
-                    float scale) {
+            private Table supportMeter(String captionKey, ContinuousImageGauge gauge, Label state, float scale) {
                 Table meter = new Table();
                 Label caption = new Label(context.i18n.text(captionKey), context.skin);
                 caption.setFontScale(scale * .68f);
@@ -525,27 +503,13 @@ public final class BattleHud implements Disposable {
                     return;
                 }
 
-                String name = support.definition.displayName != null
-                        ? support.definition.displayName
-                        : context.i18n.text(support.definition.nameKey);
+                String name = support.definition.displayName != null ? support.definition.displayName : context.i18n.text(support.definition.nameKey);
                 title.setText(context.i18n.text("battle.support", name));
                 skill.setValue(support.skillChargeRatio());
                 ultimate.setValue(support.ultimateChargeRatio());
-                setCooldownState(
-                        skillState,
-                        false,
-                        support.skillCooldown(),
-                        "battle.support_skill_available",
-                        false);
-                setUltimateState(
-                        ultimateState,
-                        support.ultimatePoints(),
-                        "battle.support_ultimate_available");
-                passiveState.setText(support.stateLines().stream()
-                        .sorted(java.util.Comparator.comparingInt(jp.takoa.mojibattle.ability.presentation.AbilityStateLine::priority).reversed())
-                        .limit(3)
-                        .map(line -> context.i18n.text(line.translationKey(), line.arguments().toArray()))
-                        .collect(java.util.stream.Collectors.joining("  ")));
+                setCooldownState(skillState, false, support.skillCooldown(), "battle.support_skill_available", false);
+                setUltimateState(ultimateState, support.ultimatePoints(), "battle.support_ultimate_available");
+                passiveState.setText(support.stateLines().stream().sorted(java.util.Comparator.comparingInt(jp.takoa.mojibattle.ability.presentation.AbilityStateLine::priority).reversed()).limit(3).map(line -> context.i18n.text(line.translationKey(), line.arguments().toArray())).collect(java.util.stream.Collectors.joining("  ")));
             }
         }
     }

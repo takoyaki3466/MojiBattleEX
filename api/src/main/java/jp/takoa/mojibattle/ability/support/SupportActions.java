@@ -26,25 +26,35 @@ import java.util.List;
  * <p>{@link jp.takoa.mojibattle.battle.action.CombatActions}の全体操作と、補助個体だけに許された変更を権限境界として分離するために作成された。</p>
  */
 public interface SupportActions {
+
     void addNormalAttackModifier(SupportNormalAttackModifier modifier);
+
     void addNormalAttackModifier(SupportNormalAttackModifier modifier, float durationSeconds);
+
     List<SupportNormalAttackModifier> normalAttackModifiers();
+
     boolean removeNormalAttackModifier(ResourceId id);
+
     void setStateLines(List<AbilityStateLine> lines);
 
-    /** Returns points to this support without applying gain multipliers. */
+    /**
+     * Returns points to this support without applying gain multipliers.
+     */
     default void refundUltimatePoints(float points) {
         throw new UnsupportedOperationException("Support ultimate refunds are not supported by this host");
     }
 
-    /** 補助を指定された一時召喚個体へ分裂させる。 */
+    /**
+     * 補助を指定された一時召喚個体へ分裂させる。
+     */
     default void splitTemporarily(SupportSplitSpec spec) {
         throw new UnsupportedOperationException("Temporary support splitting is not supported by this host");
     }
 
-    /** 生存中のメイン・補助・召喚数を使う動的な攻撃倍率を登録する。 */
-    default void setBattlefieldCountAttackMultiplier(ResourceId id, int priority,
-            float baseMultiplier, float multiplierPerCombatant) {
+    /**
+     * 生存中のメイン・補助・召喚数を使う動的な攻撃倍率を登録する。
+     */
+    default void setBattlefieldCountAttackMultiplier(ResourceId id, int priority, float baseMultiplier, float multiplierPerCombatant) {
         throw new UnsupportedOperationException("Battlefield-count modifiers are not supported by this host");
     }
 }

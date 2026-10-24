@@ -1,9 +1,12 @@
 package jp.takoa.mojibattle.domain.combat;
 
 import jp.takoa.mojibattle.battle.presentation.DomainSpec;
+
 import java.util.Objects;
 
-/** 発動者ごとに独立して残存時間を持つ、重複可能な領域インスタンス。 */
+/**
+ * 発動者ごとに独立して残存時間を持つ、重複可能な領域インスタンス。
+ */
 public final class ActiveDomain {
     private final Object owner;
     private final DomainSpec spec;
@@ -12,6 +15,7 @@ public final class ActiveDomain {
     public ActiveDomain(Object owner, DomainSpec spec) {
         this.owner = Objects.requireNonNull(owner, "owner");
         this.spec = Objects.requireNonNull(spec, "spec");
+
         remainingSeconds = spec.durationSeconds();
     }
 

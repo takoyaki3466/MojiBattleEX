@@ -64,24 +64,12 @@ public final class UiFactory {
         effectTextParameter.magFilter = Texture.TextureFilter.Linear;
 
         BitmapFont effectTextFont = generator.generateFont(effectTextParameter);
-        BitmapFont modernFont = themedFont(generator, parameter.characters, 28,
-                Color.WHITE, 1f, new Color(.04f, .30f, .34f, 1f), 1, 1,
-                new Color(0f, 0f, 0f, .8f));
-        BitmapFont modernTitleFont = themedFont(generator, parameter.characters, 88,
-                Color.WHITE, 2f, new Color(.08f, .72f, .76f, 1f), 2, 2,
-                new Color(0f, 0f, 0f, .9f));
-        BitmapFont modernEffectFont = themedFont(generator, parameter.characters, 44,
-                Color.WHITE, 1.5f, new Color(.08f, .72f, .76f, 1f), 1, 2,
-                new Color(0f, 0f, 0f, .9f));
-        BitmapFont chaosFont = themedFont(generator, parameter.characters, 28,
-                Color.WHITE, 3f, new Color(.04f, 0f, .10f, 1f), 3, 2,
-                new Color(1f, 0f, .62f, 1f));
-        BitmapFont chaosTitleFont = themedFont(generator, parameter.characters, 88,
-                new Color(1f, .96f, .08f, 1f), 5.5f, new Color(.04f, 0f, .10f, 1f), 5, 4,
-                new Color(0f, .92f, 1f, 1f));
-        BitmapFont chaosEffectFont = themedFont(generator, parameter.characters, 44,
-                Color.WHITE, 4f, new Color(.04f, 0f, .10f, 1f), 4, 3,
-                new Color(1f, 0f, .62f, 1f));
+        BitmapFont modernFont = themedFont(generator, parameter.characters, 28, Color.WHITE, 1f, new Color(.04f, .30f, .34f, 1f), 1, 1, new Color(0f, 0f, 0f, .8f));
+        BitmapFont modernTitleFont = themedFont(generator, parameter.characters, 88, Color.WHITE, 2f, new Color(.08f, .72f, .76f, 1f), 2, 2, new Color(0f, 0f, 0f, .9f));
+        BitmapFont modernEffectFont = themedFont(generator, parameter.characters, 44, Color.WHITE, 1.5f, new Color(.08f, .72f, .76f, 1f), 1, 2, new Color(0f, 0f, 0f, .9f));
+        BitmapFont chaosFont = themedFont(generator, parameter.characters, 28, Color.WHITE, 3f, new Color(.04f, 0f, .10f, 1f), 3, 2, new Color(1f, 0f, .62f, 1f));
+        BitmapFont chaosTitleFont = themedFont(generator, parameter.characters, 88, new Color(1f, .96f, .08f, 1f), 5.5f, new Color(.04f, 0f, .10f, 1f), 5, 4, new Color(0f, .92f, 1f, 1f));
+        BitmapFont chaosEffectFont = themedFont(generator, parameter.characters, 44, Color.WHITE, 4f, new Color(.04f, 0f, .10f, 1f), 4, 3, new Color(1f, 0f, .62f, 1f));
         generator.dispose();
 
         skin.add("default-font", font);
@@ -121,29 +109,11 @@ public final class UiFactory {
     }
 
     private static void registerThemes(Skin skin) {
-        registerTheme(skin, UiTheme.CURRENT, texture(new Color(.015f, .075f, .052f, 1f)),
-                new Color(.025f, .14f, .095f, .96f), new Color(.045f, .34f, .19f, .98f),
-                new Color(.12f, .68f, .34f, 1f), new Color(.025f, .24f, .13f, 1f),
-                new Color(.055f, .20f, .12f, .98f), new Color(.30f, .94f, .40f, 1f),
-                new Color(.08f, .11f, .10f, .96f), new Color(.18f, .95f, .34f, 1f),
-                new Color(1f, .72f, .08f, 1f), new Color(.12f, .78f, 1f, 1f),
-                new Color(1f, .32f, .82f, 1f), new Color(.54f, .92f, .22f, 1f));
+        registerTheme(skin, UiTheme.CURRENT, texture(new Color(.015f, .075f, .052f, 1f)), new Color(.025f, .14f, .095f, .96f), new Color(.045f, .34f, .19f, .98f), new Color(.12f, .68f, .34f, 1f), new Color(.025f, .24f, .13f, 1f), new Color(.055f, .20f, .12f, .98f), new Color(.30f, .94f, .40f, 1f), new Color(.08f, .11f, .10f, .96f), new Color(.18f, .95f, .34f, 1f), new Color(1f, .72f, .08f, 1f), new Color(.12f, .78f, 1f, 1f), new Color(1f, .32f, .82f, 1f), new Color(.54f, .92f, .22f, 1f));
 
-        registerTheme(skin, UiTheme.MODERN, new Texture(Gdx.files.internal("ui/theme-modern-background.png")),
-                new Color(.025f, .12f, .16f, .96f), new Color(.04f, .20f, .24f, .98f),
-                new Color(.05f, .42f, .44f, 1f), new Color(.42f, .16f, .14f, 1f),
-                new Color(.035f, .15f, .19f, .98f), new Color(.96f, .48f, .34f, 1f),
-                new Color(.025f, .08f, .12f, .96f), new Color(.20f, .94f, .76f, 1f),
-                new Color(1f, .72f, .24f, 1f), new Color(.18f, .86f, .90f, 1f),
-                new Color(.72f, .58f, 1f, 1f), new Color(.48f, 1f, .82f, 1f));
+        registerTheme(skin, UiTheme.MODERN, new Texture(Gdx.files.internal("ui/theme-modern-background.png")), new Color(.025f, .12f, .16f, .96f), new Color(.04f, .20f, .24f, .98f), new Color(.05f, .42f, .44f, 1f), new Color(.42f, .16f, .14f, 1f), new Color(.035f, .15f, .19f, .98f), new Color(.96f, .48f, .34f, 1f), new Color(.025f, .08f, .12f, .96f), new Color(.20f, .94f, .76f, 1f), new Color(1f, .72f, .24f, 1f), new Color(.18f, .86f, .90f, 1f), new Color(.72f, .58f, 1f, 1f), new Color(.48f, 1f, .82f, 1f));
 
-        registerTheme(skin, UiTheme.CHAOS, new Texture(Gdx.files.internal("ui/theme-chaos-background-v2.png")),
-                new Color(.10f, .015f, .22f, .94f), new Color(.72f, .015f, .48f, .98f),
-                new Color(.02f, .74f, .90f, 1f), new Color(.92f, .32f, .02f, 1f),
-                new Color(.12f, .015f, .25f, .98f), new Color(1f, .08f, .56f, 1f),
-                new Color(.025f, .01f, .12f, .96f), new Color(.54f, 1f, .02f, 1f),
-                new Color(1f, .92f, .02f, 1f), new Color(.02f, .94f, 1f, 1f),
-                new Color(1f, .02f, .72f, 1f), new Color(.68f, 1f, .02f, 1f));
+        registerTheme(skin, UiTheme.CHAOS, new Texture(Gdx.files.internal("ui/theme-chaos-background-v2.png")), new Color(.10f, .015f, .22f, .94f), new Color(.72f, .015f, .48f, .98f), new Color(.02f, .74f, .90f, 1f), new Color(.92f, .32f, .02f, 1f), new Color(.12f, .015f, .25f, .98f), new Color(1f, .08f, .56f, 1f), new Color(.025f, .01f, .12f, .96f), new Color(.54f, 1f, .02f, 1f), new Color(1f, .92f, .02f, 1f), new Color(.02f, .94f, 1f, 1f), new Color(1f, .02f, .72f, 1f), new Color(.68f, 1f, .02f, 1f));
 
         registerModernFrames(skin);
         registerChaosFrames(skin);
@@ -151,69 +121,39 @@ public final class UiFactory {
     }
 
     private static void registerModernFrames(Skin skin) {
-        framedDrawable(skin, UiTheme.MODERN.resource("panel"), 128, 128, 10,
-                new Color(.018f, .075f, .11f, .96f), new Color(.08f, .58f, .64f, 1f),
-                new Color(1f, .48f, .28f, 1f), false);
-        framedDrawable(skin, UiTheme.MODERN.resource("button"), 96, 48, 9,
-                new Color(.025f, .13f, .17f, .99f), new Color(.08f, .55f, .62f, 1f),
-                new Color(.22f, .92f, .88f, 1f), false);
-        framedDrawable(skin, UiTheme.MODERN.resource("button-over"), 96, 48, 9,
-                new Color(.035f, .25f, .29f, 1f), new Color(.25f, .98f, .94f, 1f),
-                new Color(1f, .72f, .24f, 1f), false);
-        framedDrawable(skin, UiTheme.MODERN.resource("button-down"), 96, 48, 9,
-                new Color(.30f, .075f, .075f, 1f), new Color(1f, .40f, .28f, 1f),
-                new Color(1f, .78f, .30f, 1f), false);
+        framedDrawable(skin, UiTheme.MODERN.resource("panel"), 128, 128, 10, new Color(.018f, .075f, .11f, .96f), new Color(.08f, .58f, .64f, 1f), new Color(1f, .48f, .28f, 1f), false);
+        framedDrawable(skin, UiTheme.MODERN.resource("button"), 96, 48, 9, new Color(.025f, .13f, .17f, .99f), new Color(.08f, .55f, .62f, 1f), new Color(.22f, .92f, .88f, 1f), false);
+        framedDrawable(skin, UiTheme.MODERN.resource("button-over"), 96, 48, 9, new Color(.035f, .25f, .29f, 1f), new Color(.25f, .98f, .94f, 1f), new Color(1f, .72f, .24f, 1f), false);
+        framedDrawable(skin, UiTheme.MODERN.resource("button-down"), 96, 48, 9, new Color(.30f, .075f, .075f, 1f), new Color(1f, .40f, .28f, 1f), new Color(1f, .78f, .30f, 1f), false);
     }
 
     private static void registerChaosFrames(Skin skin) {
-        chaosFramedDrawable(skin, UiTheme.CHAOS.resource("panel"), 128, 128, 14,
-                new Color(.07f, .005f, .16f, .94f), new Color(1f, .04f, .68f, 1f),
-                new Color(.02f, .95f, 1f, 1f), new Color(1f, .92f, .02f, 1f));
-        chaosFramedDrawable(skin, UiTheme.CHAOS.resource("button"), 96, 48, 11,
-                new Color(.28f, .005f, .34f, .99f), new Color(1f, .04f, .68f, 1f),
-                new Color(1f, .92f, .02f, 1f), new Color(.02f, .95f, 1f, 1f));
-        chaosFramedDrawable(skin, UiTheme.CHAOS.resource("button-over"), 96, 48, 11,
-                new Color(.005f, .32f, .38f, 1f), new Color(.02f, .95f, 1f, 1f),
-                new Color(.68f, 1f, .02f, 1f), new Color(1f, .04f, .68f, 1f));
-        chaosFramedDrawable(skin, UiTheme.CHAOS.resource("button-down"), 96, 48, 11,
-                new Color(.48f, .08f, .005f, 1f), new Color(1f, .86f, .02f, 1f),
-                new Color(1f, .04f, .68f, 1f), new Color(.02f, .95f, 1f, 1f));
+        chaosFramedDrawable(skin, UiTheme.CHAOS.resource("panel"), 128, 128, 14, new Color(.07f, .005f, .16f, .94f), new Color(1f, .04f, .68f, 1f), new Color(.02f, .95f, 1f, 1f), new Color(1f, .92f, .02f, 1f));
+        chaosFramedDrawable(skin, UiTheme.CHAOS.resource("button"), 96, 48, 11, new Color(.28f, .005f, .34f, .99f), new Color(1f, .04f, .68f, 1f), new Color(1f, .92f, .02f, 1f), new Color(.02f, .95f, 1f, 1f));
+        chaosFramedDrawable(skin, UiTheme.CHAOS.resource("button-over"), 96, 48, 11, new Color(.005f, .32f, .38f, 1f), new Color(.02f, .95f, 1f, 1f), new Color(.68f, 1f, .02f, 1f), new Color(1f, .04f, .68f, 1f));
+        chaosFramedDrawable(skin, UiTheme.CHAOS.resource("button-down"), 96, 48, 11, new Color(.48f, .08f, .005f, 1f), new Color(1f, .86f, .02f, 1f), new Color(1f, .04f, .68f, 1f), new Color(.02f, .95f, 1f, 1f));
     }
 
-    /** UI 3専用ボタンとキャラクターカードの色違いDrawableをまとめて登録する。 */
+    /**
+     * UI 3専用ボタンとキャラクターカードの色違いDrawableをまとめて登録する。
+     */
     private static void registerChaosControls(Skin skin) {
-        Color[] accents = {
-                new Color(1f, .02f, .66f, 1f),
-                new Color(.02f, .92f, 1f, 1f),
-                new Color(1f, .92f, .02f, 1f),
-                new Color(.62f, 1f, .02f, 1f),
-                new Color(1f, .30f, .015f, 1f),
-                new Color(.72f, .76f, .88f, 1f)
-        };
+        Color[] accents = {new Color(1f, .02f, .66f, 1f), new Color(.02f, .92f, 1f, 1f), new Color(1f, .92f, .02f, 1f), new Color(.62f, 1f, .02f, 1f), new Color(1f, .30f, .015f, 1f), new Color(.72f, .76f, .88f, 1f)};
         String[] names = {"magenta", "cyan", "yellow", "lime", "orange", "steel"};
 
         for (int index = 0; index < accents.length; index++) {
             Color accent = accents[index];
             String name = "chaos-action-" + names[index];
-            chaosButtonDrawable(skin, name, 160, 64, 20, 12,
-                    shade(accent, .24f), accent, index % 2 == 0 ? accents[1] : accents[2]);
-            chaosButtonDrawable(skin, name + "-over", 160, 64, 20, 12,
-                    shade(accent, .42f), Color.WHITE, accent);
-            chaosButtonDrawable(skin, name + "-down", 160, 64, 20, 12,
-                    shade(accent, .62f), accents[2], accents[0]);
+            chaosButtonDrawable(skin, name, 160, 64, 20, 12, shade(accent, .24f), accent, index % 2 == 0 ? accents[1] : accents[2]);
+            chaosButtonDrawable(skin, name + "-over", 160, 64, 20, 12, shade(accent, .42f), Color.WHITE, accent);
+            chaosButtonDrawable(skin, name + "-down", 160, 64, 20, 12, shade(accent, .62f), accents[2], accents[0]);
 
-            chaosButtonDrawable(skin, "chaos-card-" + index, 96, 96, 14, 14,
-                    shade(accent, .28f), accent, index % 2 == 0 ? accents[2] : accents[1]);
+            chaosButtonDrawable(skin, "chaos-card-" + index, 96, 96, 14, 14, shade(accent, .28f), accent, index % 2 == 0 ? accents[2] : accents[1]);
         }
-        chaosButtonDrawable(skin, "chaos-card-selected", 96, 96, 14, 14,
-                new Color(.42f, .015f, .20f, .99f), Color.WHITE, accents[2]);
+        chaosButtonDrawable(skin, "chaos-card-selected", 96, 96, 14, 14, new Color(.42f, .015f, .20f, .99f), Color.WHITE, accents[2]);
     }
 
-    private static void registerTheme(Skin skin, UiTheme theme, Texture background,
-                                      Color panel, Color button, Color buttonOver, Color buttonDown,
-                                      Color barBackground, Color barHp, Color gaugeEmpty, Color gaugeHp,
-                                      Color gaugeUltimate, Color gaugeSkill, Color supportUltimate,
-                                      Color supportSkill) {
+    private static void registerTheme(Skin skin, UiTheme theme, Texture background, Color panel, Color button, Color buttonOver, Color buttonDown, Color barBackground, Color barHp, Color gaugeEmpty, Color gaugeHp, Color gaugeUltimate, Color gaugeSkill, Color supportUltimate, Color supportSkill) {
         skin.add(theme.resource("background"), background);
         skin.add(theme.resource("panel"), texture(panel));
         skin.add(theme.resource("button"), texture(button));
@@ -236,9 +176,7 @@ public final class UiFactory {
         return result.toString();
     }
 
-    private static BitmapFont themedFont(FreeTypeFontGenerator generator, String characters, int size,
-                                         Color color, float borderWidth, Color borderColor,
-                                         int shadowOffsetX, int shadowOffsetY, Color shadowColor) {
+    private static BitmapFont themedFont(FreeTypeFontGenerator generator, String characters, int size, Color color, float borderWidth, Color borderColor, int shadowOffsetX, int shadowOffsetY, Color shadowColor) {
         FreeTypeFontGenerator.FreeTypeFontParameter parameter = new FreeTypeFontGenerator.FreeTypeFontParameter();
         parameter.size = size;
         parameter.characters = characters;
@@ -253,8 +191,7 @@ public final class UiFactory {
         return generator.generateFont(parameter);
     }
 
-    private static void framedDrawable(Skin skin, String name, int width, int height, int split,
-                                       Color fill, Color border, Color accent, boolean noisy) {
+    private static void framedDrawable(Skin skin, String name, int width, int height, int split, Color fill, Color border, Color accent, boolean noisy) {
         Pixmap pixmap = new Pixmap(width, height, Pixmap.Format.RGBA8888);
         pixmap.setColor(fill);
         pixmap.fill();
@@ -293,8 +230,7 @@ public final class UiFactory {
     /**
      * CHAOS専用の多重ネオン枠。装飾をNinePatchの固定端へ閉じ込め、伸縮する中央の可読性は保つ。
      */
-    private static void chaosFramedDrawable(Skin skin, String name, int width, int height, int split,
-                                            Color fill, Color border, Color accent, Color spark) {
+    private static void chaosFramedDrawable(Skin skin, String name, int width, int height, int split, Color fill, Color border, Color accent, Color spark) {
         Pixmap pixmap = new Pixmap(width, height, Pixmap.Format.RGBA8888);
         pixmap.setColor(fill);
         pixmap.fill();
@@ -343,10 +279,10 @@ public final class UiFactory {
         skin.add(name, new NinePatchDrawable(new NinePatch(texture, split, split, split, split)), Drawable.class);
     }
 
-    /** 透明な切り欠きと左右の矢尻を持つ、伸縮可能なアーケード風ボタンを生成する。 */
-    private static void chaosButtonDrawable(Skin skin, String name, int width, int height,
-                                            int horizontalSplit, int verticalSplit,
-                                            Color fill, Color border, Color accent) {
+    /**
+     * 透明な切り欠きと左右の矢尻を持つ、伸縮可能なアーケード風ボタンを生成する。
+     */
+    private static void chaosButtonDrawable(Skin skin, String name, int width, int height, int horizontalSplit, int verticalSplit, Color fill, Color border, Color accent) {
         Pixmap pixmap = new Pixmap(width, height, Pixmap.Format.RGBA8888);
         int point = horizontalSplit - 3;
         int middle = height / 2;
@@ -378,8 +314,7 @@ public final class UiFactory {
         texture.setFilter(Texture.TextureFilter.Linear, Texture.TextureFilter.Linear);
         pixmap.dispose();
         skin.add(name + "-texture", texture);
-        skin.add(name, new NinePatchDrawable(new NinePatch(
-                texture, horizontalSplit, horizontalSplit, verticalSplit, verticalSplit)), Drawable.class);
+        skin.add(name, new NinePatchDrawable(new NinePatch(texture, horizontalSplit, horizontalSplit, verticalSplit, verticalSplit)), Drawable.class);
     }
 
     private static void drawChevron(Pixmap pixmap, int width, int height, int point, int inset, Color color) {

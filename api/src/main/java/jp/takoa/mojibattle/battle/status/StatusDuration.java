@@ -16,13 +16,14 @@ package jp.takoa.mojibattle.battle.status;
  * <h2>設計理由</h2>
  * <p>非有限値の直列化・比較・減算に起因する不具合を避け、有限と永続を型の不変条件で区別するために作成された。</p>
  *
- * @param seconds 有限期間の正の秒数。永続時は0
+ * @param seconds       有限期間の正の秒数。永続時は0
  * @param permanentFlag 永続状態ならtrue
  */
 public record StatusDuration(float seconds, boolean permanentFlag) {
     public StatusDuration {
         if (permanentFlag) {
             seconds = 0;
+
         } else if (!Float.isFinite(seconds) || seconds <= 0) {
             throw new IllegalArgumentException("Finite status duration must be positive");
         }

@@ -21,24 +21,23 @@ import java.util.Objects;
  * <h2>設計理由</h2>
  * <p>単発、扇状複数弾、同方向多段を一つの仕様で扱い、最も一般的な遠距離攻撃を簡潔に記述するために作成された。</p>
  *
- * @param damage 命中ごとのダメージ要求
- * @param speed 秒あたりの移動距離
- * @param radius 衝突半径
- * @param lifetimeSeconds 生成後の最大生存秒
- * @param projectileCount 同時に生成する弾数
- * @param spreadDegrees 弾列全体の扇角度
+ * @param damage            命中ごとのダメージ要求
+ * @param speed             秒あたりの移動距離
+ * @param radius            衝突半径
+ * @param lifetimeSeconds   生成後の最大生存秒
+ * @param projectileCount   同時に生成する弾数
+ * @param spreadDegrees     弾列全体の扇角度
  * @param hitsPerProjectile 同方向へ重ねるhit数
- * @param textureId 任意の弾画像ID
- * @param effectId 任意の命中演出ID
+ * @param textureId         任意の弾画像ID
+ * @param effectId          任意の命中演出ID
  */
 public record ProjectileSpec(DamageRequest damage, float speed, float radius, float lifetimeSeconds,
-                             int projectileCount, float spreadDegrees, int hitsPerProjectile,
-                             ResourceId textureId, ResourceId effectId) {
+                             int projectileCount, float spreadDegrees, int hitsPerProjectile, ResourceId textureId,
+                             ResourceId effectId) {
     public ProjectileSpec {
         Objects.requireNonNull(damage, "damage");
-        if (!Float.isFinite(speed) || speed <= 0 || !Float.isFinite(radius) || radius <= 0
-                || !Float.isFinite(lifetimeSeconds) || lifetimeSeconds <= 0
-                || !Float.isFinite(spreadDegrees) || spreadDegrees < 0) {
+
+        if (!Float.isFinite(speed) || speed <= 0 || !Float.isFinite(radius) || radius <= 0 || !Float.isFinite(lifetimeSeconds) || lifetimeSeconds <= 0 || !Float.isFinite(spreadDegrees) || spreadDegrees < 0) {
             throw new IllegalArgumentException("Projectile dimensions must be finite and valid");
         }
         if (projectileCount < 1 || projectileCount > 64 || hitsPerProjectile < 1 || hitsPerProjectile > 64) {

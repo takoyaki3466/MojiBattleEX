@@ -194,8 +194,7 @@ public final class Projectile extends PositionedCombatObject {
         return this;
     }
 
-    public Projectile attackTraits(boolean ultimateAttack, boolean ignoreDefense,
-                                   boolean ignoreDefenseOnCritical) {
+    public Projectile attackTraits(boolean ultimateAttack, boolean ignoreDefense, boolean ignoreDefenseOnCritical) {
         this.ultimateAttack = ultimateAttack;
         this.ignoreDefense = ignoreDefense;
         this.ignoreDefenseOnCritical = ignoreDefenseOnCritical;
@@ -214,8 +213,14 @@ public final class Projectile extends PositionedCombatObject {
         return source;
     }
 
-    public Projectile sourceInstanceId(String value) { sourceInstanceId = value; return this; }
-    public String sourceInstanceId() { return sourceInstanceId; }
+    public Projectile sourceInstanceId(String value) {
+        sourceInstanceId = value;
+        return this;
+    }
+
+    public String sourceInstanceId() {
+        return sourceInstanceId;
+    }
 
     public boolean ignoresDefense() {
         return ignoreDefense;

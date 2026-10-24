@@ -28,16 +28,20 @@ public record AbilityPresentation(List<Line> lines) {
         if (config == null) {
             throw new IllegalArgumentException("Ability config is required for presentation");
         }
+
         String key = config.stringValue(DESCRIPTION_KEY, null);
+
         if (key == null || key.isBlank()) {
             throw new IllegalArgumentException("Ability presentation requires a non-blank JSON descriptionKey");
         }
+
         return of(key, arguments);
     }
 
     public AbilityPresentation append(String key, Object... arguments) {
         ArrayList<Line> next = new ArrayList<>(lines);
         next.add(new Line(key, arguments));
+
         return new AbilityPresentation(next);
     }
 

@@ -2,6 +2,7 @@ package jp.takoa.mojibattle;
 
 import com.badlogic.gdx.Game;
 import jp.takoa.mojibattle.screen.ScreenManager;
+import jp.takoa.mojibattle.screen.SettingsScreen;
 import jp.takoa.mojibattle.screen.TitleScreen;
 
 import java.util.function.Consumer;
@@ -19,7 +20,8 @@ public final class GameApplication extends Game {
     private GameContext context;
 
     public GameApplication(Supplier<GameContext> contextFactory) {
-        this(contextFactory, ignored -> { });
+        this(contextFactory, ignored -> {
+        });
     }
 
     public GameApplication(Supplier<GameContext> contextFactory, Consumer<String> startupLog) {
@@ -34,8 +36,13 @@ public final class GameApplication extends Game {
             context = contextFactory.get();
 
             ScreenManager screens = new ScreenManager(this);
-            screens.show(new TitleScreen(context, screens));
-            startupLog.accept("Title screen displayed");
+            if (Boolean.getBoolean("mojibattle.controllerDiagnostics")) {
+                screens.show(new SettingsScreen(context, screens));
+                startupLog.accept("Controller diagnostics settings screen displayed");
+            } else {
+                screens.show(new TitleScreen(context, screens));
+                startupLog.accept("Title screen displayed");
+            }
         } catch (RuntimeException | Error error) {
             if (context != null) {
                 try {

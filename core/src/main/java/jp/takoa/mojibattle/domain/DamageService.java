@@ -47,9 +47,7 @@ public final class DamageService {
      *
      * @throws IllegalArgumentException 数値が負数または有限値でない場合
      */
-    public float apply(CharacterRuntime attacker, CharacterRuntime target, float baseDamage,
-                       float attackMultiplier, float defenseMultiplier,
-                       float incomingEffectMultiplier, AttackTraits traits) {
+    public float apply(CharacterRuntime attacker, CharacterRuntime target, float baseDamage, float attackMultiplier, float defenseMultiplier, float incomingEffectMultiplier, AttackTraits traits) {
         validate(baseDamage, "baseDamage");
         validate(attackMultiplier, "attackMultiplier");
         validate(defenseMultiplier, "defenseMultiplier");
@@ -59,9 +57,7 @@ public final class DamageService {
             return 0;
         }
 
-        float requested = baseDamage * attackMultiplier
-                * (traits.ignoreDefense() ? 1f : defenseMultiplier)
-                * incomingEffectMultiplier;
+        float requested = baseDamage * attackMultiplier * (traits.ignoreDefense() ? 1f : defenseMultiplier) * incomingEffectMultiplier;
 
         if (!Float.isFinite(requested) || requested < 0) {
             throw new IllegalArgumentException("Invalid calculated damage");

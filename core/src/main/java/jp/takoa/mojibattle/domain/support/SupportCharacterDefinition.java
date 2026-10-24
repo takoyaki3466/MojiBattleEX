@@ -23,9 +23,13 @@ public final class SupportCharacterDefinition {
     public float attackInterval;
     public float baseDamage;
     public float projectileSpeed;
-    /** 0以下または未指定なら100。 */
+    /**
+     * 0以下または未指定なら100。
+     */
     public float maxHp = 100f;
-    /** 0が無補正。値は100/(100+defense)で被ダメージ倍率へ変換される。 */
+    /**
+     * 0が無補正。値は100/(100+defense)で被ダメージ倍率へ変換される。
+     */
     public float defense;
     public float ultimateChargePerSecond;
     public float criticalRate;

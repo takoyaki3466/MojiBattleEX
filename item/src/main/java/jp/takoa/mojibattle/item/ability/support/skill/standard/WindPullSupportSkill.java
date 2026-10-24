@@ -6,9 +6,10 @@ import jp.takoa.mojibattle.ability.context.SupportAbilityActivationContext;
 import jp.takoa.mojibattle.ability.runtime.SupportAbilityRuntime;
 import jp.takoa.mojibattle.battle.combatant.CombatantView;
 
-/** 敵を引き寄せて拘束する補助スキル。 */
-public final class WindPullSupportSkill
-        extends AbstractRuntime<WindPullSupportSkill.Config> implements SupportAbilityRuntime {
+/**
+ * 敵を引き寄せて拘束する補助スキル。
+ */
+public final class WindPullSupportSkill extends AbstractRuntime<WindPullSupportSkill.Config> implements SupportAbilityRuntime {
     public WindPullSupportSkill(Config config) {
         super(config);
     }
@@ -24,7 +25,9 @@ public final class WindPullSupportSkill
         return true;
     }
 
-    /** JSONから読み取る引き寄せ設定。 */
+    /**
+     * JSONから読み取る引き寄せ設定。
+     */
     public record Config(
             @ConfigFloat(defaultValue = 0f) float range,
             @ConfigFloat(name = "durationSeconds", defaultValue = 1f, exclusiveMin = true) float duration) {

@@ -12,6 +12,7 @@ import java.util.Set;
  */
 public final class EffectRegistryInit {
     public static final MojiBattleRegister<CombatEffectDefinition> REGISTER = MojiBattleRegister.create(MojiBattleRegistries.EFFECTS, "mojibattle");
+
     public static final RegistryHandle<CombatEffectDefinition> NEUTRAL = effect("neutral", 0);
     public static final RegistryHandle<CombatEffectDefinition> STOCK = effect("stock", 1);
     public static final RegistryHandle<CombatEffectDefinition> FORMULA = effect("formula", 2);
@@ -28,6 +29,7 @@ public final class EffectRegistryInit {
     public static final RegistryHandle<CombatEffectDefinition> CASH = effect("cash", 13);
     public static final RegistryHandle<CombatEffectDefinition> STAR = effect("star", 14);
     public static final RegistryHandle<CombatEffectDefinition> FAMILY = effect("family", 15);
+
 
     private EffectRegistryInit() {
     }

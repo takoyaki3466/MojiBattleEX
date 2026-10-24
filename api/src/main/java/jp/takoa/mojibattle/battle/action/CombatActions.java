@@ -37,26 +37,34 @@ import java.util.List;
  * <p>Capability-styleの境界により、itemモジュールをcoreから完全に切り離しながら、戦闘操作をテスト用ホストへ差し替えられるようにするために作成された。</p>
  */
 public interface CombatActions {
-    /** メイン、補助、召喚を含む現在の戦場。 */
+    /**
+     * メイン、補助、召喚を含む現在の戦場。
+     */
     default BattlefieldView battlefield() {
         return BattlefieldView.EMPTY;
     }
 
     void damage(CombatantView source, CombatantView target, float amount);
 
-    /** DamageService相当の全計算を通して、指定種別の基礎ダメージを与える。 */
+    /**
+     * DamageService相当の全計算を通して、指定種別の基礎ダメージを与える。
+     */
     default void damage(CombatantView source, CombatantView target, float amount, DamageType type) {
         damage(source, target, amount);
     }
 
-    /** 構造化要求を正式なダメージ計算へ流し、確定結果を返す。 */
+    /**
+     * 構造化要求を正式なダメージ計算へ流し、確定結果を返す。
+     */
     default DamageResult damage(CombatantView source, CombatantView target, DamageRequest request) {
         throw new UnsupportedOperationException("Structured damage is not supported by this combat host");
     }
 
     void heal(CombatantView target, float amount);
 
-    /** 最大HPに対する割合を回復する。1は最大HPと同量を表す。 */
+    /**
+     * 最大HPに対する割合を回復する。1は最大HPと同量を表す。
+     */
     default void healRatio(CombatantView target, float maximumHpRatio) {
         if (!Float.isFinite(maximumHpRatio) || maximumHpRatio < 0) {
             throw new IllegalArgumentException("maximumHpRatio must be finite and non-negative");
@@ -64,17 +72,23 @@ public interface CombatActions {
         heal(target, target.maximumHp() * maximumHpRatio);
     }
 
-    /** 必殺ゲージを持つ生存中のメインまたは補助へ、通常の獲得としてポイントを加算する。 */
+    /**
+     * 必殺ゲージを持つ生存中のメインまたは補助へ、通常の獲得としてポイントを加算する。
+     */
     default void addUltimatePoints(CombatantView target, float points) {
         throw new UnsupportedOperationException("Ultimate point changes are not supported by this combat host");
     }
 
-    /** 必殺ゲージを持つ生存中のメインまたは補助へ、獲得倍率を適用せずポイントを返す。 */
+    /**
+     * 必殺ゲージを持つ生存中のメインまたは補助へ、獲得倍率を適用せずポイントを返す。
+     */
     default void refundUltimatePoints(CombatantView target, float points) {
         throw new UnsupportedOperationException("Ultimate point refunds are not supported by this combat host");
     }
 
-    /** 対象へ状態を付与する。最終能力値は使用時に再評価される。 */
+    /**
+     * 対象へ状態を付与する。最終能力値は使用時に再評価される。
+     */
     default void applyStatus(CombatantView source, CombatantView target, StatusSpec status) {
         throw new UnsupportedOperationException("Statuses are not supported by this combat host");
     }
@@ -90,32 +104,44 @@ public interface CombatActions {
         return target != null && target.alive() && target.kind() != CombatantKind.SUMMON;
     }
 
-    /** 生存中の敵から、現在状態を付与できる個体だけを登録順で返す。 */
+    /**
+     * 生存中の敵から、現在状態を付与できる個体だけを登録順で返す。
+     */
     default List<CombatantView> statusEffectEnemiesOf(CombatantView source) {
         return enemiesOf(source).stream().filter(this::canApplyStatus).toList();
     }
 
-    /** 生存中の味方から、現在状態を付与できる個体だけを登録順で返す。 */
+    /**
+     * 生存中の味方から、現在状態を付与できる個体だけを登録順で返す。
+     */
     default List<CombatantView> statusEffectAlliesOf(CombatantView source) {
         return alliesOf(source).stream().filter(this::canApplyStatus).toList();
     }
 
-    /** 現在の対象へスタンを適用できるかを返す。既定では生存中のメインだけを対象とする。 */
+    /**
+     * 現在の対象へスタンを適用できるかを返す。既定では生存中のメインだけを対象とする。
+     */
     default boolean canStun(CombatantView target) {
         return target != null && target.alive() && target.kind() == CombatantKind.MAIN;
     }
 
-    /** 生存中の敵から、現在スタン可能な個体だけを登録順で返す。 */
+    /**
+     * 生存中の敵から、現在スタン可能な個体だけを登録順で返す。
+     */
     default List<CombatantView> stunnableEnemiesOf(CombatantView source) {
         return enemiesOf(source).stream().filter(this::canStun).toList();
     }
 
-    /** 現在の対象へ拘束を適用できるかを返す。既定では生存中のメインだけを対象とする。 */
+    /**
+     * 現在の対象へ拘束を適用できるかを返す。既定では生存中のメインだけを対象とする。
+     */
     default boolean canBind(CombatantView target) {
         return target != null && target.alive() && target.kind() == CombatantKind.MAIN;
     }
 
-    /** 指定時間後に対象へ攻撃する戦闘オブジェクトを生成する。 */
+    /**
+     * 指定時間後に対象へ攻撃する戦闘オブジェクトを生成する。
+     */
     default void spawnDelayedStrike(CombatantView source, CombatantView target, DelayedStrikeSpec spec) {
         throw new UnsupportedOperationException("Delayed strikes are not supported by this combat host");
     }
@@ -160,28 +186,42 @@ public interface CombatActions {
         throw new UnsupportedOperationException("Projectile barrages are not supported by this combat host");
     }
 
+    /**
+     * 通常攻撃の見た目と間隔を、指定秒数だけ一時的に置き換える。
+     */
+    default void enhanceNormalAttack(CombatantView source, String glyph, ResourceId texture, float intervalMultiplier, float durationSeconds) {
+        throw new UnsupportedOperationException("Timed normal attack enhancement is not supported by this combat host");
+    }
+
     default void detonateOwnedMarkers(CombatantView source, DetonationSpec spec) {
         throw new UnsupportedOperationException("Marker detonation is not supported by this combat host");
     }
 
-    /** Spawns one persistent marker for later detonation, up to the per-owner limit. */
+    /**
+     * Spawns one persistent marker for later detonation, up to the per-owner limit.
+     */
     default boolean spawnDetonatableMarker(CombatantView source, ResourceId texture, int maximumOwned) {
         throw new UnsupportedOperationException("Detonatable markers are not supported by this combat host");
     }
 
-    /** 生存中のメインへ行動不能を直接適用する。状態時間倍率はホストが管理する。 */
+    /**
+     * 生存中のメインへ行動不能を直接適用する。状態時間倍率はホストが管理する。
+     */
     default void stun(CombatantView target, float durationSeconds) {
         throw new UnsupportedOperationException("Stun is not supported by this combat host");
     }
 
-    /** 生存中のメインへ移動不能を直接適用する。 */
+    /**
+     * 生存中のメインへ移動不能を直接適用する。
+     */
     default void bind(CombatantView target, float durationSeconds) {
         throw new UnsupportedOperationException("Bind is not supported by this combat host");
     }
 
-    /** 生存中のメイン・補助・召喚を、別の戦闘個体へ向けて移動する。 */
-    default void pullToward(CombatantView target, CombatantView destination, float maximumDistance,
-                            float remainingDistance) {
+    /**
+     * 生存中のメイン・補助・召喚を、別の戦闘個体へ向けて移動する。
+     */
+    default void pullToward(CombatantView target, CombatantView destination, float maximumDistance, float remainingDistance) {
         throw new UnsupportedOperationException("Pull movement is not supported by this combat host");
     }
 
@@ -197,75 +237,103 @@ public interface CombatActions {
         throw new UnsupportedOperationException("Battlefield gathering is not supported by this combat host");
     }
 
-    /** Half-size of the square arena used for coordinate-based Ability placement. */
+    /**
+     * Half-size of the square arena used for coordinate-based Ability placement.
+     */
     default float arenaHalfExtent() {
         return 0f;
     }
 
-    /** Extra attacks contributed by the source's current passive runtimes. */
+    /**
+     * Extra attacks contributed by the source's current passive runtimes.
+     */
     default long additionalUltimateAttackCount(CombatantView source) {
         return 0L;
     }
 
     void emitEffect(CombatantView origin, ResourceId effectId, float scale, float durationSeconds);
 
-    /** 使用者と同じチームおよび死亡者を除いた敵を返す。 */
+    /**
+     * 使用者と同じチームおよび死亡者を除いた敵を返す。
+     */
     default List<CombatantView> enemiesOf(CombatantView source) {
         return battlefield().enemiesOf(source);
     }
 
-    /** 使用者自身を含む、同じチームの生存メインキャラクターを登録順で返す。 */
+    /**
+     * 使用者自身を含む、同じチームの生存メインキャラクターを登録順で返す。
+     */
     default List<CombatantView> alliesOf(CombatantView source) {
         List<CombatantView> allies = battlefield().alliesOf(source);
         return allies.isEmpty() ? List.of(source) : allies;
     }
 
-    /** 指定条件の決闘を開始する。 */
+    /**
+     * 指定条件の決闘を開始する。
+     */
     default void startDuel(DuelSpec spec) {
         throw new UnsupportedOperationException("Duels are not supported by this combat host");
     }
 
-    /** 攻撃者の通常攻撃対象を指定秒数だけ固定する。補助・召喚も攻撃者に指定できる。 */
+    /**
+     * 攻撃者の通常攻撃対象を指定秒数だけ固定する。補助・召喚も攻撃者に指定できる。
+     */
     default void lockNormalAttackTarget(CombatantView attacker, CombatantView target, float durationSeconds) {
         throw new UnsupportedOperationException("Normal attack target locks are not supported by this combat host");
     }
 
-    /** sourceからtargetを離す。実装は戦場境界とキャラクター衝突を保証する。 */
+    /**
+     * sourceからtargetを離す。実装は戦場境界とキャラクター衝突を保証する。
+     */
     default void knockbackAwayFrom(CombatantView source, CombatantView target, float distance) {
         throw new UnsupportedOperationException("Knockback is not supported by this combat host");
     }
 
-    /** 視覚領域を追加する。同時発動中の別領域や同一領域を解除しない。 */
+    /**
+     * 視覚領域を追加する。同時発動中の別領域や同一領域を解除しない。
+     */
     default void activateDomain(CombatantView source, DomainSpec spec) {
         throw new UnsupportedOperationException("Domains are not supported by this combat host");
     }
 
-    /** 指定した使用者が発動した領域が一つ以上残っているかを返す。 */
+    /**
+     * 指定した使用者が発動した領域が一つ以上残っているかを返す。
+     */
     default boolean isDomainActive(CombatantView source, ResourceId domainId) {
         return false;
     }
 
-    /** 優先度付きの全画面カットインを要求する。 */
+    /**
+     * 優先度付きの全画面カットインを要求する。
+     */
     default void showCutIn(CombatantView source, CutInSpec spec) {
         throw new UnsupportedOperationException("Cut-ins are not supported by this combat host");
     }
 
-    /** 一定時間続く中央吸引と周期攻撃を開始する。 */
+    /**
+     * 一定時間続く中央吸引と周期攻撃を開始する。
+     */
     default void startBattlefieldPulse(CombatantView source, BattlefieldPulseSpec spec) {
         throw new UnsupportedOperationException("Battlefield pulses are not supported by this combat host");
     }
 
-    /** 2体の現在位置を戦場境界内で交換する。 */
+    /**
+     * 2体の現在位置を戦場境界内で交換する。
+     */
     default void swapPositions(CombatantView first, CombatantView second) {
         throw new UnsupportedOperationException("Position swapping is not supported by this combat host");
     }
 
-    /** 対象を戦場中央に対して点対称の位置へ移す。 */
+    /**
+     * 対象を戦場中央に対して点対称の位置へ移す。
+     */
     default void mirrorAcrossArenaCenter(CombatantView target) {
         throw new UnsupportedOperationException("Arena mirroring is not supported by this combat host");
     }
 
-    /** 状態管理を持つ対象の負の状態を解除し、メインの場合は行動不能も解除する。 */
+    /**
+     * 状態管理を持つ対象の負の状態を解除し、メインの場合は行動不能も解除する。
+     */
     default void cleanseNegativeStatuses(CombatantView target) {
         throw new UnsupportedOperationException("Status cleansing is not supported by this combat host");
     }

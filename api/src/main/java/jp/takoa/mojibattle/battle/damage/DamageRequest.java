@@ -19,13 +19,12 @@ import java.util.Objects;
  * <h2>設計理由</h2>
  * <p>引数の増加を抑え、即時・投射物・遅延攻撃のすべてで同じ計算指定を再利用するために作成された。</p>
  *
- * @param baseDamage 基礎ダメージ。有限かつ0以上
- * @param type 攻撃種別
- * @param ignoreDefense 常に防御を無視するか
+ * @param baseDamage              基礎ダメージ。有限かつ0以上
+ * @param type                    攻撃種別
+ * @param ignoreDefense           常に防御を無視するか
  * @param ignoreDefenseOnCritical 会心が成立した場合だけ防御を無視するか
  */
-public record DamageRequest(float baseDamage, DamageType type, boolean ignoreDefense,
-                            boolean ignoreDefenseOnCritical) {
+public record DamageRequest(float baseDamage, DamageType type, boolean ignoreDefense, boolean ignoreDefenseOnCritical) {
     public DamageRequest {
         if (!Float.isFinite(baseDamage) || baseDamage < 0) {
             throw new IllegalArgumentException("baseDamage must be finite and non-negative");

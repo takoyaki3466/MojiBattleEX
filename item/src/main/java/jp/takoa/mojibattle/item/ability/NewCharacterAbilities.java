@@ -34,7 +34,9 @@ public final class NewCharacterAbilities {
     private NewCharacterAbilities() {
     }
 
-    /** 新規メインキャラクターの必殺技を登録する。 */
+    /**
+     * 新規メインキャラクターの必殺技を登録する。
+     */
     public static void registerUltimates(MojiBattleRegister<UltimateImpl> ultimates) {
         ultimate(ultimates, "instant_thousand_slashes", NewCharacterAbilities::instantThousandSlashes);
         ultimate(ultimates, "wild_hunt", NewCharacterAbilities::wildHunt);
@@ -42,7 +44,9 @@ public final class NewCharacterAbilities {
         ultimate(ultimates, "shell_critical", NewCharacterAbilities::shellCritical);
     }
 
-    /** 新規メインキャラクターのパッシブを登録する。 */
+    /**
+     * 新規メインキャラクターのパッシブを登録する。
+     */
     public static void registerPassives(MojiBattleRegister<PassiveImpl> passives) {
         passive(passives, "heaven_cleaver", HeavenCleaver::new);
         passive(passives, "feral_evolution", FeralEvolution::new);
@@ -66,10 +70,12 @@ public final class NewCharacterAbilities {
 
     private static boolean instantThousandSlashes(AbilityActivationContext context) {
         context.actions().showCutIn(context.user(), new CutInSpec(id("cutins/zan-instant-thousand-slashes.png"), "cutin.zan", 2.65f, 100, CutInMotion.SLASH_RUSH, 1.35f));
-        context.actions().activateDomain(context.user(), new DomainSpec(HEAVEN, 16f, DomainVisualStyle.MONOCHROME, 1f, id("unit")));
+        context.actions().activateDomain(context.user(), new DomainSpec(HEAVEN, 15f, DomainVisualStyle.MONOCHROME, 1f, id("unit")));
+
         for (CombatantView enemy : context.actions().enemiesOf(context.user())) {
-            context.actions().damage(context.user(), enemy, DamageRequest.of(175f, DamageType.ULTIMATE));
+            context.actions().damage(context.user(), enemy, DamageRequest.of(240f, DamageType.ULTIMATE));
         }
+
         context.actions().emitEffect(context.user(), id("unit"), 24f, 1.2f);
         return true;
     }
@@ -89,8 +95,13 @@ public final class NewCharacterAbilities {
         }
 
         @Override
+        public float criticalRateModifier(CombatantView owner) {
+            return heavenActive ? 1f : 0f;
+        }
+
+        @Override
         public void onUltimateActivated(AbilityActivationContext context) {
-            if (context.actions().isDomainActive(context.user(), HEAVEN) && restoredUses < 2) {
+            if (context.actions().isDomainActive(context.user(), HEAVEN) && restoredUses < 4) {
                 context.actions().refundUltimatePoints(context.user(), context.user().maximumUltimatePoints());
                 restoredUses++;
             }
@@ -98,7 +109,7 @@ public final class NewCharacterAbilities {
 
         @Override
         public List<AbilityStateLine> stateLines(CombatantView owner) {
-            return List.of(AbilityStateLine.of("state.zan.heaven", 100, heavenActive ? "ON" : "OFF", 2 - restoredUses));
+            return List.of(AbilityStateLine.of("state.zan.heaven", 100, heavenActive ? "ON" : "OFF", 4 - restoredUses));
         }
     }
 
@@ -110,7 +121,7 @@ public final class NewCharacterAbilities {
     }
 
     /**
-     * 与ダメージによって三段階に変異し、通常攻撃の形そのものが変わる。
+     * 与ダメージによって五段階に変異し、通常攻撃の形そのものが変わる。
      */
     private static final class FeralEvolution implements PassiveRuntime {
         private float accumulatedDamage;
@@ -121,13 +132,21 @@ public final class NewCharacterAbilities {
         }
 
         private int tier() {
-            return accumulatedDamage >= 900f ? 3 : accumulatedDamage >= 480f ? 2 : accumulatedDamage >= 180f ? 1 : 0;
+            if (accumulatedDamage >= 1_100f) return 5;
+            if (accumulatedDamage >= 760f) return 4;
+            if (accumulatedDamage >= 480f) return 3;
+            if (accumulatedDamage >= 260f) return 2;
+            return accumulatedDamage >= 120f ? 1 : 0;
         }
 
         @Override
         public List<NormalAttackModifier> normalAttackModifiers(CombatantView owner) {
             int tier = tier();
-            if (tier == 0) return List.of();
+
+            if (tier == 0) {
+                return List.of();
+            }
+
             return List.of(new NormalAttackModifier(id("feral_evolution_attack"), 60, 1f - tier * .12f, tier, 18f * tier, 0, 1f + tier * .08f, id("glyphs/beast.png"), id("fire")));
         }
 

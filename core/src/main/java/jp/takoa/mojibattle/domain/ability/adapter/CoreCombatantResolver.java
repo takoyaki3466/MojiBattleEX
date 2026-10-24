@@ -3,7 +3,9 @@ package jp.takoa.mojibattle.domain.ability.adapter;
 import jp.takoa.mojibattle.battle.combatant.CombatantView;
 import jp.takoa.mojibattle.domain.BattleController;
 
-/** 公開戦闘個体ビューを、現在の戦闘で有効なCore個体へ解決する。 */
+/**
+ * 公開戦闘個体ビューを、現在の戦闘で有効なCore個体へ解決する。
+ */
 final class CoreCombatantResolver {
     private CoreCombatantResolver() {
     }

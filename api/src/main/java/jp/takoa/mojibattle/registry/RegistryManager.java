@@ -8,9 +8,12 @@ import java.util.Map;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 
-/** Registryの生成、登録イベント配送、失敗状態と一括凍結を管理する。 */
+/**
+ * Registryの生成、登録イベント配送、失敗状態と一括凍結を管理する。
+ */
 public final class RegistryManager {
     private final Map<RegistryKey<?>, Registry<?>> registries = new LinkedHashMap<>();
+
     private boolean registrationStarted;
     private boolean frozen;
     private boolean failed;
@@ -19,10 +22,10 @@ public final class RegistryManager {
         return add(key, new Registry<>(kind, idExtractor));
     }
 
-    /** 値から推定する既定IDと、明示IDの型固有検証を分離したRegistryを作成する。 */
-    public <T> Registry<T> create(RegistryKey<T> key, String kind,
-                                  Function<T, String> idExtractor,
-                                  BiConsumer<RegistryId, T> registrationValidator) {
+    /**
+     * 値から推定する既定IDと、明示IDの型固有検証を分離したRegistryを作成する。
+     */
+    public <T> Registry<T> create(RegistryKey<T> key, String kind, Function<T, String> idExtractor, BiConsumer<RegistryId, T> registrationValidator) {
         return add(key, new Registry<>(kind, idExtractor, registrationValidator));
     }
 
@@ -37,17 +40,20 @@ public final class RegistryManager {
         return registry;
     }
 
-    /** Registry作成順に登録イベントを発行し、失敗時は全RegistryをFAILEDへ遷移させる。 */
+    /**
+     * Registry作成順に登録イベントを発行し、失敗時は全RegistryをFAILEDへ遷移させる。
+     */
     public void publishRegistrationEvents(EventBus lifecycleBus) {
         if (registrationStarted) {
             throw new IllegalStateException("Registry events were already published");
         }
+
         registrationStarted = true;
         registries.values().forEach(Registry::beginRegistration);
+
         try {
-            for (Map.Entry<RegistryKey<?>, Registry<?>> entry : registries.entrySet()) {
-                post(lifecycleBus, entry.getKey(), entry.getValue());
-            }
+            registries.forEach((key, value) -> post(lifecycleBus, key, value));
+
         } catch (RuntimeException error) {
             failed = true;
             registries.values().forEach(Registry::fail);
@@ -63,6 +69,7 @@ public final class RegistryManager {
     @SuppressWarnings("unchecked")
     public <T> Registry<T> require(RegistryKey<T> key) {
         Registry<?> registry = registries.get(key);
+
         if (registry == null) {
             throw new IllegalArgumentException("Unknown registry: " + key.id());
         }

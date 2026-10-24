@@ -8,17 +8,25 @@ import jp.takoa.mojibattle.ability.config.annotations.RequiredConfig;
 import jp.takoa.mojibattle.ability.context.AbilityActivationContext;
 import jp.takoa.mojibattle.ability.context.PassiveUpdateContext;
 import jp.takoa.mojibattle.ability.runtime.PassiveRuntime;
+import jp.takoa.mojibattle.battle.action.spec.FallingStrikeSpec;
 import jp.takoa.mojibattle.battle.combatant.CombatantView;
+import jp.takoa.mojibattle.battle.damage.DamageRequest;
+import jp.takoa.mojibattle.battle.damage.DamageType;
+import jp.takoa.mojibattle.battle.modifier.NormalAttackModifier;
 import jp.takoa.mojibattle.resource.ResourceId;
 
 import java.util.List;
 
-/** 標準パッシブを登録IDごとの具象Runtimeとして提供する。 */
+/**
+ * 標準パッシブを登録IDごとの具象Runtimeとして提供する。
+ */
 public final class StandardPassives {
     private StandardPassives() {
     }
 
-    /** スキル成立ごとに次回必殺技の追加攻撃数を増加させる。 */
+    /**
+     * スキル成立ごとに次回必殺技の追加攻撃数を増加させる。
+     */
     public static final class CompanyGrowth extends AbstractRuntime<CompanyGrowth.Config> implements PassiveRuntime {
         private long extraUltimateAttacks;
 
@@ -28,8 +36,18 @@ public final class StandardPassives {
 
         @Override
         public void onSkillActivated(AbilityActivationContext context) {
-            extraUltimateAttacks = extraUltimateAttacks > Long.MAX_VALUE - 2
-                    ? Long.MAX_VALUE : extraUltimateAttacks + 2;
+            int companies = getConfig().companiesPerSkill();
+            extraUltimateAttacks = extraUltimateAttacks > Long.MAX_VALUE - companies ? Long.MAX_VALUE : extraUltimateAttacks + companies;
+            context.actions().addUltimatePoints(context.user(), companies * getConfig().ultimatePointsPerCompany());
+        }
+
+        @Override
+        public void onNormalAttack(AbilityActivationContext context) {
+            if (context.target() == null) {
+                return;
+            }
+            ResourceId texture = getConfig().normalAttackTexture();
+            context.actions().spawnFallingStrike(context.user(), new FallingStrikeSpec(context.target().position(), .8f, DamageRequest.of(0f, DamageType.NORMAL), .12f, .28f, 8f, ResourceId.parse("mojibattle:stock"), ResourceId.parse("mojibattle:impact"), "building", texture, 0f, 0f, 0f, 0f, 0f, 0f));
         }
 
         @Override
@@ -37,11 +55,21 @@ public final class StandardPassives {
             return extraUltimateAttacks;
         }
 
-        public record Config() {
+        @Override
+        public List<NormalAttackModifier> normalAttackModifiers(CombatantView owner) {
+            return List.of(new NormalAttackModifier(ResourceId.parse("mojibattle:company_normal_attack"), 40, 1f, 0, 0f, 0, getConfig().normalAttackDamageMultiplier(), getConfig().normalAttackTexture(), ResourceId.parse("mojibattle:stock")));
+        }
+
+        public record Config(@ConfigInt(defaultValue = 2, min = 1) int companiesPerSkill,
+                             @ConfigFloat(defaultValue = 0f, min = 0f) float ultimatePointsPerCompany,
+                             @ConfigFloat(defaultValue = 1f, exclusiveMin = true) float normalAttackDamageMultiplier,
+                             @RequiredConfig @ConfigResource(defaultValue = "mojibattle:objects/falling-building.png") ResourceId normalAttackTexture) {
         }
     }
 
-    /** 攻撃判定の倍率を変更する。 */
+    /**
+     * 攻撃判定の倍率を変更する。
+     */
     public static final class HitboxBoost extends AbstractRuntime<HitboxBoost.Config> implements PassiveRuntime {
         public HitboxBoost(Config config) {
             super(config);
@@ -57,7 +85,9 @@ public final class StandardPassives {
         }
     }
 
-    /** 経過時間に応じて必殺技ポイントを加算する。 */
+    /**
+     * 経過時間に応じて必殺技ポイントを加算する。
+     */
     public static final class UltimateRegen extends AbstractRuntime<UltimateRegen.Config> implements PassiveRuntime {
         public UltimateRegen(Config config) {
             super(config);
@@ -68,12 +98,13 @@ public final class StandardPassives {
             context.actions().addUltimatePoints(context.owner(), getConfig().pointsPerSecond() * context.deltaSeconds());
         }
 
-        public record Config(
-                @ConfigFloat(name = "ultimatePointsPerSecond", defaultValue = 0f) float pointsPerSecond) {
+        public record Config(@ConfigFloat(name = "ultimatePointsPerSecond", defaultValue = 0f) float pointsPerSecond) {
         }
     }
 
-    /** 被ダメージ倍率を変更する。 */
+    /**
+     * 被ダメージ倍率を変更する。
+     */
     public static final class DamageGuard extends AbstractRuntime<DamageGuard.Config> implements PassiveRuntime {
         public DamageGuard(Config config) {
             super(config);
@@ -89,7 +120,9 @@ public final class StandardPassives {
         }
     }
 
-    /** 移動速度倍率を変更する。 */
+    /**
+     * 移動速度倍率を変更する。
+     */
     public static final class SpeedBoost extends AbstractRuntime<SpeedBoost.Config> implements PassiveRuntime {
         public SpeedBoost(Config config) {
             super(config);
@@ -105,7 +138,9 @@ public final class StandardPassives {
         }
     }
 
-    /** 必殺技ポイント獲得倍率を変更する。 */
+    /**
+     * 必殺技ポイント獲得倍率を変更する。
+     */
     public static final class UltimateGain extends AbstractRuntime<UltimateGain.Config> implements PassiveRuntime {
         public UltimateGain(Config config) {
             super(config);
@@ -121,7 +156,9 @@ public final class StandardPassives {
         }
     }
 
-    /** スタン時間倍率を変更する。 */
+    /**
+     * スタン時間倍率を変更する。
+     */
     public static final class StunBoost extends AbstractRuntime<StunBoost.Config> implements PassiveRuntime {
         public StunBoost(Config config) {
             super(config);
@@ -137,7 +174,9 @@ public final class StandardPassives {
         }
     }
 
-    /** スキルクールダウン倍率を変更する。 */
+    /**
+     * スキルクールダウン倍率を変更する。
+     */
     public static final class SkillHaste extends AbstractRuntime<SkillHaste.Config> implements PassiveRuntime {
         public SkillHaste(Config config) {
             super(config);
@@ -153,7 +192,9 @@ public final class StandardPassives {
         }
     }
 
-    /** 生存中の味方数に応じて攻撃倍率を増加させる。 */
+    /**
+     * 生存中の味方数に応じて攻撃倍率を増加させる。
+     */
     public static final class FamilyBond extends AbstractRuntime<FamilyBond.Config> implements PassiveRuntime {
         private int allies = 1;
 
@@ -172,13 +213,14 @@ public final class StandardPassives {
             return Math.min(getConfig().maximumMultiplier(), multiplier);
         }
 
-        public record Config(
-                @ConfigFloat(name = "familyBonusPerMember", defaultValue = 0f) float bonusPerMember,
-                @ConfigFloat(defaultValue = 1f, min = 1f) float maximumMultiplier) {
+        public record Config(@ConfigFloat(name = "familyBonusPerMember", defaultValue = 0f) float bonusPerMember,
+                             @ConfigFloat(defaultValue = 1f, min = 1f) float maximumMultiplier) {
         }
     }
 
-    /** 固定周期の決定的抽選で敵をスタンさせる。 */
+    /**
+     * 固定周期の決定的抽選で敵をスタンさせる。
+     */
     public static final class DifficultKanji extends AbstractRuntime<DifficultKanji.Config> implements PassiveRuntime {
         private float intervalTimer;
         private float procCooldown;
@@ -207,15 +249,16 @@ public final class StandardPassives {
             }
         }
 
-        public record Config(
-                @ConfigFloat(defaultValue = 1f, exclusiveMin = true) float intervalSeconds,
-                @ConfigFloat(name = "procChance", defaultValue = 0f, max = 1f) float chance,
-                @ConfigFloat(name = "procStunSeconds", defaultValue = .1f, exclusiveMin = true) float stunSeconds,
-                @ConfigFloat(name = "procInternalCooldown", defaultValue = 0f) float internalCooldown) {
+        public record Config(@ConfigFloat(defaultValue = 1f, exclusiveMin = true) float intervalSeconds,
+                             @ConfigFloat(name = "procChance", defaultValue = 0f, max = 1f) float chance,
+                             @ConfigFloat(name = "procStunSeconds", defaultValue = .1f, exclusiveMin = true) float stunSeconds,
+                             @ConfigFloat(name = "procInternalCooldown", defaultValue = 0f) float internalCooldown) {
         }
     }
 
-    /** 減少HP率に応じて攻撃倍率を増加させる。 */
+    /**
+     * 減少HP率に応じて攻撃倍率を増加させる。
+     */
     public static final class Berserker extends AbstractRuntime<Berserker.Config> implements PassiveRuntime {
         public Berserker(Config config) {
             super(config);
@@ -233,7 +276,9 @@ public final class StandardPassives {
         }
     }
 
-    /** 必殺技ダメージ倍率を変更する。 */
+    /**
+     * 必殺技ダメージ倍率を変更する。
+     */
     public static final class UltimateBoost extends AbstractRuntime<UltimateBoost.Config> implements PassiveRuntime {
         public UltimateBoost(Config config) {
             super(config);
@@ -244,12 +289,20 @@ public final class StandardPassives {
             return getConfig().multiplier();
         }
 
+        @Override
+        public void onUltimateActivated(AbilityActivationContext context) {
+            context.actions().refundUltimatePoints(context.user(), context.user().maximumUltimatePoints() * getConfig().refundRatio());
+        }
+
         public record Config(
-                @ConfigFloat(name = "ultimateDamageMultiplier", defaultValue = 1f, min = 1f) float multiplier) {
+                @ConfigFloat(name = "ultimateDamageMultiplier", defaultValue = 1f, min = 1f) float multiplier,
+                @ConfigFloat(name = "ultimateRefundRatio", defaultValue = 0f, min = 0f, max = 1f) float refundRatio) {
         }
     }
 
-    /** 固定周期で爆破可能なマーカーを生成する。 */
+    /**
+     * 固定周期で爆破可能なマーカーを生成する。
+     */
     public static final class CashScatter extends AbstractRuntime<CashScatter.Config> implements PassiveRuntime {
         private float intervalTimer;
 
@@ -264,13 +317,15 @@ public final class StandardPassives {
                 return;
             }
             intervalTimer += getConfig().intervalSeconds();
-            context.actions().spawnDetonatableMarker(context.owner(), getConfig().texture(), getConfig().maximumObjects());
+            for (int count = 0; count < getConfig().spawnCount(); count++) {
+                context.actions().spawnDetonatableMarker(context.owner(), getConfig().texture(), getConfig().maximumObjects());
+            }
         }
 
-        public record Config(
-                @ConfigFloat(defaultValue = 1f, exclusiveMin = true) float intervalSeconds,
-                @RequiredConfig @ConfigResource(name = "spawnObjectTexture", defaultValue = "mojibattle:objects/cash-bundle.png") ResourceId texture,
-                @ConfigInt(name = "maximumSpawnedObjects", defaultValue = 1, min = 1) int maximumObjects) {
+        public record Config(@ConfigFloat(defaultValue = 1f, exclusiveMin = true) float intervalSeconds,
+                             @ConfigInt(defaultValue = 1, min = 1) int spawnCount,
+                             @RequiredConfig @ConfigResource(name = "spawnObjectTexture", defaultValue = "mojibattle:objects/cash-bundle.png") ResourceId texture,
+                             @ConfigInt(name = "maximumSpawnedObjects", defaultValue = 1, min = 1) int maximumObjects) {
         }
     }
 }

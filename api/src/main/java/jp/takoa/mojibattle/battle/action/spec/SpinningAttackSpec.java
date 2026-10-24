@@ -22,25 +22,31 @@ import java.util.Objects;
  * <h2>設計理由</h2>
  * <p>使用者の移動へ追従する継続判定、回転、命中回復を一つのライフサイクルとしてホストへ委譲するために作成された。</p>
  *
- * @param length 回転線の長さ
- * @param width 回転線の幅
- * @param damage 命中ごとのダメージ要求
- * @param healOnHit 一命中ごとの固定回復量
+ * @param length             回転線の長さ
+ * @param width              回転線の幅
+ * @param damage             命中ごとのダメージ要求
+ * @param healOnHit          一命中ごとの固定回復量
  * @param missingHealthBonus 減少HPに応じた追加回復係数
- * @param lifetimeSeconds 攻撃を維持する秒数
- * @param texture 任意の攻撃画像ID
- * @param impactEffectId 任意の命中演出ID
+ * @param lifetimeSeconds    攻撃を維持する秒数
+ * @param texture            任意の攻撃画像ID
+ * @param impactEffectId     任意の命中演出ID
  */
 public record SpinningAttackSpec(float length, float width, DamageRequest damage, float healOnHit,
-                                 float missingHealthBonus, float lifetimeSeconds,
-                                 ResourceId texture, ResourceId impactEffectId) {
+                                 float missingHealthBonus, float lifetimeSeconds, ResourceId texture,
+                                 ResourceId impactEffectId) {
     public SpinningAttackSpec {
         Objects.requireNonNull(damage, "damage");
-        if (!positive(length) || !positive(width) || !nonNegative(healOnHit)
-                || !nonNegative(missingHealthBonus) || !positive(lifetimeSeconds)) {
+
+        if (!positive(length) || !positive(width) || !nonNegative(healOnHit) || !nonNegative(missingHealthBonus) || !positive(lifetimeSeconds)) {
             throw new IllegalArgumentException("Spinning attack values are invalid");
         }
     }
-    private static boolean positive(float value) { return Float.isFinite(value) && value > 0; }
-    private static boolean nonNegative(float value) { return Float.isFinite(value) && value >= 0; }
+
+    private static boolean positive(float value) {
+        return Float.isFinite(value) && value > 0;
+    }
+
+    private static boolean nonNegative(float value) {
+        return Float.isFinite(value) && value >= 0;
+    }
 }

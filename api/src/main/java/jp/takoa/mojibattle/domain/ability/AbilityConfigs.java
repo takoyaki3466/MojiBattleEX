@@ -95,6 +95,7 @@ public final class AbilityConfigs {
         public float projectileSpeed;
         public float projectileLifetimeSeconds;
         public float projectileRadius;
+        public float enhancedNormalDurationSeconds;
         public float defenseDownMultiplier;
         public float defenseDownDuration;
         public boolean ignoreDefense;
@@ -141,8 +142,14 @@ public final class AbilityConfigs {
         public float procInternalCooldown;
         public float missingHealthAttackBonus;
         public float ultimateDamageMultiplier;
+        public float ultimateRefundRatio;
+        public float ultimatePointsPerCompany;
+        public float normalAttackDamageMultiplier;
         public String spawnObjectTexture;
+        public String normalAttackTexture;
         public int maximumSpawnedObjects;
+        public int companiesPerSkill;
+        public int spawnCount;
         public Map<String, Object> parameters;
     }
 }
