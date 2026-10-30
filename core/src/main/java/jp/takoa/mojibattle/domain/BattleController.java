@@ -304,6 +304,10 @@ public final class BattleController {
         for (CharacterRuntime current : allMains()) {
             current.update(delta);
 
+            if (!isActiveBattleCombatant(current)) {
+                continue;
+            }
+
             for (PassiveRuntime passive : passives(current)) {
                 passive.update(new PassiveUpdateContext(new CoreCombatantView(this, current), new CoreCombatActions(this), delta, elapsedSeconds()));
             }
@@ -2206,7 +2210,8 @@ public final class BattleController {
     public boolean containsBattleCombatant(Object value) {
         return switch (value) {
             case CharacterRuntime main -> containsCombatant(main);
-            case SupportCharacterRuntime support -> teams.values().stream().flatMap(team -> team.supports().stream()).anyMatch(candidate -> candidate == support);
+            case SupportCharacterRuntime support ->
+                    teams.values().stream().flatMap(team -> team.supports().stream()).anyMatch(candidate -> candidate == support);
 
             case null, default -> (objects.contains(value) || pendingObjects.contains(value)) && isLivingSummon(value);
         };
@@ -2223,9 +2228,11 @@ public final class BattleController {
 
         return switch (value) {
             case CharacterRuntime main -> containsCombatant(main);
-            case SupportCharacterRuntime support -> !support.hiddenAndDisabled() && teams.values().stream().flatMap(team -> team.supports().stream()).anyMatch(candidate -> candidate == support);
+            case SupportCharacterRuntime support ->
+                    !support.hiddenAndDisabled() && teams.values().stream().flatMap(team -> team.supports().stream()).anyMatch(candidate -> candidate == support);
 
-            case null, default -> (value instanceof FamilySummon || value instanceof TemporarySupportSummon) && (objects.contains(value) || pendingObjects.contains(value));
+            case null, default ->
+                    (value instanceof FamilySummon || value instanceof TemporarySupportSummon) && (objects.contains(value) || pendingObjects.contains(value));
         };
     }
 
@@ -2273,7 +2280,8 @@ public final class BattleController {
             case CharacterRuntime main -> combatantInstanceIds.get(main);
             case SupportCharacterRuntime support -> support.instanceId;
             case TemporarySupportSummon temporary -> temporary.instanceId;
-            case FamilySummon familySummon -> summonInstanceIds.computeIfAbsent(value, ignored -> "summon:" + (++summonSequence));
+            case FamilySummon familySummon ->
+                    summonInstanceIds.computeIfAbsent(value, ignored -> "summon:" + (++summonSequence));
 
             case null, default -> throw new IllegalArgumentException("Unknown combatant");
         };
@@ -2457,7 +2465,8 @@ public final class BattleController {
     private record TargetLock(String targetInstanceId, float expiresAt) {
     }
 
-    private record DuelState(Set<String> allies, String enemy, float expiresAt, boolean restrictTargets, float participantDefenseMultiplier, float outsideAttackerDamageMultiplier) {
+    private record DuelState(Set<String> allies, String enemy, float expiresAt, boolean restrictTargets,
+                             float participantDefenseMultiplier, float outsideAttackerDamageMultiplier) {
     }
 
     public CharacterRuntime targetOf(PlayerId owner) {
