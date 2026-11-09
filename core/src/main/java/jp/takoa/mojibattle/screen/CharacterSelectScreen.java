@@ -24,6 +24,7 @@ import jp.takoa.mojibattle.domain.BattleModeRoster;
 import jp.takoa.mojibattle.domain.CharacterDefinition;
 import jp.takoa.mojibattle.domain.support.SupportCharacterDefinition;
 import jp.takoa.mojibattle.domain.ability.AbilityConfigs;
+import jp.takoa.mojibattle.crash.CrashReporter;
 import jp.takoa.mojibattle.log.DiagnosticLog;
 import jp.takoa.mojibattle.registry.AbilityPresentationFormatter;
 import jp.takoa.mojibattle.resource.GdxTextureLoader;
@@ -515,9 +516,11 @@ public final class CharacterSelectScreen extends StageScreen {
 
     private void startBattle() {
         try {
-            screens.show(new BattleScreen(context, screens, mode, List.copyOf(mainIds), List.copyOf(supportIds), supportCount));
+            // 戦闘の準備はロード画面がフレームごとに進める。選択画面ではここで重い初期化を行わない。
+            screens.show(new BattleLoadingScreen(context, screens, mode, playerCount, List.copyOf(mainIds), List.copyOf(supportIds), supportCount));
         } catch (RuntimeException | Error error) {
-            DiagnosticLog.error("Battle screen transition failed", error);
+            DiagnosticLog.error("Battle loading screen transition failed", error);
+            CrashReporter.report("Battle loading screen transition", "Battle loading screen could not be shown", error);
             rollbackLastSelection();
             showBattleStartError();
         }

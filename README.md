@@ -555,13 +555,24 @@ glyphs/kabushiki.png
 | タイトル | 対戦、設定、カスタムキャラクター編集へ遷移 |
 | モード選択 | 通常・超究極スーパーカオスそれぞれの2 / 3 / 4人戦、トレーニング、キャラクターガイド |
 | キャラクター選択 | カードグリッド、詳細、確定 / キャンセル、補助1 / 2体切替、カオス専用3メイン＋4補助編成プレビュー |
+| ロード | 全員の選択完了後に表示。実際の準備処理に連動した進捗バー・進捗率・処理内容。失敗時はクラッシュレポートの場所と選択画面への復帰ボタン |
 | ガイド | メイン / 補助の表示切替、実装 Registry 由来の能力説明 |
 | 戦闘 HUD | HP、スキル、必殺、人数で等分した横並び補助ゲージ、中央アナウンス、終盤表示 |
 | トレーニング HUD | 与ダメージ、DPS、フィールド、パッシブ倍率、位置、状態効果等 |
-| 設定 | 解像度、全画面、音量、UI 倍率、カメラ追従、入力方式、コントローラー専用画面、言語 / キー表示 |
+| 設定 | 解像度、全画面、音量、UI 倍率、カメラ追従、必殺技演出、デバッグモード、入力方式、コントローラー専用画面、言語 / キー表示 |
 | 結果 | 勝者 / 引き分けとタイトル復帰 |
 
 設定画面は Preferences へ値を保存します。入力方式は全プレイヤー共通で「キーボード」または「コントローラー」を選択できます。専用のコントローラー設定画面ではP1〜P4のJoy-Con接続・割り当て・スティック値とゲーム内アクションの反応を確認できます。音量は戦闘音声が毎フレーム保存値を参照し、解像度・全画面・カメラ追従・必殺技演出のON/OFFは操作中または次の戦闘開始時に反映されます。一方、起動時ウィンドウ設定は現在 `graphics.json` を直接読むため、保存済み解像度 / 全画面を launcher が復元する経路は未統合です。UI 倍率も保存 UI はありますが、Skin / viewport へ適用する経路は未統合です。
+
+#### ロード画面・デバッグモード・クラッシュレポート
+
+キャラクター選択が完了すると `BattleLoadingScreen` へ遷移し、`BattleLoader` が戦闘の準備を1フレームあたり約10msずつ進めます。準備は「キャラクターデータの確認」「能力と戦闘状態の初期化」「テクスチャの読込み」「ステージの3Dモデル構築」「戦闘 UI の準備」の5タスクで、状態は描画から独立した `LoadingTracker`（`core` の `loading` パッケージ）が管理します。進捗率は完了したタスクの重みとテクスチャの読込み件数から算出し、時間経過では増えず、全タスクが成功するまで100%になりません。テクスチャは読出しとデコードだけをワーカースレッド（`MojiBattle-TextureDecoder`）で行い、GPU転送・MOD の能力生成・ゲーム状態の初期化は GL スレッドで実行します。同じ画像は `BattleTextureCache` で一度だけ読み込みます。各タスクの所要時間はロード完了時に診断ログへ記録されます。
+
+起動時は `GameApplication` が最初のフレームで `StartupLoadingScreen` を表示し、`StartupLoader`（`core` の `startup` パッケージ）が初期化を同じく1フレームあたり約10msずつ進めます。タスクは「MOD の探索」「MOD の登録（1フレームに1 MOD）」「ゲームデータの読込み」「翻訳データの読込みと検証」「キャラクターの登録」「能力の初期化と Registry の凍結」「MOD の初期化（1フレームに1 MOD）」「フォントの生成」「画像・UI の準備」「効果音と入力デバイスの準備」「最初の画面の準備」の11個で、戦闘前と同じ `LoadingTracker` で進捗を管理します。MOD の探索は以前のようにウィンドウ表示前ではなく、ロード画面の最初のタスクとして実行します。`GameBootstrap.bootstrap()` は段階実行用の `BootstrapProcess` を順に実行する形になり、処理の内容と順序は従来どおりです。起動時間の大半を占める Skin 用フォント9種は、ラスタライズをワーカースレッド（`MojiBattle-FontRasterizer`）、Texture 化を GL スレッドで1フォントずつ行います（`AsyncFontGenerator`）。テーマ背景画像のデコードも起動直後から `MojiBattle-ImageDecoder` で行います。起動に失敗した場合はタイトル画面へ進まず、ロード画面にエラーとクラッシュレポートの保存先を表示します（Enter / Esc / クリックで終了し、終了コードは1）。
+
+設定画面の「デバッグモード」（既定はオフ、Preferences の `debugMode` に保存）をオンにすると、再起動せずに全画面の左上へ `FPS: 60` 形式の FPS を表示し、ロード画面にタスクごとの状態・所要時間・処理中のリソース・エラー概要を表示します。
+
+ロード中・戦闘中の例外、捕捉されない例外（ワーカースレッドを含む）は `CrashReporter` が共通形式のレポートとして書き出します。ファイル名はローカル日時の `yyyy-MMdd-HHmmss.txt`（同じ秒に複数ある場合は `-2`, `-3` …）です。保存先は jpackage のアプリケーションイメージ直下の `crush-report/`（`jpackage.app-path` または `-Dmojibattle.appDir=$APPDIR` から解決）、`lwjgl3:run` ではリポジトリの `build/crush-report/`、IDE 実行ではクラス配置場所から見つけた Gradle プロジェクトの `build/crush-report/` です。書き込めない場合は `%LOCALAPPDATA%\MojiBattleEX\crush-report`、`~/.mojibattleex/crush-report`、一時ディレクトリの順に切り替え、実際の保存先を診断ログと標準エラーへ出力します。`-Dmojibattle.crashReportDir=<dir>` で明示指定もできます。
 
 Nintendo Switch初代Joy-Con (L/R) はWindows上で1本ずつ横持ちmini-gamepadとして認識し、最大4本をP1〜P4へ割り当てます。スティックは移動、縦側のフェイスボタン / 方向入力はメインスキル、横側は補助スキル、SLはメイン必殺技、SRは補助必殺技です。Joy-Conにはポーズを割り当てず、設定されたキーボードのポーズキーだけを常時受け付けます。切断したプレイヤーはidle入力となり、同じデバイスIDまたは同じ左右種別・デバイス名で再接続された場合は以前の枠を優先します。
 
@@ -949,6 +960,7 @@ Java 21 の `jpackage` を使い、Java runtime 同梱の配布物を生成し�
 |---|---|
 | 直接実行可能なEXE | `lwjgl3/build/jpackage/app-image/MojiBattleEX/MojiBattleEX.exe` |
 | 同梱MOD | `lwjgl3/build/jpackage/app-image/MojiBattleEX/app/mods/` |
+| クラッシュレポート | `lwjgl3/build/jpackage/app-image/MojiBattleEX/crush-report/`（実行時に生成。空フォルダを同梱） |
 | Portable ZIP | `lwjgl3/build/jpackage/distributions/MojiBattleEX-<version>-windows-x64.zip` |
 | Installer | `lwjgl3/build/jpackage/installer/MojiBattleEX-<version>.exe` |
 | Checksum | `lwjgl3/build/jpackage/distributions/SHA256SUMS.txt` |

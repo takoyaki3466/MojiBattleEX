@@ -27,7 +27,14 @@ public final class SplitScreenRenderer implements Disposable {
     private final EnumMap<PlayerId, PlayerCameraController> cameras = new EnumMap<>(PlayerId.class);
 
     public SplitScreenRenderer(BattleConfig battle, GraphicsConfig graphics, List<BattleTeamDefinition> teams, List<AbilityConfigs.ProjectileSkill> skills, List<AbilityConfigs.AreaUltimate> ultimates, String awakeningTexturePath, Iterable<CombatEffectDefinition> effects, ResourceManager resources) {
-        arena = new ArenaRenderer(battle, teams, skills, ultimates, awakeningTexturePath, effects, resources);
+        this(battle, graphics, teams, skills, ultimates, awakeningTexturePath, effects, new BattleTextureCache(resources));
+    }
+
+    /**
+     * 先読み済みTextureキャッシュを使用して構築する。キャッシュの所有権は内部のArenaRendererへ移る。
+     */
+    public SplitScreenRenderer(BattleConfig battle, GraphicsConfig graphics, List<BattleTeamDefinition> teams, List<AbilityConfigs.ProjectileSkill> skills, List<AbilityConfigs.AreaUltimate> ultimates, String awakeningTexturePath, Iterable<CombatEffectDefinition> effects, BattleTextureCache textures) {
+        arena = new ArenaRenderer(battle, teams, skills, ultimates, awakeningTexturePath, effects, textures);
 
         for (int index = 0; index < teams.size(); index++) {
             cameras.put(PlayerId.values()[index], new PlayerCameraController(graphics));

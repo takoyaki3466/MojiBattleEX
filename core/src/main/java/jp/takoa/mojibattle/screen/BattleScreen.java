@@ -46,44 +46,75 @@ public final class BattleScreen extends ScreenAdapter {
     private boolean transitioned;
     private float resultCountdown = -1f;
 
+    /**
+     * 戦闘に必要な全要素をこの場で同期的に構築する。ロード画面を経由しない従来の生成経路。
+     */
     public BattleScreen(GameContext context, ScreenManager screens, BattleMode mode, List<String> mainIds, List<String> supportIds, int supportCount) {
+        this(context, screens, prepareSynchronously(context, mode, mainIds, supportIds, supportCount));
+    }
+
+    /**
+     * {@link BattleLoadingScreen} が準備した戦闘要素から画面を構築する。
+     * 構築に成功した時点で各要素の所有権はこの画面へ移る。失敗した場合は各要素を解放する。
+     */
+    BattleScreen(GameContext context, ScreenManager screens, PreparedBattle prepared) {
         this.context = context;
         this.screens = screens;
 
-        BattleController createdBattle;
+        Table createdPauseMenu;
+        try {
+            createdPauseMenu = createPauseMenu(prepared.hud());
+        } catch (RuntimeException | Error error) {
+            prepared.disposeAfterFailure(error);
+            throw error;
+        }
 
+        battle = prepared.battle();
+        input = prepared.input();
+        renderer = prepared.renderer();
+        hud = prepared.hud();
+        pauseMenu = createdPauseMenu;
+    }
+
+    private static PreparedBattle prepareSynchronously(GameContext context, BattleMode mode, List<String> mainIds, List<String> supportIds, int supportCount) {
+        BattleController createdBattle = null;
         PlayerInputManager createdInput = null;
         SplitScreenRenderer createdRenderer = null;
         BattleHud createdHud = null;
 
-        Table createdPauseMenu;
-
         try {
             List<BattleTeamDefinition> teams = buildTeams(context, mode, mainIds, supportIds, supportCount);
 
-            createdBattle = new BattleController(context.config.battle, context.config.critical, context.config.awakening, context.abilities, mode, teams, context.config.fieldEffects(), context.registries.supportAbilityImplementations, context.registries.supportPassiveImplementations, context.events.gameplay());
-
-            context.config.graphics.ultimateCutIns = Gdx.app.getPreferences(UiThemeManager.PREFERENCES_NAME).getBoolean("ultimateCutIns", context.config.graphics.ultimateCutIns);
-
-            createdBattle.setCutInsEnabled(context.config.graphics.ultimateCutIns);
-
-            InputDeviceMode inputMode = InputDeviceMode.load(Gdx.app.getPreferences(UiThemeManager.PREFERENCES_NAME));
-
-            createdInput = new PlayerInputManager(context.config.controls, context.joyCons, inputMode);
+            createdBattle = createBattleController(context, mode, teams);
+            createdInput = createInput(context);
             createdRenderer = new SplitScreenRenderer(context.config.battle, context.config.graphics, teams, context.config.skills(), context.config.ultimates(), context.config.awakening.texturePath, context.registries.effects.values(), context.resources);
             createdHud = new BattleHud(context, createdBattle);
-            createdPauseMenu = createPauseMenu(createdHud);
+            return new PreparedBattle(createdBattle, createdInput, createdRenderer, createdHud);
 
         } catch (RuntimeException | Error error) {
-            disposeAfterConstructionFailure(error, createdInput, createdRenderer, createdHud);
+            new PreparedBattle(createdBattle, createdInput, createdRenderer, createdHud).disposeAfterFailure(error);
             throw error;
         }
+    }
 
-        battle = createdBattle;
-        input = createdInput;
-        renderer = createdRenderer;
-        hud = createdHud;
-        pauseMenu = createdPauseMenu;
+    /**
+     * 戦闘状態、能力ロードアウト、補助キャラクターを初期化する。
+     */
+    static BattleController createBattleController(GameContext context, BattleMode mode, List<BattleTeamDefinition> teams) {
+        BattleController createdBattle = new BattleController(context.config.battle, context.config.critical, context.config.awakening, context.abilities, mode, teams, context.config.fieldEffects(), context.registries.supportAbilityImplementations, context.registries.supportPassiveImplementations, context.events.gameplay());
+        try {
+            context.config.graphics.ultimateCutIns = Gdx.app.getPreferences(UiThemeManager.PREFERENCES_NAME).getBoolean("ultimateCutIns", context.config.graphics.ultimateCutIns);
+            createdBattle.setCutInsEnabled(context.config.graphics.ultimateCutIns);
+            return createdBattle;
+        } catch (RuntimeException | Error error) {
+            closeAfterFailure(error, createdBattle::close);
+            throw error;
+        }
+    }
+
+    static PlayerInputManager createInput(GameContext context) {
+        InputDeviceMode inputMode = InputDeviceMode.load(Gdx.app.getPreferences(UiThemeManager.PREFERENCES_NAME));
+        return new PlayerInputManager(context.config.controls, context.joyCons, inputMode);
     }
 
     static List<BattleTeamDefinition> buildTeams(GameContext context, BattleMode mode, List<String> mainIds, List<String> supportIds, int supportCount) {
@@ -231,21 +262,7 @@ public final class BattleScreen extends ScreenAdapter {
         return table;
     }
 
-    private static void disposeAfterConstructionFailure(Throwable failure, PlayerInputManager input, SplitScreenRenderer renderer, BattleHud hud) {
-        if (hud != null) {
-            closeAfterFailure(failure, hud::dispose);
-        }
-
-        if (renderer != null) {
-            closeAfterFailure(failure, renderer::dispose);
-        }
-
-        if (input != null) {
-            closeAfterFailure(failure, input::clear);
-        }
-    }
-
-    private static void closeAfterFailure(Throwable failure, Runnable cleanup) {
+    static void closeAfterFailure(Throwable failure, Runnable cleanup) {
         try {
             cleanup.run();
         } catch (RuntimeException | Error cleanupError) {

@@ -30,11 +30,12 @@ import jp.takoa.mojibattle.domain.support.SupportCharacterRuntime;
 import jp.takoa.mojibattle.domain.ability.AbilityConfigs;
 import jp.takoa.mojibattle.registry.CombatEffectDefinition;
 import jp.takoa.mojibattle.registry.EffectIds;
-import jp.takoa.mojibattle.resource.GdxTextureLoader;
 import jp.takoa.mojibattle.resource.ResourceManager;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
+import java.util.Set;
 import java.util.List;
 import java.util.Map;
 import java.util.EnumMap;
@@ -48,10 +49,9 @@ public final class ArenaRenderer implements Disposable {
 
     private final ModelBatch batch = new ModelBatch();
     private final Environment environment = new Environment();
-    private final GdxTextureLoader textureLoader;
+    private final BattleTextureCache textures;
 
     private final List<Model> models = new ArrayList<>();
-    private final List<Texture> textures = new ArrayList<>();
 
     private final Map<String, ModelInstance> projectileGlyphs = new HashMap<>();
     private final Map<String, ModelInstance> projectileOutlines = new HashMap<>();
@@ -74,8 +74,18 @@ public final class ArenaRenderer implements Disposable {
     private float animationTime;
 
     public ArenaRenderer(BattleConfig config, List<BattleTeamDefinition> teamDefinitions, List<AbilityConfigs.ProjectileSkill> skills, List<AbilityConfigs.AreaUltimate> ultimates, String awakeningTexturePath, Iterable<CombatEffectDefinition> effects, ResourceManager resources) {
-        textureLoader = new GdxTextureLoader(resources);
-        
+        this(config, teamDefinitions, skills, ultimates, awakeningTexturePath, effects, new BattleTextureCache(resources));
+    }
+
+    /**
+     * 事前に読み込んだTextureキャッシュを使用して描画モデルを構築する。
+     *
+     * <p>{@code textureCache} の所有権はこのRendererへ移り、{@link #dispose()} で解放される。
+     * キャッシュに存在しない画像はこの時点で同期的に読み込まれる。構築に失敗した場合もキャッシュは解放される。</p>
+     */
+    public ArenaRenderer(BattleConfig config, List<BattleTeamDefinition> teamDefinitions, List<AbilityConfigs.ProjectileSkill> skills, List<AbilityConfigs.AreaUltimate> ultimates, String awakeningTexturePath, Iterable<CombatEffectDefinition> effects, BattleTextureCache textureCache) {
+        this.textures = textureCache;
+
         try {
             environment.set(new ColorAttribute(ColorAttribute.AmbientLight, 0.95f, 0.97f, 1f, 1));
 
@@ -279,12 +289,66 @@ public final class ArenaRenderer implements Disposable {
     }
 
     private Texture texture(String path) {
-        Texture value = textureLoader.load(path, true);
-        value.setFilter(Texture.TextureFilter.MipMapLinearLinear, Texture.TextureFilter.Linear);
-        
-        textures.add(value);
+        return textures.get(path);
+    }
 
-        return value;
+    /**
+     * コンストラクタが生成時に読み込む画像参照を、読込み順に重複なく返す。
+     *
+     * <p>ロード画面がこの一覧を先読みすることで、Renderer構築時の同期デコードを避ける。
+     * コンストラクタの読込み処理を変更した場合は、この一覧も同じ順序で更新すること。
+     * 一覧から漏れた画像があってもRenderer構築時に同期読込みされるため、表示結果は変わらない。</p>
+     */
+    public static List<String> requiredTextures(List<BattleTeamDefinition> teamDefinitions, List<AbilityConfigs.ProjectileSkill> skills, List<AbilityConfigs.AreaUltimate> ultimates, String awakeningTexturePath, Iterable<CombatEffectDefinition> effects) {
+        Set<String> references = new LinkedHashSet<>();
+        references.add("arena/sparse-grass.jpg");
+        references.add("arena/hilly-terrain.jpg");
+        references.add("arena/matsudo-backdrop.png");
+
+        for (BattleTeamDefinition team : teamDefinitions) {
+            addReference(references, team.main().glyphTexture);
+            for (CharacterDefinition subMain : team.subMains()) {
+                addReference(references, subMain.glyphTexture);
+            }
+            for (SupportCharacterDefinition support : team.supports()) {
+                if (support != null) {
+                    addReference(references, support.glyphTexture);
+                }
+            }
+        }
+        for (AbilityConfigs.ProjectileSkill skill : skills) {
+            if (skill.textures != null) {
+                for (String texturePath : skill.textures) {
+                    addReference(references, texturePath);
+                }
+            }
+        }
+        for (BattleTeamDefinition team : teamDefinitions) {
+            for (SupportCharacterDefinition support : team.supports()) {
+                if (support != null) {
+                    addReference(references, support.projectileTexture);
+                }
+            }
+        }
+        for (CombatEffectDefinition effect : effects) {
+            addReference(references, effect.texturePath());
+        }
+        for (AbilityConfigs.AreaUltimate ultimate : ultimates) {
+            addReference(references, ultimate.objectTexture);
+        }
+        for (AbilityConfigs.ProjectileSkill skill : skills) {
+            addReference(references, skill.activationTexture);
+            addReference(references, skill.fallingObjectTexture);
+        }
+        addReference(references, "objects/commuter-train.png");
+        addReference(references, awakeningTexturePath);
+        return List.copyOf(references);
+    }
+
+    private static void addReference(Set<String> references, String reference) {
+        if (reference != null) {
+            references.add(reference);
+        }
     }
 
     private ModelInstance texturedRect(ModelBuilder builder, Texture texture, float width, float height, Color tint) {
@@ -657,8 +721,6 @@ public final class ArenaRenderer implements Disposable {
         for (Model model : models) {
             model.dispose();
         }
-        for (Texture texture : textures) {
-            texture.dispose();
-        }
+        textures.dispose();
     }
 }

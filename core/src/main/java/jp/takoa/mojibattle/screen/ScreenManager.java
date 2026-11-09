@@ -2,6 +2,8 @@ package jp.takoa.mojibattle.screen;
 
 import com.badlogic.gdx.Game;
 import com.badlogic.gdx.Screen;
+import jp.takoa.mojibattle.crash.CrashReporter;
+import jp.takoa.mojibattle.crash.GameState;
 import jp.takoa.mojibattle.log.DiagnosticLog;
 
 /**
@@ -28,6 +30,7 @@ public final class ScreenManager {
             throw error;
         }
         DiagnosticLog.setCurrentScreen(next.getClass().getSimpleName());
+        CrashReporter.setGameState(stateOf(next));
         if (previous != null) {
             try {
                 previous.dispose();
@@ -37,12 +40,29 @@ public final class ScreenManager {
         }
     }
 
+    static GameState stateOf(Screen screen) {
+        if (screen instanceof StartupLoadingScreen) {
+            return GameState.STARTUP;
+        }
+        if (screen instanceof BattleLoadingScreen) {
+            return GameState.LOADING;
+        }
+        if (screen instanceof BattleScreen) {
+            return GameState.BATTLE;
+        }
+        if (screen instanceof ResultScreen) {
+            return GameState.RESULT;
+        }
+        return GameState.MENU;
+    }
+
     private void rollback(Screen previous, Screen failed, Throwable failure) {
         try {
             if (game.getScreen() != previous) {
                 game.setScreen(previous);
             }
             DiagnosticLog.setCurrentScreen(previous == null ? "none" : previous.getClass().getSimpleName());
+            CrashReporter.setGameState(previous == null ? GameState.MENU : stateOf(previous));
         } catch (RuntimeException | Error rollbackError) {
             failure.addSuppressed(rollbackError);
         }

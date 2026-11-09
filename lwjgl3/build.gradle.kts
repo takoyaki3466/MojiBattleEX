@@ -61,6 +61,9 @@ application {
 tasks.named<Jar>("jar") {
     archiveFileName.set("MojiBattleEX.jar")
     manifest.attributes["Main-Class"] = application.mainClass.get()
+    // クラッシュレポートへ記録する配布バージョン。
+    manifest.attributes["Implementation-Title"] = "MojiBattleEX"
+    manifest.attributes["Implementation-Version"] = packageVersion
 }
 
 val standardItemJar = project(":item").tasks.named<Jar>("jar")
@@ -95,6 +98,10 @@ tasks.named<JavaExec>("run") {
     doFirst {
         systemProperty(
             "mojibattle.modsDir", developmentModsDirectory.get().asFile.absolutePath
+        )
+        // 開発実行時のクラッシュレポート保存先。作業ディレクトリ（assets）へは書き込まない。
+        systemProperty(
+            "mojibattle.crashReportDir", rootProject.layout.buildDirectory.dir("crush-report").get().asFile.absolutePath
         )
     }
 }
@@ -155,6 +162,8 @@ fun jpackageBaseArguments(destination: File): List<String> {
         "--java-options",
         "-Dmojibattle.modsDir=\$APPDIR/mods",
         "--java-options",
+        "-Dmojibattle.appDir=\$APPDIR",
+        "--java-options",
         "-Xms256m",
         "--java-options",
         "-Xmx2g"
@@ -212,6 +221,12 @@ fun verifyApplicationImage(image: File) {
     require(javaOptions.contains("java-options=-Xms256m") && javaOptions.contains("java-options=-Xmx2g")) {
         "Heap JVM options are missing"
     }
+    require(javaOptions.contains("java-options=-Dmojibattle.appDir=\$APPDIR")) {
+        "Application directory JVM option for crash reports is missing"
+    }
+    require(image.resolve("crush-report").isDirectory) {
+        "Crash report directory (crush-report) is missing"
+    }
 }
 
 fun registerJpackageAppImage(
@@ -246,6 +261,12 @@ fun registerJpackageAppImage(
         }
         val standardMod = standardItemJar.get().archiveFile.get().asFile
         standardMod.copyTo(modsDirectory.resolve(standardMod.name), overwrite = true)
+
+        // クラッシュレポートの保存先。指定どおり crush-report とする（crash-report ではない）。
+        val crashReportDirectory = image.resolve("crush-report")
+        if (!crashReportDirectory.mkdirs() && !crashReportDirectory.isDirectory) {
+            throw GradleException("Failed to create crash report directory: ${crashReportDirectory.absolutePath}")
+        }
 
         verifyApplicationImage(image)
     }

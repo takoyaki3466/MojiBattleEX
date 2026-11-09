@@ -1,7 +1,43 @@
 {
-  "playerOne": {"forward":"W","backward":"S","left":"A","right":"D","skill":"Q","ultimate":"E","supportSkill":"R","supportUltimate":"F"},
-  "playerTwo": {"forward":"UP","backward":"DOWN","left":"LEFT","right":"RIGHT","skill":"COMMA","ultimate":"PERIOD","supportSkill":"SLASH","supportUltimate":"SHIFT_RIGHT"},
-  "playerThree": {"forward":"LEFT_BRACKET","backward":"APOSTROPHE","left":"SEMICOLON","right":"BACKSLASH","skill":"P","ultimate":"RIGHT_BRACKET","supportSkill":"MINUS","supportUltimate":"ENTER"},
-  "playerFour": {"forward":"U","backward":"J","left":"H","right":"K","skill":"Y","ultimate":"I","supportSkill":"NUMPAD_1","supportUltimate":"O"},
+  "playerOne": {
+    "forward": "W",
+    "backward": "S",
+    "left": "A",
+    "right": "D",
+    "skill": "Q",
+    "ultimate": "E",
+    "supportSkill": "R",
+    "supportUltimate": "F"
+  },
+  "playerTwo": {
+    "forward": "UP",
+    "backward": "DOWN",
+    "left": "LEFT",
+    "right": "RIGHT",
+    "skill": "COMMA",
+    "ultimate": "PERIOD",
+    "supportSkill": "SLASH",
+    "supportUltimate": "SHIFT_RIGHT"
+  },
+  "playerThree": {
+    "forward": "LEFT_BRACKET",
+    "backward": "APOSTROPHE",
+    "left": "SEMICOLON",
+    "right": "BACKSLASH",
+    "skill": "P",
+    "ultimate": "RIGHT_BRACKET",
+    "supportSkill": "MINUS",
+    "supportUltimate": "ENTER"
+  },
+  "playerFour": {
+    "forward": "U",
+    "backward": "J",
+    "left": "H",
+    "right": "K",
+    "skill": "Y",
+    "ultimate": "I",
+    "supportSkill": "NUMPAD_1",
+    "supportUltimate": "O"
+  },
   "pause": "ESCAPE"
 }
