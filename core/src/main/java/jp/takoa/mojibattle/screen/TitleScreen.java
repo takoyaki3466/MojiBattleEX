@@ -7,13 +7,14 @@ import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
 import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
 import com.badlogic.gdx.utils.Align;
 import jp.takoa.mojibattle.GameContext;
+import jp.takoa.mojibattle.mod.GameApiVersion;
 import jp.takoa.mojibattle.ui.ChaosButton;
 import jp.takoa.mojibattle.ui.ChaosMenuLayout;
 import jp.takoa.mojibattle.ui.UiTheme;
 import jp.takoa.mojibattle.ui.UiThemeManager;
 
 /**
- * ゲーム開始、設定、キャラクター編集への入口を表示するタイトル画面。
+ * ゲーム開始、設定、キャラクター編集、ゲーム情報への入口を表示するタイトル画面。
  */
 public final class TitleScreen extends StageScreen {
     public TitleScreen(GameContext context, ScreenManager screens) {
@@ -41,6 +42,7 @@ public final class TitleScreen extends StageScreen {
         TextButton start = chaos ? new ChaosButton(context.i18n.text("menu.start"), context.skin, ChaosButton.Accent.ORANGE) : new TextButton(context.i18n.text("menu.start"), context.skin);
         TextButton editor = chaos ? new ChaosButton(context.i18n.text("menu.character_editor"), context.skin, ChaosButton.Accent.CYAN) : new TextButton(context.i18n.text("menu.character_editor"), context.skin);
         TextButton settings = chaos ? new ChaosButton(context.i18n.text("menu.settings"), context.skin, ChaosButton.Accent.LIME) : new TextButton(context.i18n.text("menu.settings"), context.skin);
+        TextButton info = chaos ? new ChaosButton(context.i18n.text("menu.info"), context.skin, ChaosButton.Accent.STEEL) : new TextButton(context.i18n.text("menu.info"), context.skin);
 
         Label saved = noticeKey == null ? null : new Label(context.i18n.text(noticeKey), context.skin);
         if (saved != null) {
@@ -60,6 +62,12 @@ public final class TitleScreen extends StageScreen {
             }
         });
 
+        info.addListener(new ChangeListener() {
+            public void changed(ChangeEvent event, Actor actor) {
+                screens.show(new GameInfoScreen(context, screens));
+            }
+        });
+
         editor.addListener(new ChangeListener() {
             public void changed(ChangeEvent event, Actor actor) {
                 screens.show(new CharacterEditorScreen(context, screens));
@@ -68,7 +76,7 @@ public final class TitleScreen extends StageScreen {
 
         if (chaos) {
             title.setFontScale(1.08f);
-            ChaosMenuLayout layout = new ChaosMenuLayout(context.skin).header(title, subtitle).action(start, 84).action(editor, 76).action(settings, 76);
+            ChaosMenuLayout layout = new ChaosMenuLayout(context.skin).header(title, subtitle).action(start, 84).action(editor, 76).action(settings, 76).action(info, 76);
             if (saved != null) {
                 layout.notice(saved);
             }
@@ -84,6 +92,7 @@ public final class TitleScreen extends StageScreen {
             hero.add(start).height(82).row();
             hero.add(editor).row();
             hero.add(settings).row();
+            hero.add(info).row();
             if (saved != null) {
                 hero.add(saved).height(44).row();
             }
@@ -92,14 +101,14 @@ public final class TitleScreen extends StageScreen {
 
         Label aiNotice = new Label(context.i18n.text("menu.ai_notice"), context.skin);
 
-        aiNotice.setFontScale(.46f);
+        aiNotice.setFontScale(.9f);
         aiNotice.setWrap(true);
         aiNotice.setAlignment(Align.right);
 
         Table notice = new Table();
         notice.setFillParent(true);
         notice.bottom().right().pad(10);
-        notice.add(aiNotice).width(610).right();
+        notice.add(aiNotice).width(1525).right();
 
         stage.addActor(notice);
     }

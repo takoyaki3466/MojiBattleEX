@@ -12,6 +12,7 @@ import jp.takoa.mojibattle.domain.support.SupportCharacterDefinition;
 import jp.takoa.mojibattle.domain.support.SupportRegistry;
 import jp.takoa.mojibattle.domain.ability.AbilityRegistry;
 import jp.takoa.mojibattle.i18n.LocalizationManager;
+import jp.takoa.mojibattle.info.InstalledMods;
 import jp.takoa.mojibattle.input.JoyConInputManager;
 import jp.takoa.mojibattle.log.GameLog;
 import jp.takoa.mojibattle.event.EventChannels;
@@ -99,7 +100,7 @@ public final class GameContext implements AutoCloseable {
     }
 
     /**
-     * Skinのフォントへ収録する、翻訳文以外の表示文字（キャラクター、補助キャラクター、カスタムキャラクター名、スキルの文字）。
+     * Skinのフォントへ収録する、翻訳文以外の表示文字（キャラクター、補助キャラクター、カスタムキャラクター名、スキルの文字、導入済みMODの情報）。
      */
     public static String skinCharacters(RegistrySnapshot bootstrap) {
         StringBuilder extraCharacters = new StringBuilder();
@@ -123,6 +124,8 @@ public final class GameContext implements AutoCloseable {
                 extraCharacters.append(String.join("", skill.glyphs));
             }
         }
+        // 情報画面に表示するMOD名・バージョン・ファイル名。
+        extraCharacters.append(InstalledMods.displayCharacters());
         return extraCharacters.toString();
     }
 

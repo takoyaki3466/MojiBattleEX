@@ -1,6 +1,7 @@
 package jp.takoa.mojibattle.crash;
 
 import jp.takoa.mojibattle.debug.DebugSettings;
+import jp.takoa.mojibattle.info.GameVersionInfo;
 import jp.takoa.mojibattle.log.DiagnosticLog;
 import jp.takoa.mojibattle.mod.GameApiVersion;
 
@@ -177,7 +178,7 @@ public final class CrashReporter {
             if (!failures.isEmpty()) {
                 note += System.lineSeparator() + "  Failed locations: " + String.join("; ", failures);
             }
-            return CrashReportFormatter.format(new CrashReportFormatter.CrashReportData(timestamp, versionOrUnknown(), GameApiVersion.GAME_VERSION, String.valueOf(GameApiVersion.API_VERSION), property("java.version") + " (" + property("java.vendor") + ")", property("java.runtime.name") + " " + property("java.runtime.version") + " / " + property("java.vm.name"), property("os.name") + " " + property("os.version") + " (" + property("os.arch") + ")", memory(), gameState, DiagnosticLog.currentScreen(), operation, currentTask, DebugSettings.enabled(), reportThread, threadName(errorThread), DiagnosticLog.loadedMods(), DiagnosticLog.selectedMainIds(), DiagnosticLog.selectedSupportIds(), summary, error, loadingState, note, String.valueOf(DiagnosticLog.file()), recentLog));
+            return CrashReportFormatter.format(new CrashReportFormatter.CrashReportData(timestamp, versionOrUnknown(), GameApiVersion.GAME_VERSION, GameApiVersion.API_VERSION, property("java.version") + " (" + property("java.vendor") + ")", property("java.runtime.name") + " " + property("java.runtime.version") + " / " + property("java.vm.name"), property("os.name") + " " + property("os.version") + " (" + property("os.arch") + ")", memory(), gameState, DiagnosticLog.currentScreen(), operation, currentTask, DebugSettings.enabled(), reportThread, threadName(errorThread), DiagnosticLog.loadedMods(), DiagnosticLog.selectedMainIds(), DiagnosticLog.selectedSupportIds(), summary, error, loadingState, note, String.valueOf(DiagnosticLog.file()), recentLog));
         });
 
         if (result.succeeded()) {
@@ -224,7 +225,11 @@ public final class CrashReporter {
 
     private static String versionOrUnknown() {
         String version = gameVersion;
-        return version == null || version.isBlank() ? "unknown (development build)" : version;
+        if (version == null || version.isBlank()) {
+            // JARのマニフェストが無い開発実行でも、ビルド時に生成したバージョン情報を使う。
+            version = GameVersionInfo.gameVersion();
+        }
+        return version == null || version.isBlank() || version.equals("unknown") ? "unknown (development build)" : version;
     }
 
     private static String memory() {
