@@ -9,12 +9,13 @@ import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
 import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
 import com.badlogic.gdx.utils.Align;
 import jp.takoa.mojibattle.GameContext;
+import jp.takoa.mojibattle.debug.DebugSettings;
 import jp.takoa.mojibattle.input.InputDeviceMode;
 import jp.takoa.mojibattle.ui.UiTheme;
 import jp.takoa.mojibattle.ui.UiThemeManager;
 
 /**
- * 解像度、全画面、音量、UI倍率、カメラ追従値をPreferencesへ保存する設定画面。
+ * 解像度、全画面、音量、UI倍率、カメラ追従値、デバッグモードをPreferencesへ保存する設定画面。
  */
 public final class SettingsScreen extends StageScreen {
     private static final int[][] RESOLUTIONS = {{1280, 720}, {1600, 900}, {1920, 1080}};
@@ -134,7 +135,23 @@ public final class SettingsScreen extends StageScreen {
         boolean cutInsEnabled = preferences.getBoolean("ultimateCutIns", context.config.graphics.ultimateCutIns);
         context.config.graphics.ultimateCutIns = cutInsEnabled;
         TextButton ultimateCutIns = new TextButton(cutInLabel(cutInsEnabled), context.skin);
-        table.add(ultimateCutIns).row();
+
+        // 行数を増やさないよう、ON/OFF切替の2項目を1行へ並べる。
+        TextButton debugMode = new TextButton(debugModeLabel(DebugSettings.load(preferences)), context.skin);
+        Table toggles = new Table();
+        toggles.defaults().growX().height(42).uniformX();
+        toggles.add(ultimateCutIns).padRight(2);
+        toggles.add(debugMode).padLeft(2);
+        table.add(toggles).row();
+
+        debugMode.addListener(new ChangeListener() {
+            public void changed(ChangeEvent event, Actor actor) {
+                boolean enabled = !DebugSettings.enabled();
+                // 保存と同時に実行中の値へ反映するため、再起動せずにFPS表示等が切り替わる。
+                DebugSettings.save(preferences, enabled);
+                debugMode.setText(debugModeLabel(enabled));
+            }
+        });
         ultimateCutIns.addListener(new ChangeListener() {
             public void changed(ChangeEvent event, Actor actor) {
                 boolean enabled = !preferences.getBoolean("ultimateCutIns", context.config.graphics.ultimateCutIns);
@@ -198,6 +215,10 @@ public final class SettingsScreen extends StageScreen {
 
     private String themeLabel(UiTheme theme) {
         return context.i18n.text("settings.ui_theme", context.i18n.text(theme.translationKey()));
+    }
+
+    private String debugModeLabel(boolean enabled) {
+        return context.i18n.text("settings.debug_mode", context.i18n.text(enabled ? "settings.enabled" : "settings.disabled"));
     }
 
     private String cutInLabel(boolean enabled) {

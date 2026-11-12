@@ -1,6 +1,7 @@
 package jp.takoa.mojibattle.ui;
 
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.Pixmap;
 import com.badlogic.gdx.graphics.Texture;
@@ -15,11 +16,24 @@ import com.badlogic.gdx.scenes.scene2d.utils.Drawable;
 import com.badlogic.gdx.scenes.scene2d.utils.NinePatchDrawable;
 import jp.takoa.mojibattle.i18n.LocalizationManager;
 
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+
 /**
  * 日本語フォントと共通Drawableを生成し、Scene2D用Skinへ登録するUIリソースファクトリ。
  */
 public final class UiFactory {
     private static final String FONT_PATH = "fonts/NotoSansJP-VF.ttf";
+    private static final String MENU_BACKGROUND = "ui/menu-background.png";
+    private static final String MODERN_BACKGROUND = "ui/theme-modern-background.png";
+    private static final String CHAOS_BACKGROUND = "ui/theme-chaos-background-v2.png";
+
+    /**
+     * Skinの組立てで読み込む画像ファイル。起動ロード画面はこれらをワーカースレッドで先にデコードする。
+     */
+    public static final List<String> BACKGROUND_IMAGES = List.of(MENU_BACKGROUND, MODERN_BACKGROUND, CHAOS_BACKGROUND);
 
     private UiFactory() {
     }
@@ -30,59 +44,115 @@ public final class UiFactory {
      * @return 呼び出し側が破棄責任を持つSkin
      */
     public static Skin createSkin(LocalizationManager i18n, String additionalCharacters) {
-        Skin skin = new Skin();
+        List<FontSpec> specs = fontSpecs(i18n, additionalCharacters);
+        Map<String, BitmapFont> fonts = new LinkedHashMap<>();
+        FreeTypeFontGenerator generator = new FreeTypeFontGenerator(fontFile());
+        try {
+            for (FontSpec spec : specs) {
+                fonts.put(spec.name(), generator.generateFont(spec.parameter()));
+            }
+        } catch (RuntimeException | Error error) {
+            fonts.values().forEach(BitmapFont::dispose);
+            throw error;
+        } finally {
+            generator.dispose();
+        }
+        return createSkin(fonts);
+    }
 
-        FreeTypeFontGenerator generator = new FreeTypeFontGenerator(Gdx.files.internal(FONT_PATH));
+    /**
+     * Skinが使用する日本語フォントのファイル。
+     */
+    public static FileHandle fontFile() {
+        return Gdx.files.internal(FONT_PATH);
+    }
+
+    /**
+     * {@link #createSkin(Map)} が必要とするフォントの名前と生成パラメータを、登録順に返す。
+     *
+     * <p>呼出しごとに新しいパラメータを生成するため、呼出し側が {@code packer} などを設定してもよい。
+     * 起動ロード画面はこれを使い、ラスタライズをワーカースレッドで行う。</p>
+     */
+    public static List<FontSpec> fontSpecs(LocalizationManager i18n, String additionalCharacters) {
+        String characters = unique(FreeTypeFontGenerator.DEFAULT_CHARS + i18n.allCharacters() + additionalCharacters);
+
         FreeTypeFontGenerator.FreeTypeFontParameter parameter = new FreeTypeFontGenerator.FreeTypeFontParameter();
-
         parameter.size = 28;
-
-        parameter.characters = unique(FreeTypeFontGenerator.DEFAULT_CHARS + i18n.allCharacters() + additionalCharacters);
+        parameter.characters = characters;
         parameter.minFilter = Texture.TextureFilter.Linear;
         parameter.magFilter = Texture.TextureFilter.Linear;
 
-        BitmapFont font = generator.generateFont(parameter);
-
         FreeTypeFontGenerator.FreeTypeFontParameter titleParameter = new FreeTypeFontGenerator.FreeTypeFontParameter();
         titleParameter.size = 88;
-        titleParameter.characters = parameter.characters;
+        titleParameter.characters = characters;
         titleParameter.color = Color.WHITE;
         titleParameter.borderWidth = 2.5f;
         titleParameter.borderColor = Color.WHITE;
         titleParameter.minFilter = Texture.TextureFilter.Linear;
         titleParameter.magFilter = Texture.TextureFilter.Linear;
 
-        BitmapFont titleFont = generator.generateFont(titleParameter);
-
         FreeTypeFontGenerator.FreeTypeFontParameter effectTextParameter = new FreeTypeFontGenerator.FreeTypeFontParameter();
         effectTextParameter.size = 44;
-        effectTextParameter.characters = parameter.characters;
+        effectTextParameter.characters = characters;
         effectTextParameter.color = Color.WHITE;
         effectTextParameter.borderWidth = 3f;
         effectTextParameter.borderColor = Color.BLACK;
         effectTextParameter.minFilter = Texture.TextureFilter.Linear;
         effectTextParameter.magFilter = Texture.TextureFilter.Linear;
 
-        BitmapFont effectTextFont = generator.generateFont(effectTextParameter);
-        BitmapFont modernFont = themedFont(generator, parameter.characters, 28, Color.WHITE, 1f, new Color(.04f, .30f, .34f, 1f), 1, 1, new Color(0f, 0f, 0f, .8f));
-        BitmapFont modernTitleFont = themedFont(generator, parameter.characters, 88, Color.WHITE, 2f, new Color(.08f, .72f, .76f, 1f), 2, 2, new Color(0f, 0f, 0f, .9f));
-        BitmapFont modernEffectFont = themedFont(generator, parameter.characters, 44, Color.WHITE, 1.5f, new Color(.08f, .72f, .76f, 1f), 1, 2, new Color(0f, 0f, 0f, .9f));
-        BitmapFont chaosFont = themedFont(generator, parameter.characters, 28, Color.WHITE, 3f, new Color(.04f, 0f, .10f, 1f), 3, 2, new Color(1f, 0f, .62f, 1f));
-        BitmapFont chaosTitleFont = themedFont(generator, parameter.characters, 88, new Color(1f, .96f, .08f, 1f), 5.5f, new Color(.04f, 0f, .10f, 1f), 5, 4, new Color(0f, .92f, 1f, 1f));
-        BitmapFont chaosEffectFont = themedFont(generator, parameter.characters, 44, Color.WHITE, 4f, new Color(.04f, 0f, .10f, 1f), 4, 3, new Color(1f, 0f, .62f, 1f));
-        generator.dispose();
+        return List.of(new FontSpec("default-font", parameter), new FontSpec("default-title-font", titleParameter), new FontSpec("default-effect-font", effectTextParameter),
+                new FontSpec("modern-font", themedFontParameter(characters, 28, Color.WHITE, 1f, new Color(.04f, .30f, .34f, 1f), 1, 1, new Color(0f, 0f, 0f, .8f))),
+                new FontSpec("modern-title-font", themedFontParameter(characters, 88, Color.WHITE, 2f, new Color(.08f, .72f, .76f, 1f), 2, 2, new Color(0f, 0f, 0f, .9f))),
+                new FontSpec("modern-effect-font", themedFontParameter(characters, 44, Color.WHITE, 1.5f, new Color(.08f, .72f, .76f, 1f), 1, 2, new Color(0f, 0f, 0f, .9f))),
+                new FontSpec("chaos-font", themedFontParameter(characters, 28, Color.WHITE, 3f, new Color(.04f, 0f, .10f, 1f), 3, 2, new Color(1f, 0f, .62f, 1f))),
+                new FontSpec("chaos-title-font", themedFontParameter(characters, 88, new Color(1f, .96f, .08f, 1f), 5.5f, new Color(.04f, 0f, .10f, 1f), 5, 4, new Color(0f, .92f, 1f, 1f))),
+                new FontSpec("chaos-effect-font", themedFontParameter(characters, 44, Color.WHITE, 4f, new Color(.04f, 0f, .10f, 1f), 4, 3, new Color(1f, 0f, .62f, 1f))));
+    }
 
-        skin.add("default-font", font);
-        skin.add("default-title-font", titleFont);
-        skin.add("default-effect-font", effectTextFont);
-        skin.add("modern-font", modernFont);
-        skin.add("modern-title-font", modernTitleFont);
-        skin.add("modern-effect-font", modernEffectFont);
-        skin.add("chaos-font", chaosFont);
-        skin.add("chaos-title-font", chaosTitleFont);
-        skin.add("chaos-effect-font", chaosEffectFont);
-        skin.add("menu-background", new Texture(Gdx.files.internal("ui/menu-background.png")));
-        registerThemes(skin);
+    /**
+     * 生成済みのフォントからSkinを組み立てる。フォントの所有権はSkinへ移り、
+     * 組立てに失敗した場合もここで解放する。
+     *
+     * @param fonts {@link #fontSpecs} の全名前に対応するフォント
+     * @return 呼び出し側が破棄責任を持つSkin
+     */
+    public static Skin createSkin(Map<String, BitmapFont> fonts) {
+        return createSkin(fonts, path -> new Texture(Gdx.files.internal(path)));
+    }
+
+    /**
+     * 生成済みのフォントと、{@link #BACKGROUND_IMAGES} のTextureを作る関数からSkinを組み立てる。
+     * 作られたTextureはその場でSkinへ登録され、Skinが所有する。
+     */
+    public static Skin createSkin(Map<String, BitmapFont> fonts, Function<String, Texture> images) {
+        Skin skin = new Skin();
+        try {
+            for (Map.Entry<String, BitmapFont> entry : fonts.entrySet()) {
+                skin.add(entry.getKey(), entry.getValue());
+            }
+            assembleSkin(skin, images);
+            return skin;
+        } catch (RuntimeException | Error error) {
+            try {
+                skin.dispose();
+            } catch (RuntimeException disposeError) {
+                error.addSuppressed(disposeError);
+            }
+            throw error;
+        }
+    }
+
+    private static void assembleSkin(Skin skin, Function<String, Texture> images) {
+        BitmapFont font = skin.get("default-font", BitmapFont.class);
+        BitmapFont titleFont = skin.get("default-title-font", BitmapFont.class);
+        BitmapFont effectTextFont = skin.get("default-effect-font", BitmapFont.class);
+        // テーマ用フォントが揃っていることを組立て前に確認する。
+        for (String name : List.of("modern-font", "modern-title-font", "modern-effect-font", "chaos-font", "chaos-title-font", "chaos-effect-font")) {
+            skin.get(name, BitmapFont.class);
+        }
+
+        skin.add("menu-background", images.apply(MENU_BACKGROUND));
+        registerThemes(skin, images);
         UiTheme selectedTheme = UiThemeManager.selected();
         UiThemeManager.installDrawables(skin, selectedTheme);
 
@@ -105,15 +175,14 @@ public final class UiFactory {
 
         skin.add("default", input);
         UiThemeManager.apply(skin, selectedTheme);
-        return skin;
     }
 
-    private static void registerThemes(Skin skin) {
+    private static void registerThemes(Skin skin, Function<String, Texture> images) {
         registerTheme(skin, UiTheme.CURRENT, texture(new Color(.015f, .075f, .052f, 1f)), new Color(.025f, .14f, .095f, .96f), new Color(.045f, .34f, .19f, .98f), new Color(.12f, .68f, .34f, 1f), new Color(.025f, .24f, .13f, 1f), new Color(.055f, .20f, .12f, .98f), new Color(.30f, .94f, .40f, 1f), new Color(.08f, .11f, .10f, .96f), new Color(.18f, .95f, .34f, 1f), new Color(1f, .72f, .08f, 1f), new Color(.12f, .78f, 1f, 1f), new Color(1f, .32f, .82f, 1f), new Color(.54f, .92f, .22f, 1f));
 
-        registerTheme(skin, UiTheme.MODERN, new Texture(Gdx.files.internal("ui/theme-modern-background.png")), new Color(.025f, .12f, .16f, .96f), new Color(.04f, .20f, .24f, .98f), new Color(.05f, .42f, .44f, 1f), new Color(.42f, .16f, .14f, 1f), new Color(.035f, .15f, .19f, .98f), new Color(.96f, .48f, .34f, 1f), new Color(.025f, .08f, .12f, .96f), new Color(.20f, .94f, .76f, 1f), new Color(1f, .72f, .24f, 1f), new Color(.18f, .86f, .90f, 1f), new Color(.72f, .58f, 1f, 1f), new Color(.48f, 1f, .82f, 1f));
+        registerTheme(skin, UiTheme.MODERN, images.apply(MODERN_BACKGROUND), new Color(.025f, .12f, .16f, .96f), new Color(.04f, .20f, .24f, .98f), new Color(.05f, .42f, .44f, 1f), new Color(.42f, .16f, .14f, 1f), new Color(.035f, .15f, .19f, .98f), new Color(.96f, .48f, .34f, 1f), new Color(.025f, .08f, .12f, .96f), new Color(.20f, .94f, .76f, 1f), new Color(1f, .72f, .24f, 1f), new Color(.18f, .86f, .90f, 1f), new Color(.72f, .58f, 1f, 1f), new Color(.48f, 1f, .82f, 1f));
 
-        registerTheme(skin, UiTheme.CHAOS, new Texture(Gdx.files.internal("ui/theme-chaos-background-v2.png")), new Color(.10f, .015f, .22f, .94f), new Color(.72f, .015f, .48f, .98f), new Color(.02f, .74f, .90f, 1f), new Color(.92f, .32f, .02f, 1f), new Color(.12f, .015f, .25f, .98f), new Color(1f, .08f, .56f, 1f), new Color(.025f, .01f, .12f, .96f), new Color(.54f, 1f, .02f, 1f), new Color(1f, .92f, .02f, 1f), new Color(.02f, .94f, 1f, 1f), new Color(1f, .02f, .72f, 1f), new Color(.68f, 1f, .02f, 1f));
+        registerTheme(skin, UiTheme.CHAOS, images.apply(CHAOS_BACKGROUND), new Color(.10f, .015f, .22f, .94f), new Color(.72f, .015f, .48f, .98f), new Color(.02f, .74f, .90f, 1f), new Color(.92f, .32f, .02f, 1f), new Color(.12f, .015f, .25f, .98f), new Color(1f, .08f, .56f, 1f), new Color(.025f, .01f, .12f, .96f), new Color(.54f, 1f, .02f, 1f), new Color(1f, .92f, .02f, 1f), new Color(.02f, .94f, 1f, 1f), new Color(1f, .02f, .72f, 1f), new Color(.68f, 1f, .02f, 1f));
 
         registerModernFrames(skin);
         registerChaosFrames(skin);
@@ -176,7 +245,7 @@ public final class UiFactory {
         return result.toString();
     }
 
-    private static BitmapFont themedFont(FreeTypeFontGenerator generator, String characters, int size, Color color, float borderWidth, Color borderColor, int shadowOffsetX, int shadowOffsetY, Color shadowColor) {
+    private static FreeTypeFontGenerator.FreeTypeFontParameter themedFontParameter(String characters, int size, Color color, float borderWidth, Color borderColor, int shadowOffsetX, int shadowOffsetY, Color shadowColor) {
         FreeTypeFontGenerator.FreeTypeFontParameter parameter = new FreeTypeFontGenerator.FreeTypeFontParameter();
         parameter.size = size;
         parameter.characters = characters;
@@ -188,7 +257,7 @@ public final class UiFactory {
         parameter.shadowColor = shadowColor;
         parameter.minFilter = Texture.TextureFilter.Linear;
         parameter.magFilter = Texture.TextureFilter.Linear;
-        return generator.generateFont(parameter);
+        return parameter;
     }
 
     private static void framedDrawable(Skin skin, String name, int width, int height, int split, Color fill, Color border, Color accent, boolean noisy) {
@@ -340,5 +409,11 @@ public final class UiFactory {
         pixmap.dispose();
 
         return texture;
+    }
+
+    /**
+     * Skinへ登録するフォントの名前と、FreeTypeの生成パラメータ。
+     */
+    public record FontSpec(String name, FreeTypeFontGenerator.FreeTypeFontParameter parameter) {
     }
 }

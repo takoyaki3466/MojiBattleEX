@@ -5,3 +5,8 @@ build/
 *.iml
 out/
 mods/*.jar
+
+lwjgl3/src/test/
+core/src/test/
+api/src/test/
+build-tools/

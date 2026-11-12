@@ -15,6 +15,7 @@ final class ModValidator {
     private static final int SUPPORTED_SCHEMA = 1;
     private static final String HOST_MOD_ID = "mojibattle_game";
     private static final SemanticVersion GAME_VERSION = SemanticVersion.parse(GameApiVersion.GAME_VERSION);
+    private static final SemanticVersion API_VERSION = SemanticVersion.parse(GameApiVersion.API_VERSION);
 
     void validate(List<DiscoveredMod> mods) {
         Set<String> ids = new HashSet<>();
@@ -32,10 +33,7 @@ final class ModValidator {
                     throw new IllegalArgumentException("MOD ID is reserved by the host");
                 }
                 SemanticVersion.parse(value.version);
-                int apiMajor = Integer.parseInt(value.apiVersion);
-                if (apiMajor != GameApiVersion.API_MAJOR) {
-                    throw new IllegalArgumentException("Unsupported API major " + apiMajor);
-                }
+                validateApiVersion(value.apiVersion);
                 validateGameVersion(value.gameVersion);
             } catch (RuntimeException error) {
                 throw new ModLoadingException("Invalid metadata for " + mod.jar() + ": " + error.getMessage(), error);
@@ -77,6 +75,33 @@ final class ModValidator {
                 }
                 SemanticVersion.parse(range.substring(2));
             }
+        }
+    }
+
+    /**
+     * MODが要求するAPIバージョンを検証する。
+     *
+     * <p>{@code x.y.z} 形式では、メジャーがゲームと一致し、かつゲームのAPIバージョンが要求以上であることを求める。
+     * API 1.0系までの {@code "1"} のようなメジャーだけの指定は、メジャーの一致だけを確認する（既存MODとの互換性のため）。</p>
+     */
+    static void validateApiVersion(String requirement) {
+        if (requirement == null || requirement.isBlank()) {
+            throw new IllegalArgumentException("API version is required");
+        }
+        String value = requirement.trim();
+        if (value.matches("0|[1-9][0-9]*")) {
+            int major = Integer.parseInt(value);
+            if (major != API_VERSION.major()) {
+                throw new IllegalArgumentException("Unsupported API major " + major + " (game API " + GameApiVersion.API_VERSION + ")");
+            }
+            return;
+        }
+        SemanticVersion required = SemanticVersion.parse(value);
+        if (required.major() != API_VERSION.major()) {
+            throw new IllegalArgumentException("Unsupported API major " + required.major() + " (game API " + GameApiVersion.API_VERSION + ")");
+        }
+        if (API_VERSION.compareTo(required) < 0) {
+            throw new IllegalArgumentException("API version " + value + " is newer than the game API " + GameApiVersion.API_VERSION);
         }
     }
 

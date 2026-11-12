@@ -1,6 +1,6 @@
-# MojiBattleEX API 0.8.2 — 全クラス・インターフェース解説
+# MojiBattleEX API 1.1.0 — 全クラス・インターフェース解説
 
-> 対象: 現在の `api/src/main/java` 全103 Javaファイル（役割別の `package-info.java` を含む）。実際のソースを根拠に整理したAPIリファレンスです。
+> 対象: 現在の `api/src/main/java` 全115 Javaファイル（公開型100、内部実装1、役割別の `package-info.java` 14）。実際のソースを根拠に整理したAPIリファレンスです。
 
 ## はじめに
 
@@ -13,15 +13,16 @@
 
 1. `@ModEntry("my_mod")` を付けた `GameMod` 実装を作る。
 2. `GameMod.register(ModContext)` で `MojiBattleRegister` を `registrationBus()` に接続する。
-3. `registry.impl` の実装定義と `ability` のRuntimeを組み合わせて能力を登録する。
-4. Runtimeは `CombatActions` 経由で戦闘操作を要求し、`ConfigView` から設定を読む。
+3. `MojiBattleRegister.createSkill(...)` などで、`ability.runtime` のRuntimeを実装したクラスを登録する。設定はアノテーション付きrecordで宣言し、JSONから自動で読み込み・検証される（`registry.impl` の登録要素は自動生成される）。
+4. Runtimeは `CombatActions` 経由で戦闘操作を要求し、コンストラクタで受け取った設定recordを参照する。
 5. 必要なデータ・翻訳・エフェクトを `content` / `resource` / `registry` で扱う。
 
 ## パッケージ別一覧
 
 以下は公開型の数です。役割別に分割した`ability`・`battle`の各パッケージには、別途概要用`package-info.java`が1ファイルずつあります。
 
-- `ability.config`: 1型
+- `ability.config`: 5型
+- `ability.config.annotations`: 9型
 - `ability.context`: 5型
 - `ability.presentation`: 1型
 - `ability.runtime`: 6型
@@ -40,8 +41,8 @@
 - `event`: 4型
 - `event.lifecycle`: 1型
 - `mod`: 4型
-- `registry`: 12型
-- `registry.impl`: 7型
+- `registry`: 11型（ほかに非公開の内部実装 `RuntimeClassRegistration`）
+- `registry.impl`: 6型
 - `resource`: 4型
 
 ---
@@ -50,7 +51,8 @@
 
 役割ごとの配置は次のとおりです。
 
-- `config`: JSON実装非依存の設定ビュー
+- `config`: 設定recordの解析、型付き設定項目、Runtimeの基底クラス
+- `config.annotations`: 設定ビュー `ConfigView` と、設定recordの各項目に付けるアノテーション
 - `context`: Runtimeへ渡す発動・更新・イベントコンテキスト
 - `presentation`: HUDへ渡す表示モデル
 - `runtime`: Abilityの実行契約とファクトリー
@@ -76,8 +78,78 @@
 
 - `public static AbilityStateLine of(String translationKey, int priority, Object... arguments)`
 
+### `AbstractRuntime`
+**種類:** `abstract class`（`ability.config`）  
+**役割:** 型付き設定（Config record）を保持するRuntimeの任意の基底クラス。継承は必須ではなく、設定の保持だけを提供する。
+
+**主な公開メソッド／コンストラクタ:**
+
+- `public AbstractRuntime(C config)`
+- `public C getConfig()`
+
+### `ConfigKey`
+**種類:** `record`（`ability.config`）  
+**役割:** 名前と読取り関数を組にした型付き設定項目。`ConfigSchema` で使う。
+
+**recordの構成要素:** `String name`、`Function<ConfigView, T> reader`
+
+**主な公開メソッド／コンストラクタ:**
+
+- `public T read(ConfigView view)`
+- `public ConfigKey<T> validate(Predicate<T> rule)`
+- `public static ConfigKey<Float> positiveFloat(String name, float fallback)` / `nonNegativeFloat`
+- `public static ConfigKey<Integer> positiveInt(String name, int fallback)`
+- `public static ConfigKey<ResourceId> resourceId(String name, String fallback)`
+- `public static ConfigKey<Boolean> booleanValue(String name, boolean fallback)`
+- `public static ConfigKey<String> stringValue(String name, String fallback)`
+
+### `ConfigSchema`
+**種類:** `final class`（`ability.config`）  
+**役割:** `ConfigKey` の一覧から設定オブジェクトを生成する、record以外の型向けの設定定義。
+
+**主な公開メソッド／コンストラクタ:**
+
+- `public static <C> ConfigSchema.Builder<C> builder()`（`add(ConfigKey<?>)` で項目を追加し、`build(Function<ConfigSchema.Values, C>)` で確定）
+- `public C parse(ConfigView view)`
+
+### `ConfigValues`
+**種類:** `final class`（`ability.config`）  
+**役割:** `ConfigView` から基本型を既定値付きで厳密に読み取り、範囲を検証する静的ユーティリティ。
+
+**主な公開メソッド／コンストラクタ:**
+
+- `positiveFloat`、`nonNegativeFloat`、`positiveInt`、`resourceId`、`booleanValue`、`stringValue`（いずれも `(ConfigView, String key, 既定値)`）
+
+### `RecordConfigParser`
+**種類:** `final class`（`ability.config`）  
+**役割:** アノテーション付きの設定recordを解析し、JSONの値を検証して設定recordを生成する。`MojiBattleRegister` のクラス登録が内部で使う。
+
+**主な公開メソッド／コンストラクタ:**
+
+- `public RecordConfigParser(Class<C> configType)`
+- `public C parse(ConfigView source)`
+- `public Object[] displayValues(C config, float numericMultiplier)` / `displayValues(ConfigView source, float numericMultiplier)`: `@DisplayValue` 項目を宣言順に返す（数値には倍率を掛ける）
+
+### 設定recordのアノテーション
+**パッケージ:** `ability.config.annotations`  
+**役割:** 設定recordの各項目に1つだけ付け、JSONのキー、既定値、有効範囲を宣言する。`name` を省略するとrecordの項目名がJSONキーになる。
+
+| アノテーション | 項目の型 | 主な属性 |
+|---|---|---|
+| `@ConfigFloat` | `float` | `defaultValue`、`min`（既定 0）、`max`（既定 +∞）、`exclusiveMin`、`exclusiveMax`、`name` |
+| `@ConfigInt` | `int` | `defaultValue`、`min`（既定 0）、`max`、`exclusiveMin`、`exclusiveMax`、`name` |
+| `@ConfigBoolean` | `boolean` | `defaultValue`、`name` |
+| `@ConfigString` | `String` | `defaultValue`、`allowBlank`（既定 false）、`name` |
+| `@ConfigResource` | `ResourceId` | `defaultValue`、`nullable`（既定 false）、`name` |
+| `@ConfigList` | `List<String>` / `List<Float>` | `value`（`STRING` / `FLOAT`）、`dimensions`（既定 1）、`name` |
+
+補助アノテーション:
+
+- `@DisplayValue`: Abilityの説明文の引数に使う項目。複数ある場合はrecordの宣言順。
+- `@RequiredConfig`: 既定値へフォールバックせず、JSONでの明示指定を必須にする。
+
 ### `ConfigView`
-**種類:** `interface`  
+**種類:** `interface`（`ability.config.annotations`）  
 **役割:** JSON由来の設定を型付きで読み取るための抽象ビュー。フォールバック値や入れ子の設定を扱う。
 
 **主な公開メソッド／コンストラクタ:**
@@ -90,6 +162,7 @@
 - `default List<Object> listValue(String key)`
 - `public boolean contains(String key)`
 - `public Object value(String key)`
+- `public static ConfigView empty()`
 
 ### `DamageEventContext`
 **種類:** `record`  
@@ -606,7 +679,7 @@
 **種類:** `class`  
 **役割:** APIとゲームのバージョン定数を公開する。
 
-**公開定数:** `API_MAJOR`, `API_VERSION`, `GAME_VERSION`
+**公開定数:** `API_MAJOR`, `API_MINOR`, `API_PATCH`, `API_VERSION`（`"1.1.0"` 形式の文字列）, `GAME_VERSION`
 
 ### `GameMod`
 **種類:** `interface`  
@@ -640,6 +713,7 @@
 **主な公開メソッド／コンストラクタ:**
 
 - `public static AbilityPresentation of(String key, Object... arguments)`
+- `public static AbilityPresentation fromDescription(ConfigView config, Object... arguments)`: JSONの `descriptionKey` を翻訳キーにする（未指定ならエラー）
 - `public AbilityPresentation append(String key, Object... arguments)`
 
 ### `CombatEffectDefinition`
@@ -661,10 +735,25 @@
 **主な公開メソッド／コンストラクタ:**
 
 - `public static <T> MojiBattleRegister<T> create(RegistryKey<T> registryKey, String namespace)`
+- `public static MojiBattleRegister.Skill createSkill(String namespace)`
+- `public static MojiBattleRegister.Ultimate createUltimate(String namespace)`
+- `public static MojiBattleRegister.Passive createPassive(String namespace)`
+- `public static MojiBattleRegister.SupportAbility createSupportAbility(String namespace)`
+- `public static MojiBattleRegister.SupportPassive createSupportPassive(String namespace)`
 - `public RegistryHandle<T> register(String path, Supplier<? extends T> factory)`
 - `public void attach(RegistrationBus registrationBus)`
 - `public RegistryKey<T> registryKey()`
 - `public java.util.Collection<RegistryHandle<T>> entries()`
+
+**能力種別ごとの登録（`Skill` / `Ultimate` / `Passive` / `SupportAbility` / `SupportPassive`）:**
+
+- `register(String path, Class<R> runtimeType)`: publicな「設定record 1つを受け取るコンストラクタ」を持つRuntimeクラスを登録する。設定はJSONから自動で読み込み・検証される。スキル・必殺技・パッシブの説明文は、JSONの `descriptionKey` の翻訳文に `@DisplayValue` の値を渡して生成する。
+- `register(String path, Class<R> runtimeType, Consumer<ConfigView> additionalValidator)`: 項目をまたぐ検証などを追加する。
+- `registerWithPresentation(...)` / `register(path, runtimeType, validator, presentation)`: 説明文を独自に組み立てる（スキル・必殺技・パッシブのみ）。
+- `register(String path, AbilityFactory<...> factory, Consumer<ConfigView> validator, ...)`: Factoryを直接渡す詳細登録。
+- `register(String path, Function<ConfigView, C> configFactory, Function<C, ...> runtimeFactory)`: 設定の生成とRuntimeの生成を関数で渡す。
+
+登録IDは `namespace:path` になる。JSONの `implementationId`（補助Abilityは `type`）にこのIDを書く。
 
 ### `MojiBattleRegistries`
 **種類:** `class`  
@@ -752,41 +841,43 @@
 
 ## `jp.takoa.mojibattle.registry.impl`
 
-### `FieldEffectImplementation`
+通常は `MojiBattleRegister` の能力種別ごとの `register(...)` が自動で生成するため、MODから直接生成する必要はありません。
+
+### `FieldEffectImpl`
 **種類:** `record`  
 **役割:** フィールド効果の設定検証関数を登録する実装情報。
 
 **recordの構成要素:** `String id`、`Consumer<ConfigView> validator`
 
-### `PassiveImplementation`
+### `PassiveImpl`
 **種類:** `record`  
 **役割:** パッシブのRuntime生成、検証、説明表示の定義。
 
-**recordの構成要素:** `String id`、`AbilityFactory<? extends PassiveRuntime> factory`、`Consumer<ConfigView> validator`、`Function<ConfigView`、`AbilityPresentation> presentation`
+**recordの構成要素:** `String id`、`AbilityFactory<? extends PassiveRuntime> factory`、`Consumer<ConfigView> validator`、`Function<ConfigView, AbilityPresentation> presentation`
 
-### `SkillImplementation`
+### `SkillImpl`
 **種類:** `record`  
 **役割:** スキルのRuntime生成、検証、倍率付き説明表示の定義。
 
-**recordの構成要素:** `String id`、`AbilityFactory<? extends SkillRuntime> factory`、`Consumer<ConfigView> validator`、`BiFunction<ConfigView`、`Float`、`AbilityPresentation> presentation`
+**recordの構成要素:** `String id`、`AbilityFactory<? extends SkillRuntime> factory`、`Consumer<ConfigView> validator`、`BiFunction<ConfigView, Float, AbilityPresentation> presentation`
 
-### `SupportAbilityImplementation`
+### `SupportAbilityImpl`
 **種類:** `record`  
 **役割:** 補助能力のRuntime生成と設定検証の定義。
 
 **recordの構成要素:** `String id`、`AbilityFactory<? extends SupportAbilityRuntime> factory`、`Consumer<ConfigView> validator`
 
-### `SupportPassiveImplementation`
+### `SupportPassiveImpl`
 **種類:** `record`  
 **役割:** 補助パッシブのRuntime生成定義。
 
-**recordの構成要素:** `String id`、`AbilityFactory<? extends SupportPassiveRuntime> factory`
+**recordの構成要素:** `String id`、`AbilityFactory<? extends SupportPassiveRuntime> factory`、`Consumer<ConfigView> validator`（検証を省略するコンストラクタあり）
 
-### `UltimateImplementation`
+### `UltimateImpl`
 **種類:** `record`  
 **役割:** 必殺技のRuntime生成、検証、説明表示の定義。
 
-**recordの構成要素:** `String id`、`AbilityFactory<? extends UltimateRuntime> factory`、`Consumer<ConfigView> validator`、`Function<ConfigView`、`AbilityPresentation> presentation`
+**recordの構成要素:** `String id`、`AbilityFactory<? extends UltimateRuntime> factory`、`Consumer<ConfigView> validator`、`Function<ConfigView, AbilityPresentation> presentation`
 
 ---
 
@@ -832,42 +923,60 @@
 
 ## 実装例: MOD登録とスキル
 
-以下はAPIの型に合わせた最小例です。MODをJARからどのように探索するかはローダー側の実装に依存します。
+以下はAPIの型に合わせた最小例です（`api/example/` のサンプルと同じ形）。MODをJARからどのように探索するかはローダー側の実装に依存します。
 
 ```java
 @ModEntry("examplemod")
 public final class ExampleMod implements GameMod {
     @Override
     public void register(ModContext context) {
-        ModSkills.REGISTRY.attach(context.registrationBus());
+        ModSkills.SKILLS.attach(context.registrationBus());
     }
 }
 ```
 
 ```java
 public final class ModSkills {
-    public static final MojiBattleRegister<SkillImplementation> REGISTRY =
-            MojiBattleRegister.create(MojiBattleRegistries.SKILL_IMPLEMENTATIONS, "examplemod");
+    public static final MojiBattleRegister.Skill SKILLS = MojiBattleRegister.createSkill("examplemod");
 
-    public static final RegistryHandle<SkillImplementation> RETURN_TO_FOREST =
-            REGISTRY.register("return_to_forest", () -> new SkillImplementation(
-                    "examplemod:return_to_forest",
-                    config -> new ReturnToForestSkill(config),
-                    config -> { },
-                    (config, multiplier) -> AbilityPresentation.of(
-                            "examplemod.skill.return_to_forest"
-                    )
-            ));
+    // 登録ID: examplemod:return_to_forest
+    public static final RegistryHandle<SkillImpl> RETURN_TO_FOREST =
+            SKILLS.register("return_to_forest", ReturnToForestSkill.class);
 
     private ModSkills() { }
 }
 ```
 
-上記の `ReturnToForestSkill` は `SkillRuntime` を実装し `ConfigView` を受け取るコンストラクタを持つ独自クラスを想定しています。
+```java
+public final class ReturnToForestSkill extends AbstractRuntime<ReturnToForestSkill.Config> implements SkillRuntime {
+    public ReturnToForestSkill(Config config) {
+        super(config);
+    }
+
+    @Override
+    public boolean tryActivate(AbilityActivationContext context) {
+        var target = context.target();
+        if (target == null || !target.alive()) {
+            return false;
+        }
+        context.actions().damage(context.user(), target, getConfig().damage(), DamageType.SKILL);
+        context.actions().knockbackAwayFrom(context.user(), target, getConfig().knockbackDistance());
+        return true;
+    }
+
+    public record Config(
+            @ConfigFloat(defaultValue = 30f) @DisplayValue float damage,
+            @ConfigFloat(defaultValue = 1.4f) float knockbackDistance) {
+    }
+}
+```
+
+設定アノテーション（`@ConfigFloat`、`@DisplayValue` など）は `jp.takoa.mojibattle.ability.config.annotations`、`AbstractRuntime` は `jp.takoa.mojibattle.ability.config` からimportします。スキルJSONの `implementationId` に `examplemod:return_to_forest` を書き、`descriptionKey` に説明文の翻訳キーを指定します。`damage` などの値はJSONの同名キーから読まれ、省略時はアノテーションの既定値になります。
 
 ## 注意点
 
 - `MojiBattleRegister` の `RegistryHandle.get()` は登録完了後に使用してください。
+- クラス登録するRuntimeは、publicで具象のクラスにし、「設定record 1つだけを引数に取るpublicコンストラクタ」を1つだけ持たせてください（他の形のコンストラクタはあっても構いません）。設定recordの各項目には設定アノテーションをちょうど1つ付けます。
 - `GameMod.id()` は `@ModEntry` を取得するため、アノテーションなしで呼ぶと例外になります（独自に `id()` を上書きする場合は別）。
 - 失敗する可能性のある戦闘操作、設定値の妥当性、名前空間の一致はMOD開発側でも検証してください。
 - 詳細な引数名・型は各クラスの公開シグネチャを確認してください。

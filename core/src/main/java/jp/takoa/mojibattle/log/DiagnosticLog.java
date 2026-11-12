@@ -52,6 +52,26 @@ public final class DiagnosticLog {
         selection = new Selection(mainIds, supportIds, glyphTextures, projectileTextures);
     }
 
+    /** 現在表示中の画面名。 */
+    public static String currentScreen() {
+        return currentScreen;
+    }
+
+    /** 起動時に読み込んだMODの識別子一覧。 */
+    public static List<String> loadedMods() {
+        return loadedMods;
+    }
+
+    /** 直近のキャラクター選択で確定または仮選択されたメインキャラクターID。 */
+    public static List<String> selectedMainIds() {
+        return selection.mainIds();
+    }
+
+    /** 直近のキャラクター選択で確定または仮選択された補助キャラクターID。 */
+    public static List<String> selectedSupportIds() {
+        return selection.supportIds();
+    }
+
     public static void info(String message) {
         write("INFO", message, null);
     }

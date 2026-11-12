@@ -77,8 +77,7 @@ MojiBattleEX/
 ├─ item/                    # 標準コンテンツ MOD
 ├─ mod-loader/              # 外部 JAR の検出・検証・ロード
 ├─ lwjgl3/                  # デスクトップ用エントリーポイント
-├─ packaging/               # Windows 配布物作成
-└─ tools/                   # アセット生成・データ移行補助
+└─ build-tools/             # 配布用パッケージ・MOD JAR の作成スクリプト
 ```
 
 ## 操作方法
@@ -186,47 +185,51 @@ flowchart TB
 ```mermaid
 sequenceDiagram
     participant L as Lwjgl3Launcher
-    participant S as mods directory
-    participant ML as ModLoader
-    participant B as GameBootstrap
-    participant RM as RegistryManager
-    participant D as Config / Validator
     participant G as GameApplication
+    participant S as StartupLoadingScreen
+    participant SL as StartupLoader
+    participant ML as ModLoader
+    participant B as BootstrapProcess
+    participant RM as RegistryManager
 
     L->>L: graphics.json を読んでウィンドウ設定
-    L->>S: 標準 item と外部 MOD JAR を列挙
-    L->>ML: mods/*.jar を走査・検証・依存解決
-    ML-->>L: 標準 item を含む依存順 GameMod
-    L->>G: libGDX アプリケーション生成
-    G->>B: GDX 初期化後に bootstrap
-    B->>RM: 組込み Registry を作成
-    B->>B: 各 MOD の register(context)
+    L->>G: libGDX アプリケーション生成（StartupSource を渡す）
+    G->>S: create() で起動ロード画面を表示
+    loop 1フレームあたり約10ms
+        S->>SL: update()
+    end
+    SL->>ML: mods/*.jar を走査・検証・依存解決
+    ML-->>SL: 依存順 GameMod
+    SL->>B: 各 MOD の register(context)（1フレームに1 MOD）
     B->>RM: Registry ごとに RegisterEvent
-    RM-->>B: DeferredRegister を解決
-    B->>D: JSON・翻訳・カスタム保存を読込・検証
-    B->>B: Ability Factory カタログを生成
-    B->>RM: 全 Registry を freeze
-    B->>B: 各 MOD の initialize(context)
-    B-->>G: RegistrySnapshot / GameContext
-    G->>G: TitleScreen を表示
+    RM-->>B: MojiBattleRegister を解決
+    SL->>B: JSON・翻訳・カスタム保存を読込・検証
+    SL->>B: Ability Factory カタログ生成、全 Registry を freeze
+    SL->>B: 各 MOD の initialize(context)
+    SL->>SL: フォント生成（ワーカー）・UI 画像・効果音・入力
+    SL-->>S: GameContext と最初の画面
+    S->>G: TitleScreen へ切り替え
 ```
 
 登録順の詳細は次のとおりです。
 
 1. `Lwjgl3Launcher` が `graphics.json` をクラスパスから直接読み、LWJGL3 を設定します。
-2. 互換用`ServiceLoader<GameMod>`を列挙します。通常配布では空です。
-3. `ModLoader` が `mods/` 直下の標準`item`と外部 JAR を検出し、メタデータと依存を検証します。
-4. 外部 JAR 群を 1 個の共有 `URLClassLoader` に依存順で載せ、エントリーポイントを生成します。
-5. libGDX の `create()` 後、`GameBootstrap` が `BuiltInRegistries` と 2 系統の EventBus を作ります。
-6. 全 MOD の `register(ModContext)` を順番に呼びます。この時点では `RegistryHandle#get()` を呼べません。
-7. `RegistryManager` が Registry 作成順で `RegisterEvent<T>` を同期配送します。
-8. `DeferredRegister` は全 Factory を先に評価・検証し、成功時だけ登録と Handle 束縛を行います。
-9. `RegistriesRegisteredEvent` を発行します。
-10. 標準 JSON、翻訳、カスタムキャラクター保存を読み、数値・ID・アセット・翻訳参照を検証します。
-11. 定義から、プレイヤー専用 Ability を生成する `AbilityRegistry` を作ります。
-12. Registry を凍結し、`RegistriesFrozenEvent` を発行します。
-13. 全 MOD の `initialize(ModContext)` を呼び、`RegistrySnapshot` を返します。
-14. `GameContext` が音声・Skin・共有サービスを所有し、終了時に音声、Skin、EventBus、MOD ClassLoader の順で解放します。
+2. libGDX の `create()` で `StartupLoadingScreen` を表示し、以降の処理を `StartupLoader` が1フレームあたり約10msずつ進めます。
+3. 互換用`ServiceLoader<GameMod>`を列挙します。通常配布では空です。
+4. `ModLoader` が `mods/` 直下の標準`item`と外部 JAR を検出し、メタデータと依存を検証します。
+5. 外部 JAR 群を 1 個の共有 `URLClassLoader` に依存順で載せ、エントリーポイントを生成します。
+6. `GameBootstrap.begin()` が `MojiBattleRegistries` と EventBus を作り、段階実行用の `BootstrapProcess` を返します（一括実行の `GameBootstrap.bootstrap()` も同じ処理を順に実行します）。
+7. 全 MOD の `register(ModContext)` を順番に呼びます。この時点では `RegistryHandle#get()` を呼べません。
+8. `RegistryManager` が Registry 作成順で `RegisterEvent<T>` を同期配送します。
+9. `MojiBattleRegister` は全 Factory を先に評価・検証し、成功時だけ登録と Handle 束縛を行います。
+10. `RegistriesRegisteredEvent` を発行します。
+11. 標準 JSON、翻訳、カスタムキャラクター保存を読み、数値・ID・アセット・翻訳参照を検証します。
+12. 定義から、プレイヤー専用 Ability を生成する `AbilityRegistry` を作ります。
+13. Registry を凍結し、`RegistriesFrozenEvent` を発行します。
+14. 全 MOD の `initialize(ModContext)` を呼びます。
+15. Skin 用フォントを生成し（ラスタライズはワーカースレッド）、UI 画像・効果音・入力デバイスを準備して `GameContext` を作ります。
+16. タイトル画面へ切り替えます。失敗した場合はロード画面にエラーとクラッシュレポートの保存先を表示します。
+17. `GameContext` は音声・Skin・共有サービスを所有し、終了時に音声、Skin、EventBus、MOD ClassLoader の順で解放します。
 
 ### Registry の状態遷移
 
@@ -245,7 +248,7 @@ stateDiagram-v2
 - `RegistryKey<T>`: Registry 自体の ID と要素型を組にした型付きキーです。
 - `Registry<T>`: 登録順を保持し、重複、ID 不一致、凍結後の変更を拒否します。
 - `RegistryHandle<T>`: 登録完了後だけ解決できる遅延参照です。
-- `DeferredRegister<T>`: 宣言時に `Supplier` を保持し、対応する登録イベントで一括確定します。
+- `MojiBattleRegister<T>`: 宣言時に `Supplier` を保持し、対応する登録イベントで一括確定します。能力は `createSkill` などで種別ごとに作り、Runtime クラスを登録できます。
 - 登録失敗時は全 Registry が `FAILED` になります。内容をロールバックして同じ JVM で再試行する機能はありません。
 
 ## 戦闘ランタイム
@@ -277,7 +280,7 @@ flowchart LR
 | 状態 | 所有者 | 共有されるか |
 |---|---|---|
 | JSON のキャラクター / Ability 定義 | `ConfigManager` / Definition Registry | 起動中共有 |
-| Ability 実装 Factory | `BuiltInRegistries` | 起動中共有 |
+| Ability 実装 Factory | `MojiBattleRegistries` | 起動中共有 |
 | スキルのクールダウン・ストック | プレイヤー別 `AbilityLoadout` | 共有しない |
 | HP・必殺ポイント・状態効果 | `CharacterRuntime` | 共有しない |
 | 代表・追従メイン・補助の編成 | `BattleTeamDefinition`, `PlayerTeam` | プレイヤー単位 |
@@ -314,11 +317,11 @@ APIの全契約、設計原則、導入手順、用途別サンプル、全公�
 | パッケージ | 主な型 | 役割 |
 |---|---|---|
 | `mod` | `GameMod`, `ModContext`, `GameApiVersion` | MOD エントリーポイント、API / ゲーム版 |
-| `registry` | `Registry`, `RegistryManager`, `DeferredRegister`, `RegistryHandle`, `RegistryId` | 型付き登録、遅延解決、凍結 |
+| `registry` | `Registry`, `RegistryManager`, `MojiBattleRegister`, `RegistryHandle`, `RegistryId` | 型付き登録、遅延解決、凍結 |
 | `event` | `RegistrationBus`, `EventBus`, `EventSubscription` | 同期・登録順・完全一致型のイベント配送 |
 | `event.lifecycle` | `RegisterEvent<T>` | Registry ごとの登録タイミング |
 | `resource` | `ResourceManager`, `ResourceId`, `ResourceKind` | JAR / クラスパスを隠したストリーム読込み |
-| `ability` / `battle` | `SkillRuntime`, `UltimateRuntime`, `PassiveRuntime`, `ConfigView`, `CombatantView`, `CombatActions` | core 型を公開せず独自Abilityを登録・実行する境界 |
+| `ability` / `battle` | `SkillRuntime`, `UltimateRuntime`, `PassiveRuntime`, `AbstractRuntime`, `ConfigView`, 設定アノテーション, `CombatantView`, `CombatActions` | core 型を公開せず独自Abilityを登録・実行する境界 |
 
 設計上のポイント:
 
@@ -327,7 +330,7 @@ APIの全契約、設計原則、導入手順、用途別サンプル、全公�
 - 配送中に購読を変更しても、現在の配送はスナップショットを使うため次回から反映されます。
 - リスナー例外は `EventDispatchException` でイベント型情報を付けて上位へ送ります。
 - `ResourceId` は小文字へ正規化され、絶対パス、末尾 `/`、`//`、`.`、`..` を拒否します。
-- `DeferredRegister`へ登録したFactoryは装備プレイヤーごとに評価され、実行インスタンスの可変状態を共有しません。
+- `MojiBattleRegister`へ登録したFactory（Runtimeクラス）は装備プレイヤーごとに評価され、実行インスタンスの可変状態を共有しません。
 - `CombatActions#damage(..., DamageType)`はHPを直接変更せず、攻撃・パッシブ・状態・終盤・防御・会心・統計・`DamageEvent`を含む既存計算を通します。
 - `DomainSpec`は重複可能な視覚領域だけを宣言し、キャラクター効果はパッシブ側が`isDomainActive`を参照して実装します。`CutInSpec`、中央吸引パルス、位置交換・中央反転・負状態解除も公開`CombatActions`から利用できます。
 
@@ -338,8 +341,10 @@ APIの全契約、設計原則、導入手順、用途別サンプル、全公�
 | 領域 | 主なクラス | 責務 |
 |---|---|---|
 | アプリ共有 | `GameApplication`, `GameContext` | libGDX lifecycle、共有サービスとリソースの所有 |
-| 起動 | `bootstrap.GameBootstrap` | MOD 登録 → データ解決 → Factory 化 → freeze |
-| Registry | APIの`BuiltInRegistries`、coreの`RegistrySnapshot` | 公開Registryと起動結果 |
+| 起動 | `bootstrap.GameBootstrap`, `BootstrapProcess`, `startup.StartupLoader` | MOD 登録 → データ解決 → Factory 化 → freeze を段階実行し、起動ロード画面と連動 |
+| ロード・診断 | `loading.LoadingTracker`, `debug.DebugOverlay`, `crash.CrashReporter` | ロード進捗、デバッグ表示、クラッシュレポート |
+| ゲーム情報 | `info.GameVersionInfo`, `info.InstalledMods` | 表示用バージョンと導入済み MOD 一覧 |
+| Registry | APIの`MojiBattleRegistries`、coreの`RegistrySnapshot` | 公開Registryと起動結果 |
 | データ | `ConfigManager`, `JsonDataLoader`, `RegistryResolver` | JSON 読込み、旧形式の正規化、ID 解決 |
 | 検証 | `GameDataValidator`, `TranslationDataValidator` | 数値、参照、画像、キー割当、翻訳キーの fail-fast 検証 |
 | ドメイン | `BattleController`, `CharacterRuntime`, `DamageService` | 固定ステップの戦闘状態とルール |
@@ -354,19 +359,23 @@ APIの全契約、設計原則、導入手順、用途別サンプル、全公�
 | 音声 | `BattleAudio` | 8 種の SFX、音量 Preferences、同時発音制限 |
 | 永続化 | `CustomCharacterStore` | バージョン付きカスタム保存、検証、一時ファイル置換 |
 
-組込み Registry は以下の 9 個です。
+組込み Registry は以下の 13 個です（`MojiBattleRegistries`）。
 
 | Registry | 保持するもの |
 |---|---|
-| `skill_implementations` | スキルの Factory・検証・UI 表示生成 |
-| `ultimate_implementations` | 必殺技の Factory・検証・UI 表示生成 |
-| `passive_implementations` | パッシブの Factory・検証・UI 表示生成 |
-| `field_effect_implementations` | フィールド効果の種別と検証 |
-| `support_ability_implementations` | 補助 Ability のハンドラと検証 |
-| `effects` | VFX ID、画像、倍率、用途、旧 index |
-| `skill_definitions` | JSON から読んだスキル定義 |
-| `ultimate_definitions` | JSON から読んだ必殺技定義 |
-| `passive_definitions` | JSON から読んだパッシブ定義 |
+| `SKILL_IMPLEMENTATIONS` | スキルの Factory・検証・UI 表示生成 |
+| `ULTIMATE_IMPLEMENTATIONS` | 必殺技の Factory・検証・UI 表示生成 |
+| `PASSIVE_IMPLEMENTATIONS` | パッシブの Factory・検証・UI 表示生成 |
+| `FIELD_EFFECT_IMPLEMENTATIONS` | フィールド効果の種別と検証 |
+| `SUPPORT_ABILITY_IMPLEMENTATIONS` | 補助 Ability の Factory と検証 |
+| `SUPPORT_PASSIVE_IMPLEMENTATIONS` | 補助パッシブの Factory |
+| `EFFECTS` | VFX ID、画像、倍率、用途、旧 index |
+| `CHARACTERS` | メインキャラクターのデータ登録 |
+| `SUPPORT_CHARACTERS` | 補助キャラクターのデータ登録 |
+| `FIELD_EFFECTS` | フィールド効果のデータ登録 |
+| `SKILL_DEFINITIONS` | JSON から読んだスキル定義 |
+| `ULTIMATE_DEFINITIONS` | JSON から読んだ必殺技定義 |
+| `PASSIVE_DEFINITIONS` | JSON から読んだパッシブ定義 |
 
 `ConfigManager` は旧 JSON の `type`、整数 VFX index、暗黙翻訳キーを現行 ID へ正規化します。互換処理は読込み境界へ集約し、以降のランタイムは安定 ID だけを扱います。
 
@@ -378,7 +387,7 @@ APIの全契約、設計原則、導入手順、用途別サンプル、全公�
 item/
 ├─ src/main/java/.../item/
 │  ├─ ItemContentModule.java       # GameMod エントリーポイント
-│  ├─ init/                        # ID と DeferredRegister の宣言
+│  ├─ init/                        # ID と MojiBattleRegister の宣言
 │  └─ impl/
 │     ├─ registry/                 # Factory・検証・表示定義
 │     └─ ability/                  # 実際の Ability 実装
@@ -387,7 +396,7 @@ item/
    └─ services/...GameMod          # ServiceLoader 登録
 ```
 
-`init` と `impl` の分離には、ID の一覧と実装詳細を混ぜず、起動側が個別クラスを知らなくても一括登録できる利点があります。`ItemContentModule#register` は 7 個の `DeferredRegister` を lifecycle bus へ attach するだけです。
+`init` と `impl` の分離には、ID の一覧と実装詳細を混ぜず、起動側が個別クラスを知らなくても一括登録できる利点があります。`ItemContentModule#register` は 8 個の `MojiBattleRegister` を lifecycle bus へ attach するだけです。
 
 | カタログ | 実装済み ID | 数 |
 |---|---|---:|
@@ -430,7 +439,7 @@ flowchart LR
 
 - metadata schema は現在 `1` のみです。
 - MOD ID は正規化済み小文字で、`mojibattle_game` はホスト予約 ID、`mojibattle` は標準コンテンツIDです。
-- API major は `1`、APIおよびゲームバージョンは `0.8.2` です。
+- API バージョンは `メジャー.マイナー.パッチ` の3つで管理し、現在は `1.1.0`（`GameApiVersion.API_VERSION`）です。MOD の互換性判定に使うゲームバージョンは `1.1.0`（`GameApiVersion.GAME_VERSION`）、表示用のゲームバージョンはルート `build.gradle.kts` の `version`（現在 `v1.1-release-0`）で、タイトル画面の「情報」から確認できます。
 - semantic version は厳密な `major.minor.patch` のみです。prerelease / build metadata は扱いません。
 - `gameVersion` は完全一致または `>=x.y.z` を受け付けます。
 - dependency range は空文字または `>=x.y.z` のみです。
@@ -451,7 +460,8 @@ flowchart LR
 - `graphics.json` から 1600×900 / windowed などの初期値を読む
 - VSync を有効化し、foreground FPS を 120 に設定する
 - 標準 MOD と外部 MOD を合流させる
-- `GameApplication` へ遅延 `GameContext` Factory を渡す
+- `GameApplication` へ `StartupSource`（MOD の探索とリソース層の提供）を渡し、MOD の探索は起動ロード画面の中で行う
+- 探索した MOD の名前・バージョン・読込み元を情報画面用に記録する
 - Java 21 `jpackage` タスクを定義する
 - 標準 `item` JARを開発・配布の`mods`へコピーし、通常クラスパスから分離する
 
@@ -525,11 +535,11 @@ glyphs/kabushiki.png
 | トレーニング | ✅ | 不死のダミー、統計・状態・倍率表示、F1～F5 |
 | 固定ステップ | ✅ | 60 Hz、描画 delta 上限、入力を command 化 |
 | 分割画面 | ✅ | 2 人左右、3～4 人 2×2、独立追従カメラ |
-| メインキャラクター | ✅ | 12体、共通自動通常攻撃、個別スキル / 必殺 / パッシブ |
-| 補助キャラクター | ✅ | 6体、通常時1～2体・カオス時4体編成、横並びHUD、追従・自動攻撃・自動スキル・手動必殺 |
+| メインキャラクター | ✅ | 16体、共通自動通常攻撃、個別スキル / 必殺 / パッシブ |
+| 補助キャラクター | ✅ | 8体、通常時1～2体・カオス時4体編成、横並びHUD、追従・自動攻撃・自動スキル・手動必殺 |
 | カオスモード | ✅ | 2～4チーム、各チームは操作メイン1体・自動追従メイン2体・補助4体。メインの最大HPは `battle.json` の `chaosHealthMultiplier` 倍 |
 | 状態効果 | ✅ | 公開11分類、3重複規則、永続期間、期限切れ復元、一度だけの消費 |
-| フィールド効果 | ✅ | 10 種、ID 重複排除、周期 / 時間成長 |
+| フィールド効果 | ✅ | 12 種（計算方式 10 種）、ID 重複排除、周期 / 時間成長 |
 | 覚醒 | ✅ | 残り 30 秒で出現、攻撃 1.5 / 防御 1.5 / 移動 1.3 / 必殺獲得 1.5 倍 |
 | 戦闘演出 | ✅ | 16 VFX、板ポリゴン、回転 / 脈動、命中フラッシュ、カメラシェイク |
 | 音声 | ✅ | 8 SFX、音量保存、同一フレームの同時発音制限 |
@@ -541,7 +551,7 @@ glyphs/kabushiki.png
 | MOD リソース | ✅ | stream / exists / JAR list、外部Texture変換、標準互換フォールバック |
 | MOD lifecycle | ✅ | `register`、Registry event、`initialize` |
 | 外部 MOD の独自 Java 処理 | ✅ | メイン／補助Ability、固定更新、ダメージhook、汎用攻撃・状態・HUDを公開APIで実装可能 |
-| 外部データパック | ✅ | 公開RegistryとDeferredRegisterからcharacter / skill / ultimate / passive / 翻訳を統合 |
+| 外部データパック | ✅ | 公開RegistryとMojiBattleRegisterからcharacter / skill / ultimate / passive / 翻訳を統合 |
 | 外部画像 / 音声の実ゲーム利用 | 🟡 | キャラクター・攻撃・VFX画像は対応。外部音声とUIテーマは未公開 |
 | 公開 API だけのキャラクター追加 | ✅ | 既存Ability実装をJSONから再利用する方式に対応 |
 | MOD ごとの ClassLoader 隔離 | ⛔ | 全外部 MOD が 1 個の共有 ClassLoader |
@@ -552,16 +562,29 @@ glyphs/kabushiki.png
 
 | 画面 | 実装内容 |
 |---|---|
-| タイトル | 対戦、設定、カスタムキャラクター編集へ遷移 |
+| 起動ロード | 起動直後に表示。MOD 登録・データ読込み・フォント生成などの実際の初期化に連動した進捗。失敗時はエラーとクラッシュレポートの場所 |
+| タイトル | 対戦、カスタムキャラクター編集、設定、ゲーム情報へ遷移 |
+| ゲーム情報 | ゲームバージョン、API バージョン、導入済み MOD（名前・バージョン・ID・読込み元・ファイル名）を表示 |
 | モード選択 | 通常・超究極スーパーカオスそれぞれの2 / 3 / 4人戦、トレーニング、キャラクターガイド |
 | キャラクター選択 | カードグリッド、詳細、確定 / キャンセル、補助1 / 2体切替、カオス専用3メイン＋4補助編成プレビュー |
+| 戦闘前ロード | 全員の選択完了後に表示。実際の準備処理に連動した進捗バー・進捗率・処理内容。失敗時はクラッシュレポートの場所と選択画面への復帰ボタン |
 | ガイド | メイン / 補助の表示切替、実装 Registry 由来の能力説明 |
 | 戦闘 HUD | HP、スキル、必殺、人数で等分した横並び補助ゲージ、中央アナウンス、終盤表示 |
 | トレーニング HUD | 与ダメージ、DPS、フィールド、パッシブ倍率、位置、状態効果等 |
-| 設定 | 解像度、全画面、音量、UI 倍率、カメラ追従、入力方式、コントローラー専用画面、言語 / キー表示 |
+| 設定 | 解像度、全画面、音量、UI 倍率、カメラ追従、必殺技演出、デバッグモード、入力方式、コントローラー専用画面、言語 / キー表示 |
 | 結果 | 勝者 / 引き分けとタイトル復帰 |
 
 設定画面は Preferences へ値を保存します。入力方式は全プレイヤー共通で「キーボード」または「コントローラー」を選択できます。専用のコントローラー設定画面ではP1〜P4のJoy-Con接続・割り当て・スティック値とゲーム内アクションの反応を確認できます。音量は戦闘音声が毎フレーム保存値を参照し、解像度・全画面・カメラ追従・必殺技演出のON/OFFは操作中または次の戦闘開始時に反映されます。一方、起動時ウィンドウ設定は現在 `graphics.json` を直接読むため、保存済み解像度 / 全画面を launcher が復元する経路は未統合です。UI 倍率も保存 UI はありますが、Skin / viewport へ適用する経路は未統合です。
+
+#### ロード画面・デバッグモード・クラッシュレポート
+
+キャラクター選択が完了すると `BattleLoadingScreen` へ遷移し、`BattleLoader` が戦闘の準備を1フレームあたり約10msずつ進めます。準備は「キャラクターデータの確認」「能力と戦闘状態の初期化」「テクスチャの読込み」「ステージの3Dモデル構築」「戦闘 UI の準備」の5タスクで、状態は描画から独立した `LoadingTracker`（`core` の `loading` パッケージ）が管理します。進捗率は完了したタスクの重みとテクスチャの読込み件数から算出し、時間経過では増えず、全タスクが成功するまで100%になりません。テクスチャは読出しとデコードだけをワーカースレッド（`MojiBattle-TextureDecoder`）で行い、GPU転送・MOD の能力生成・ゲーム状態の初期化は GL スレッドで実行します。同じ画像は `BattleTextureCache` で一度だけ読み込みます。各タスクの所要時間はロード完了時に診断ログへ記録されます。
+
+起動時は `GameApplication` が最初のフレームで `StartupLoadingScreen` を表示し、`StartupLoader`（`core` の `startup` パッケージ）が初期化を同じく1フレームあたり約10msずつ進めます。タスクは「MOD の探索」「MOD の登録（1フレームに1 MOD）」「ゲームデータの読込み」「翻訳データの読込みと検証」「キャラクターの登録」「能力の初期化と Registry の凍結」「MOD の初期化（1フレームに1 MOD）」「フォントの生成」「画像・UI の準備」「効果音と入力デバイスの準備」「最初の画面の準備」の11個で、戦闘前と同じ `LoadingTracker` で進捗を管理します。MOD の探索は以前のようにウィンドウ表示前ではなく、ロード画面の最初のタスクとして実行します。`GameBootstrap.bootstrap()` は段階実行用の `BootstrapProcess` を順に実行する形になり、処理の内容と順序は従来どおりです。起動時間の大半を占める Skin 用フォント9種は、ラスタライズをワーカースレッド（`MojiBattle-FontRasterizer`）、Texture 化を GL スレッドで1フォントずつ行います（`AsyncFontGenerator`）。テーマ背景画像のデコードも起動直後から `MojiBattle-ImageDecoder` で行います。起動に失敗した場合はタイトル画面へ進まず、ロード画面にエラーとクラッシュレポートの保存先を表示します（Enter / Esc / クリックで終了し、終了コードは1）。
+
+設定画面の「デバッグモード」（既定はオフ、Preferences の `debugMode` に保存）をオンにすると、再起動せずに全画面の左上へ `FPS: 60` 形式の FPS を表示し、ロード画面にタスクごとの状態・所要時間・処理中のリソース・エラー概要を表示します。
+
+ロード中・戦闘中の例外、捕捉されない例外（ワーカースレッドを含む）は `CrashReporter` が共通形式のレポートとして書き出します。ファイル名はローカル日時の `yyyy-MMdd-HHmmss.txt`（同じ秒に複数ある場合は `-2`, `-3` …）です。保存先は jpackage のアプリケーションイメージ直下の `crush-report/`（`jpackage.app-path` または `-Dmojibattle.appDir=$APPDIR` から解決）、`lwjgl3:run` ではリポジトリの `build/crush-report/`、IDE 実行ではクラス配置場所から見つけた Gradle プロジェクトの `build/crush-report/` です。書き込めない場合は `%LOCALAPPDATA%\MojiBattleEX\crush-report`、`~/.mojibattleex/crush-report`、一時ディレクトリの順に切り替え、実際の保存先を診断ログと標準エラーへ出力します。`-Dmojibattle.crashReportDir=<dir>` で明示指定もできます。
 
 Nintendo Switch初代Joy-Con (L/R) はWindows上で1本ずつ横持ちmini-gamepadとして認識し、最大4本をP1〜P4へ割り当てます。スティックは移動、縦側のフェイスボタン / 方向入力はメインスキル、横側は補助スキル、SLはメイン必殺技、SRは補助必殺技です。Joy-Conにはポーズを割り当てず、設定されたキーボードのポーズキーだけを常時受け付けます。切断したプレイヤーはidle入力となり、同じデバイスIDまたは同じ左右種別・デバイス名で再接続された場合は以前の枠を優先します。
 
@@ -646,10 +669,10 @@ item内のメイン・補助必殺技は、個別`CutInSpec`がない場合も�
 
 - JAR の検出、metadata / バージョン / 依存検証
 - `GameMod#register` と `GameMod#initialize` の呼出し
-- `RegisterEvent` の購読と、既知 `RegistryKey<T>` に対する `DeferredRegister`
+- `RegisterEvent` の購読と、既知 `RegistryKey<T>` に対する `MojiBattleRegister`
 - `assets/<modid>` / `data/<modid>` の open / exists / list
-- 公開`BuiltInRegistries`と`DeferredRegister`によるメイン／補助／フィールド効果データ登録
-- 公開Ability登録要素と`DeferredRegister`によるメイン／補助の独自Runtime登録
+- 公開`MojiBattleRegistries`と`MojiBattleRegister`によるメイン／補助／フィールド効果データ登録
+- `MojiBattleRegister.createSkill`などによるメイン／補助の独自Runtimeクラス登録（設定はアノテーション付きrecord）
 - 状態、動的会心、通常攻撃modifier、Projectile、範囲・遅延攻撃、HUD状態行
 - 外部翻訳とキャラクター／攻撃／VFX Textureの読込み
 
@@ -670,8 +693,10 @@ item内のメイン・補助必殺技は、個別`CutInSpec`がない場合も�
 現在の座標は次のとおりです。
 
 ```text
-jp.takoa.mojibattle:mojibattle-api:0.8.2
+jp.takoa.mojibattle:mojibattle-api:v1.1-release-0
 ```
+
+Maven 上のバージョンはゲームのバージョン（ルート `build.gradle.kts` の `version`）と同じです。API バージョン（`1.1.0`）とは別の値なので注意してください。
 
 ### 2. MOD プロジェクトを作る
 
@@ -695,7 +720,7 @@ java {
 }
 
 dependencies {
-    compileOnly("jp.takoa.mojibattle:mojibattle-api:0.8.2")
+    compileOnly("jp.takoa.mojibattle:mojibattle-api:v1.1-release-0")
 }
 ```
 
@@ -723,7 +748,7 @@ examplemod.jar
   "id": "examplemod",
   "name": "Example MOD",
   "version": "1.0.0",
-  "apiVersion": "1",
+  "apiVersion": "1.1.0",
   "gameVersion": ">=0.8.2",
   "entrypoint": "com.example.examplemod.ExampleMod",
   "dependencies": {
@@ -742,7 +767,7 @@ examplemod.jar
 | `id` | ✅ | 小文字 `[a-z0-9_.-]+`、`mojibattle_game` は不可 |
 | `name` | ✅ | 空文字不可 |
 | `version` | ✅ | 厳密な `x.y.z` |
-| `apiVersion` | ✅ | 現在は major `1` |
+| `apiVersion` | ✅ | 開発に使った API バージョン `x.y.z`。メジャーがゲームと一致し、ゲームの API（現在 `1.1.0`）以下なら読み込む。従来の `"1"`（メジャーのみ）も引き続き受け付ける |
 | `gameVersion` | ✅ | `x.y.z` または `>=x.y.z` |
 | `entrypoint` | ✅ | public な引数なし constructor を持つ `GameMod` 実装 |
 | `dependencies.required` | ✅ | 欠落時はロード失敗 |
@@ -753,24 +778,25 @@ examplemod.jar
 ```java
 package com.example.examplemod;
 
+import jp.takoa.mojibattle.content.CharacterDataRegistration;
 import jp.takoa.mojibattle.mod.GameMod;
 import jp.takoa.mojibattle.mod.ModContext;
-import jp.takoa.mojibattle.content.CharacterDataRegistration;
+import jp.takoa.mojibattle.mod.ModEntry;
+import jp.takoa.mojibattle.registry.MojiBattleRegister;
+import jp.takoa.mojibattle.registry.MojiBattleRegistries;
 import jp.takoa.mojibattle.resource.ResourceId;
 
+@ModEntry("examplemod") // metadata.id と完全一致させる
 public final class ExampleMod implements GameMod {
-    private static final DeferredRegister<CharacterDataRegistration> CHARACTERS =
-            DeferredRegister.create(BuiltInRegistries.CHARACTERS, "examplemod");
-    private static final DeferredRegister<SkillImplementation> SKILLS =
-            DeferredRegister.create(BuiltInRegistries.SKILL_IMPLEMENTATIONS, "examplemod");
+    private static final MojiBattleRegister<CharacterDataRegistration> CHARACTERS =
+            MojiBattleRegister.create(MojiBattleRegistries.CHARACTERS, "examplemod");
+    private static final MojiBattleRegister.Skill SKILLS = MojiBattleRegister.createSkill("examplemod");
+
     static {
         CHARACTERS.register("example", () -> new CharacterDataRegistration(
                 resource("characters/example.json"), resource("abilities/example_skill.json"),
                 resource("abilities/example_ultimate.json"), resource("abilities/example_passive.json"), "i18n"));
-    }
-    @Override
-    public String id() {
-        return "examplemod"; // metadata.id と完全一致させる
+        SKILLS.register("return_to_forest", ReturnToForestSkill.class); // ID: examplemod:return_to_forest
     }
 
     @Override
@@ -785,21 +811,37 @@ public final class ExampleMod implements GameMod {
 }
 ```
 
-独自Abilityも公開登録要素を`DeferredRegister`へ宣言し、同じ`register`内でattachします。JSONの公開設定は
-`ConfigView`として渡され、JSONライブラリなどホスト内部実装への依存は不要です。数値、真偽値、文字列、配列、ネストしたオブジェクトを読み取れます。
+独自Abilityは、Runtimeを実装したクラスと、設定を宣言するrecordで書きます。JSONの値は設定recordへ自動で読み込まれ、型・範囲が検証されます。JSONライブラリなどホスト内部実装への依存は不要です。
 
 ```java
-SKILLS.register("return_to_forest", () -> new SkillImplementation("examplemod:return_to_forest", parameters -> {
-    float damage = parameters.floatValue("damage", 40f);
-    float distance = parameters.floatValue("knockbackDistance", 1.25f);
-    return activation -> {
+package com.example.examplemod;
+
+import jp.takoa.mojibattle.ability.config.AbstractRuntime;
+import jp.takoa.mojibattle.ability.config.annotations.ConfigFloat;
+import jp.takoa.mojibattle.ability.config.annotations.DisplayValue;
+import jp.takoa.mojibattle.ability.context.AbilityActivationContext;
+import jp.takoa.mojibattle.ability.runtime.SkillRuntime;
+import jp.takoa.mojibattle.battle.damage.DamageType;
+
+public final class ReturnToForestSkill extends AbstractRuntime<ReturnToForestSkill.Config> implements SkillRuntime {
+    public ReturnToForestSkill(Config config) {
+        super(config);
+    }
+
+    @Override
+    public boolean tryActivate(AbilityActivationContext activation) {
         var target = activation.target();
         if (target == null) return false;
-        activation.actions().damage(activation.user(), target, damage, DamageType.SKILL);
-        activation.actions().knockbackAwayFrom(activation.user(), target, distance);
+        activation.actions().damage(activation.user(), target, getConfig().damage(), DamageType.SKILL);
+        activation.actions().knockbackAwayFrom(activation.user(), target, getConfig().knockbackDistance());
         return true;
-    };
-}, parameters -> { }, (parameters, multiplier) -> AbilityPresentation.of("examplemod.skill.return_to_forest")));
+    }
+
+    public record Config(
+            @ConfigFloat(defaultValue = 40f) @DisplayValue float damage,
+            @ConfigFloat(defaultValue = 1.25f) float knockbackDistance) {
+    }
+}
 ```
 
 スキルJSON側では登録した実装IDと固有パラメータを指定します。
@@ -808,6 +850,7 @@ SKILLS.register("return_to_forest", () -> new SkillImplementation("examplemod:re
 {
   "id": "examplemod:return_to_forest",
   "implementationId": "examplemod:return_to_forest",
+  "descriptionKey": "examplemod.skill.return_to_forest",
   "cooldownSeconds": 3.0,
   "parameters": {
     "damage": 40,
@@ -841,7 +884,7 @@ Gradle からゲームを起動する場合は、プロジェクトルートの 
 
 ## ソースツリーへコンテンツを追加する方法
 
-標準コンテンツを本体リポジトリ内で追加する場合は、次の手順を使います。外部MODとして追加する場合も同じ`DeferredRegister`方式を使うため本体の再ビルドは不要です。
+標準コンテンツを本体リポジトリ内で追加する場合は、次の手順を使います。外部MODとして追加する場合も同じ`MojiBattleRegister`方式を使うため本体の再ビルドは不要です。
 
 ### 既存実装を使うメインキャラクター
 
@@ -879,9 +922,9 @@ Gradle からゲームを起動する場合は、プロジェクトルートの 
 
 JSON だけで表現できない挙動は、次の 3 層を追加します。
 
-1. **実行クラス**: `item/ability` にAPIの`SkillRuntime` / `UltimateRuntime` / `PassiveRuntime`実装を追加する。
-2. **実装記述子**: APIの`SkillImplementation`等でFactory、validator、UI presentationを組にする。
-3. **登録宣言**: `item/init/*RegistryInit` の`DeferredRegister`へ安定IDで登録し、`ItemContentModule`でattachする。
+1. **実行クラス**: `item/ability` にAPIの`SkillRuntime` / `UltimateRuntime` / `PassiveRuntime`実装を追加する。設定は、アノテーション付きrecordを受け取るpublicコンストラクタで受け取る。
+2. **登録宣言**: `item/init/*Init`（`SkillsInit` など）の`MojiBattleRegister`へ安定IDとRuntimeクラスを登録する。Factory・検証・説明文（`SkillImpl`等）は自動で作られる。
+3. **attach**: 新しい登録クラスを作った場合は`ItemContentModule`でattachする。
 
 設定DTOに新しい値が必要ならAPIの`AbilityConfigs`を変更します。新しい戦闘操作が必要ならAPIのSpec/Actionsとcore実装を対で追加します。
 
@@ -896,7 +939,7 @@ JSON だけで表現できない挙動は、次の 3 層を追加します。
 ### フィールド効果
 
 1. 既存 type を使うなら `assets/config/field_effects/<id>.json` だけを追加します。
-2. 新しい計算方式なら `FieldEffectRegistryInit` と `FieldEffectImplementations` に type を追加し、`BattleController` / `FieldEffectSystem` の適用箇所を実装します。
+2. 新しい計算方式なら `FieldEffectRegistryInit` に type を追加し、`BattleController` / `FieldEffectSystem` の適用箇所を実装します。
 3. `game.json#fieldEffectIds` に ID を追加します。
 
 ---
@@ -949,6 +992,7 @@ Java 21 の `jpackage` を使い、Java runtime 同梱の配布物を生成し�
 |---|---|
 | 直接実行可能なEXE | `lwjgl3/build/jpackage/app-image/MojiBattleEX/MojiBattleEX.exe` |
 | 同梱MOD | `lwjgl3/build/jpackage/app-image/MojiBattleEX/app/mods/` |
+| クラッシュレポート | `lwjgl3/build/jpackage/app-image/MojiBattleEX/crush-report/`（実行時に生成。空フォルダを同梱） |
 | Portable ZIP | `lwjgl3/build/jpackage/distributions/MojiBattleEX-<version>-windows-x64.zip` |
 | Installer | `lwjgl3/build/jpackage/installer/MojiBattleEX-<version>.exe` |
 | Checksum | `lwjgl3/build/jpackage/distributions/SHA256SUMS.txt` |
@@ -956,12 +1000,6 @@ Java 21 の `jpackage` を使い、Java runtime 同梱の配布物を生成し�
 詳しくは [`build-tools/README.md`](build-tools/README.md) を参照してください。`jpackage` はクロス OS パッケージングを行わないため、各 OS 用配布物は対象 OS 上で作成します。
 
 ### アセット補助
-
-| ツール | 用途 |
-|---|---|
-| `tools/generate-battle-sfx.ps1` | 戦闘 SFX 生成 |
-| `tools/generate-heisei-maki-assets.ps1` | 平成 / 薪関連アセット生成 |
-| `tools/migrate-registry-json.ps1` | 旧 JSON の Registry ID 移行補助 |
 
 生成素材の記録は [`assets/GENERATED_ASSETS.md`](assets/GENERATED_ASSETS.md)、個別素材の由来は各アセットディレクトリの `README.md` にあります。
 
@@ -979,12 +1017,8 @@ Java 21 の `jpackage` を使い、Java runtime 同梱の配布物を生成し�
 
 ## 関連資料
 
-README 単体で全体像が分かるよう内容を統合していますが、設計判断や監査記録の原文は以下に残しています。
-
-- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — MOD アーキテクチャの短縮版
-- [`docs/MOD_DEVELOPMENT.md`](docs/MOD_DEVELOPMENT.md) — 外部 MOD 仕様の短縮版
-- [`docs/MIGRATION_PHASES.md`](docs/MIGRATION_PHASES.md) — Phase 1～9の実装記録
-- [`docs/JAVADOC_AUDIT.md`](docs/JAVADOC_AUDIT.md) — Javadoc 監査
-- [`docs/STATIC_CHECK_REPORT.md`](docs/STATIC_CHECK_REPORT.md) — 静的確認記録
-- [`api/README.md`](api/README.md) — MOD API 0.8.2 完全ガイド、全公開クラス、更新履歴
-- [`packaging/README.md`](packaging/README.md) — Windows リリース作成
+- [`PLAYER_GUIDE.md`](PLAYER_GUIDE.md) — 操作方法、キャラクター紹介、プレイヤー向けの説明
+- [`api/README.md`](api/README.md) — MOD API 1.1.0 完全ガイド、全公開クラス、更新履歴
+- [`api/ClassDesc.md`](api/ClassDesc.md) — API の全クラス・インターフェース解説
+- [`build-tools/README.md`](build-tools/README.md) — 配布用パッケージと MOD JAR の作成
+- [`STATIC_CHECK_REPORT.md`](STATIC_CHECK_REPORT.md) — 静的確認記録

@@ -12,6 +12,7 @@ import jp.takoa.mojibattle.domain.support.SupportCharacterDefinition;
 import jp.takoa.mojibattle.domain.support.SupportRegistry;
 import jp.takoa.mojibattle.domain.ability.AbilityRegistry;
 import jp.takoa.mojibattle.i18n.LocalizationManager;
+import jp.takoa.mojibattle.info.InstalledMods;
 import jp.takoa.mojibattle.input.JoyConInputManager;
 import jp.takoa.mojibattle.log.GameLog;
 import jp.takoa.mojibattle.event.EventChannels;
@@ -54,47 +55,78 @@ public final class GameContext implements AutoCloseable {
      * MOD ClassLoader等、ゲーム終了時に閉じる外部ランタイムを伴って共有サービスを構築する。
      */
     public GameContext(RegistrySnapshot bootstrap, AutoCloseable modRuntime) {
+        this(bootstrap, modRuntime, null);
+    }
+
+    /**
+     * 起動ロード画面で生成済みのSkinを受け取って共有サービスを構築する。
+     *
+     * <p>{@code preparedSkin} は {@link #skinCharacters(RegistrySnapshot)} の文字で生成したものを渡す。
+     * 所有権はこのコンテキストへ移り、{@link #close()} で解放される。構築に失敗した場合もこのコンストラクタ内で解放する。
+     * nullの場合は従来どおりここで生成する。</p>
+     */
+    public GameContext(RegistrySnapshot bootstrap, AutoCloseable modRuntime, Skin preparedSkin) {
         this.modRuntime = modRuntime;
         registries = bootstrap.registries();
         events = bootstrap.events();
         resources = bootstrap.resources();
         config = bootstrap.config();
-        joyCons = new JoyConInputManager();
-
-        GameLog.info("Config", "Configuration loaded and validated");
-
-        audio = new BattleAudio(config.game.masterVolume);
-
         i18n = bootstrap.i18n();
         characters = bootstrap.characters();
         supports = bootstrap.supports();
         abilities = bootstrap.abilities();
         customCharacters = bootstrap.customCharacters();
 
+        BattleAudio createdAudio = null;
+        try {
+            joyCons = new JoyConInputManager();
+
+            GameLog.info("Config", "Configuration loaded and validated");
+
+            createdAudio = new BattleAudio(config.game.masterVolume);
+            audio = createdAudio;
+
+            skin = preparedSkin != null ? preparedSkin : UiFactory.createSkin(i18n, skinCharacters(bootstrap));
+        } catch (RuntimeException | Error error) {
+            if (preparedSkin != null) {
+                closeStep(null, preparedSkin::dispose);
+            }
+            if (createdAudio != null) {
+                closeStep(null, createdAudio::dispose);
+            }
+            throw error;
+        }
+        GameLog.info("Registry", "Registered characters: " + config.characters().size());
+    }
+
+    /**
+     * Skinのフォントへ収録する、翻訳文以外の表示文字（キャラクター、補助キャラクター、カスタムキャラクター名、スキルの文字、導入済みMODの情報）。
+     */
+    public static String skinCharacters(RegistrySnapshot bootstrap) {
         StringBuilder extraCharacters = new StringBuilder();
 
-        for (CharacterDefinition character : config.characters()) {
+        for (CharacterDefinition character : bootstrap.config().characters()) {
             extraCharacters.append(character.displayGlyph);
         }
 
-        for (SupportCharacterDefinition support : config.supports()) {
+        for (SupportCharacterDefinition support : bootstrap.config().supports()) {
             extraCharacters.append(support.displayGlyph);
         }
 
-        for (CustomCharacterData custom : customCharacters.all()) {
+        for (CustomCharacterData custom : bootstrap.customCharacters().all()) {
             if (custom.displayName != null) {
                 extraCharacters.append(custom.displayName);
             }
         }
 
-        for (AbilityConfigs.ProjectileSkill skill : config.skills()) {
+        for (AbilityConfigs.ProjectileSkill skill : bootstrap.config().skills()) {
             if (skill.glyphs != null) {
                 extraCharacters.append(String.join("", skill.glyphs));
             }
         }
-
-        skin = UiFactory.createSkin(i18n, extraCharacters.toString());
-        GameLog.info("Registry", "Registered characters: " + config.characters().size());
+        // 情報画面に表示するMOD名・バージョン・ファイル名。
+        extraCharacters.append(InstalledMods.displayCharacters());
+        return extraCharacters.toString();
     }
 
     /**
